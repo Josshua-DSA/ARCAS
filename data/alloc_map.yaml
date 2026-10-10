@@ -1,0 +1,28 @@
+version: "2026-10-09"
+mappings:
+  gold:
+    mode: direct
+    target: XAU
+  btc:
+    mode: direct
+    target: BTC
+  stock:
+    mode: direct
+    target: IHSG
+  etf:
+    mode: blend
+    components:
+      - {target: SPX, weight: 0.6}
+      - {target: IHSG, weight: 0.4}
+  bond:
+    mode: macro_derived
+    theme_weights:
+      rates_down: 0.7
+      rates_up: -0.7
+      inflation_up: -0.5
+      risk_off: 0.4
+  mutual_fund:
+    mode: class_blend
+    components:
+      - {class: bond, weight: 0.6}
+      - {class: stock, weight: 0.4}
