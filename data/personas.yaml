@@ -1,0 +1,37 @@
+version: "2026-10-09"
+personas:
+  retail:
+    name: "Retail Investor"
+    horizon: medium
+    loss_aversion: 0.35
+    theta: 0.25
+    conf_min: 0.50
+    description: "Mudah terpengaruh judul; asimetris terhadap berita negatif."
+  day_trader:
+    name: "Day Trader"
+    horizon: short
+    loss_aversion: 0.05
+    theta: 0.15
+    conf_min: 0.40
+    description: "Sangat sensitif berita jangka pendek, fokus volatilitas."
+  fund_manager:
+    name: "Fund Manager"
+    horizon: medium
+    loss_aversion: 0.20
+    theta: 0.30
+    conf_min: 0.65
+    description: "Butuh bukti kuat; mempertimbangkan makro dan relatif ke benchmark."
+  pension:
+    name: "Long-term / Pension"
+    horizon: long
+    loss_aversion: 0.50
+    theta: 0.45
+    conf_min: 0.75
+    description: "Abaikan berita sementara; fokus tema struktural jangka panjang."
+  risk_manager:
+    name: "Risk Manager / Hedger"
+    horizon: medium
+    loss_aversion: 0.75
+    theta: 0.20
+    conf_min: 0.50
+    description: "Fokus risiko turun; lebih cepat mengambil aksi mitigasi atau lindung nilai."
