@@ -1,0 +1,46 @@
+version: "2026-10-09"
+params:
+  lambda_tilt: 0.15
+  delta_max_pp: 5.0
+  conf_min: 0.40
+
+profiles:
+  conservative:
+    name: "Konservatif"
+    classes:
+      bond:        {base_pct: 60.0, min_pct: 40.0, max_pct: 80.0}
+      mutual_fund: {base_pct: 15.0, min_pct: 5.0,  max_pct: 25.0}
+      stock:       {base_pct: 5.0,  min_pct: 0.0,  max_pct: 15.0}
+      etf:         {base_pct: 10.0, min_pct: 0.0,  max_pct: 20.0}
+      btc:         {base_pct: 0.0,  min_pct: 0.0,  max_pct: 5.0}
+      gold:        {base_pct: 10.0, min_pct: 5.0,  max_pct: 25.0}
+
+  moderate:
+    name: "Moderat"
+    classes:
+      bond:        {base_pct: 40.0, min_pct: 20.0, max_pct: 60.0}
+      mutual_fund: {base_pct: 15.0, min_pct: 5.0,  max_pct: 25.0}
+      stock:       {base_pct: 15.0, min_pct: 5.0,  max_pct: 30.0}
+      etf:         {base_pct: 20.0, min_pct: 10.0, max_pct: 35.0}
+      btc:         {base_pct: 5.0,  min_pct: 0.0,  max_pct: 10.0}
+      gold:        {base_pct: 5.0,  min_pct: 0.0,  max_pct: 15.0}
+
+  aggressive:
+    name: "Agresif"
+    classes:
+      bond:        {base_pct: 20.0, min_pct: 5.0,  max_pct: 40.0}
+      mutual_fund: {base_pct: 10.0, min_pct: 0.0,  max_pct: 20.0}
+      stock:       {base_pct: 30.0, min_pct: 15.0, max_pct: 50.0}
+      etf:         {base_pct: 25.0, min_pct: 10.0, max_pct: 40.0}
+      btc:         {base_pct: 10.0, min_pct: 0.0,  max_pct: 20.0}
+      gold:        {base_pct: 5.0,  min_pct: 0.0,  max_pct: 15.0}
+
+  custom_example:
+    name: "Contoh Custom"
+    classes:
+      bond:        {base_pct: 55.0, min_pct: 30.0, max_pct: 70.0}
+      mutual_fund: {base_pct: 10.0, min_pct: 0.0,  max_pct: 20.0}
+      stock:       {base_pct: 10.0, min_pct: 0.0,  max_pct: 25.0}
+      etf:         {base_pct: 15.0, min_pct: 5.0,  max_pct: 30.0}
+      btc:         {base_pct: 5.0,  min_pct: 0.0,  max_pct: 10.0}
+      gold:        {base_pct: 5.0,  min_pct: 0.0,  max_pct: 15.0}
