@@ -1,0 +1,212 @@
+/* GUI Light Editorial + Terminal Data (Claude x Bloomberg) — offline, zero-CDN.
+ * Sumber: frontend/GUI/THEME.md v0.1. @import Google Fonts dibuang (aturan offline).
+ * Font lokal di ../fonts/ (OFL: Inter, Newsreader, JetBrains Mono via Fontsource).
+ * Proporsi 65/20/10/5. Filosofi 70% Claude / 30% Bloomberg. */
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../fonts/newsreader-latin-300-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/newsreader-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+
+:root {
+  /* font (request user) */
+  --font-serif: "Newsreader", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* alias kanvas gelap (request user) */
+  --bg: #141413;
+  --fg: #e8e6e1;
+  --clay: #cd6f47;
+  --amber: #ffb000;
+  --up-user: #3fb950;
+  --down-user: #f85149;
+
+  /* inti (lampiran §2) */
+  --base: #F6F4F4;
+  --text: #2C2727;
+  --accent: #FF7517;
+  --surface: #3E3939;
+
+  /* terang (lampiran §3) */
+  --bg-card: #FFFFFF;
+  --bg-sunken: #EDEAEA;
+  --text-primary: #2C2727;
+  --text-secondary: #5E5757;
+  --text-muted: #6B6464;
+  --border-subtle: #DDD8D8;
+  --border-strong: #8C8585;
+  --accent-hover: #FF8A3D;
+  --accent-text: #C2410C;
+  --accent-subtle: #FFE9DB;
+
+  /* gelap (lampiran §4) */
+  --surface-deep: #2C2727;
+  --surface-raised: #4A4545;
+  --on-dark-primary: #F6F4F4;
+  --on-dark-secondary: #D4CFCF;
+  --on-dark-muted: #BDB7B7;
+  --border-dark-subtle: #5A5454;
+  --border-dark-strong: #8C8585;
+  --accent-on-dark: #FF7517;
+  --accent-text-on-dark: #FF8A3D;
+
+  /* semantik terang (lampiran §6) */
+  --up: #1A7F37;
+  --down: #CF222E;
+  --hold: #6B6464;
+  --warn: #8A5A00;
+  --info: #0969DA;
+
+  /* semantik gelap (lampiran §6) */
+  --up-dark: #56D364;
+  --down-dark: #FF7B72;
+  --hold-dark: #BDB7B7;
+  --warn-dark: #FFB000;
+  --info-dark: #79B8FF;
+
+  /* grafik panel gelap (lampiran §8) */
+  --chart-xau-dark: #FFD33D;
+  --chart-oil-dark: #FF7517;
+  --chart-cu-dark: #2FC4B2;
+  --chart-btc-dark: #D2A8FF;
+  --chart-sbn-dark: #58A6FF;
+  --chart-semicon-dark: #FF8FC7;
+  --chart-mine-dark: #D9B38C;
+  --chart-bank-dark: #B8E986;
+
+  /* grafik latar terang (lampiran §8) */
+  --chart-xau: #9A6700;
+  --chart-oil: #C2410C;
+  --chart-cu: #1F9D8A;
+  --chart-btc: #8B5CF6;
+  --chart-sbn: #0969DA;
+  --chart-semicon: #D6409F;
+  --chart-mine: #8C5A2B;
+  --chart-bank: #4D7C0F;
+}
+
+body {
+  background: var(--base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+h1, h2, .news-title, .rationale {
+  font-family: var(--font-serif);
+  font-weight: 350;
+}
+
+.panel-dark {
+  background: var(--surface);
+  color: var(--on-dark-primary);
+}
+
+.num, .ticker, .panel-dark td {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:active {
+  background: var(--accent);
+  transform: translateY(1px);
+}
+
+a {
+  color: var(--accent-text);
+}
+
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.chip.buy { background: var(--up); }
+.chip.sell { background: var(--down); }
+.chip.hold { background: var(--hold); }
+
+.row-selected {
+  background: var(--accent-subtle);
+  border-left: 3px solid var(--accent);
+}
+
+.panel-dark .row-selected {
+  background: rgba(255, 117, 23, 0.16);
+  border-left: 3px solid var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent);
+}
+
+.panel-dark :focus-visible {
+  outline-color: var(--on-dark-primary);
+}
