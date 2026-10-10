@@ -1,0 +1,16 @@
+dataset/
+*.zip
+*.pdf
+!research/papers/*.pdf
+.huggingface/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+model/weights/*.bin
+model/weights/*.safetensors
+model/weights/*.pt
+model/weights/*.onnx
+outputs/
+.venv/
+venv/
