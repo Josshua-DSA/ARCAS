@@ -1,0 +1,59 @@
+asset_id,alias,lang
+XAU,emas,id
+XAU,logam mulia,id
+XAU,gold,en
+XAU,bullion,en
+XAU,safe haven,en
+OIL,minyak,id
+OIL,minyak mentah,id
+OIL,brent,id
+OIL,wti,en
+OIL,crude oil,en
+OIL,crude,en
+OIL,petroleum,en
+CU,tembaga,id
+CU,copper,en
+CU,lme copper,en
+NG,gas alam,id
+NG,gas bumi,id
+NG,natural gas,en
+NG,henry hub,en
+NG,lng,en
+BTC,bitcoin,id
+BTC,btc,id
+BTC,kripto,id
+BTC,bitcoin,en
+BTC,btc,en
+BTC,crypto,en
+USDIDR,rupiah,id
+USDIDR,kurs rupiah,id
+USDIDR,usdidr,id
+USDIDR,usd/idr,id
+USDIDR,nilai tukar rupiah,id
+USDIDR,idr,en
+USDIDR,usd/idr,en
+DXY,indeks dolar,id
+DXY,dolar as,id
+DXY,dollar index,en
+DXY,dxy,en
+DXY,greenback,en
+RATE_UST,yield us treasury,id
+RATE_UST,surat utang as,id
+RATE_UST,treasury yield,en
+RATE_UST,10-year treasury,en
+RATE_UST,us 10y,en
+RATE_UST,fed funds rate,en
+VIX,indeks vix,id
+VIX,indeks ketakutan,id
+VIX,vix,en
+VIX,volatility index,en
+VIX,fear index,en
+IHSG,ihsg,id
+IHSG,indeks harga saham gabungan,id
+IHSG,bursa efek indonesia,id
+IHSG,idx composite,en
+SPX,s&p 500,id
+SPX,wall street,id
+SPX,s&p 500,en
+SPX,sp500,en
+SPX,spx,en
