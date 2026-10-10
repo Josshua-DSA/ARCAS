@@ -1,0 +1,81 @@
+version: "2026-10-09"
+macro:
+  keywords:
+    - fed
+    - fomc
+    - inflation
+    - cpi
+    - pce
+    - jobs report
+    - payrolls
+    - tariff
+    - rate cut
+    - rate hike
+    - war
+    - bank indonesia
+    - suku bunga
+    - opec
+  feeds:
+    - name: fed_press
+      type: rss
+      lang: en
+      url: "https://www.federalreserve.gov/feeds/press_all.xml"
+    - name: gdelt
+      type: api
+      lang: multi
+      endpoint: "https://api.gdeltproject.org/api/v2/doc/doc"
+
+targets:
+  XAU:
+    price: "GC=F"
+    keywords: [gold, bullion, safe haven, real yields, emas]
+    feeds:
+      - {name: kitco_rss, type: rss, lang: en, url: "https://www.kitco.com/rss/news.xml"}
+  OIL:
+    price: "CL=F"
+    alt_price: "BZ=F"
+    keywords: [opec, crude, wti, brent, eia inventory, minyak]
+    feeds:
+      - {name: eia_petroleum, type: rss, lang: en, url: "https://www.eia.gov/petroleum/rss"}
+  CU:
+    price: "HG=F"
+    keywords: [copper, lme, china demand, tembaga]
+    feeds:
+      - {name: mining_rss, type: rss, lang: en, url: "https://www.mining.com/feed"}
+  NG:
+    price: "NG=F"
+    keywords: [natural gas, henry hub, lng, eia storage, gas alam]
+    feeds:
+      - {name: eia_gas, type: rss, lang: en, url: "https://www.eia.gov/naturalgas/rss"}
+  BTC:
+    price: "BTC-USD"
+    keywords: [bitcoin, btc, crypto etf, halving, sec, kripto]
+    feeds:
+      - {name: coindesk_rss, type: rss, lang: en, url: "https://www.coindesk.com/arc/outboundfeeds/rss"}
+  USDIDR:
+    price: "IDR=X"
+    keywords: [rupiah, usd/idr, bank indonesia, devisa]
+    scrapers: [bisnis, cnbc_id, kontan]
+  DXY:
+    price: "DX-Y.NYB"
+    keywords: [dollar index, dxy, greenback, indeks dolar]
+    feeds:
+      - {name: fed_press, type: rss, lang: en, url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+  RATE_UST:
+    price: "^TNX"
+    keywords: [treasury yield, 10-year, fed funds, fomc, yield obligasi as]
+    note: "yield = ^TNX/10"
+    feeds:
+      - {name: fed_press, type: rss, lang: en, url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+  VIX:
+    price: "^VIX"
+    keywords: [vix, volatility, fear index, risk appetite, volatilitas]
+    api: finnhub_marketaux
+  IHSG:
+    price: "^JKSE"
+    keywords: [ihsg, bursa efek indonesia, bei]
+    scrapers: [bisnis, cnbc_id, kontan]
+  SPX:
+    price: "^GSPC"
+    keywords: [s&p 500, wall street, earnings, jobs, cpi, sp500]
+    api: finnhub_marketaux
