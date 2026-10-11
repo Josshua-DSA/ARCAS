@@ -1,7 +1,7 @@
 # backend/ — Core Engine & Deterministik Pipeline (B1–B9)
 
 Lingkup kerja Backend Engineer:
-- `src/collect/`: Penarikan berita (`news-watch`, RSS) & harga harian 11 target (`yfinance`).
+- `src/collect/`: Penarikan berita (`news-watch`, RSS) & harga harian 3 target inti (`XAU`, `RATE_UST`, `SPX`) via `yfinance`.
 - `src/normalize/`: Pembersihan, deduping, cut-off UTC & penyelarasan kalender bursa (`effective_trading_date`).
 - `src/tagging/`: Keyword matching & traversal `impact_graph.yaml` 7 tema makro.
 - `src/store/`: Skema SQLite & Parquet (`TargetImpact`, `DailySentiment`, `PriceRecord`).

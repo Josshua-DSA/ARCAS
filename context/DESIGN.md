@@ -1,6 +1,6 @@
 # DESIGN — Model, Scoring, Statistik & Antarmuka
 
-> Status: Draft v0.7 · GUI FastAPI+Vanilla+ECharts · universe locked 12 target · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md` (struktur) dan `SCHEMA.md` (kontrak data).
+> Status: Draft v0.8 · GUI FastAPI+Vanilla+ECharts · universe inti 3 target (v2026-10-12-core3) · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md` (struktur) dan `SCHEMA.md` (kontrak data).
 
 ## 1. Prinsip
 
@@ -11,25 +11,17 @@
 
 ## 2. Taksonomi
 
-### 2.1 Target (TERKUNCI v2026-10-09 — 12 asset_id, dilarang tambah tanpa bump universe_version)
+### 2.1 Target (TERKUNCI v2026-10-12-core3 — 3 asset_id inti, dilarang tambah tanpa bump universe_version)
 | `asset_id` | Nama | Ticker | Kelas |
 |---|---|---|---|
 | `XAU` | Emas | `GC=F` | commodity |
-| `OIL` | Minyak WTI (alt `BZ=F`) | `CL=F` | commodity |
-| `CU` | Tembaga | `HG=F` | commodity |
-| `NG` | Gas alam | `NG=F` | commodity |
-| `BTC` | Bitcoin | `BTC-USD` | crypto |
-| `USDIDR` | USD/IDR | `IDR=X` | fx |
-| `DXY` | Indeks dolar AS | `DX-Y.NYB` | fx |
 | `RATE_UST` | Yield UST 10Y (`^TNX`/10) | `^TNX` | rate |
-| `VIX` | Volatilitas US | `^VIX` | volatility |
-| `IHSG` | IHSG | `^JKSE` | index |
 | `SPX` | S&P 500 | `^GSPC` | index |
-| `SOX` | Indeks Semikonduktor | `^SOX` | index |
+Pensiun core3: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG` (+`SOX` usulan).
 CPI/PCE, kebijakan bank sentral, employment = tema makro (§2.2), bukan target.
 
-### 2.2 Tema makro (awal)
-`rates_up/down`, `inflation_up/down`, `usd_up/down`, `risk_on/off`, `oil_up/down`, `china_demand_up/down`, `geopolitical_tension`, `crypto_regulation`, `tariff_up`, `supply_shock`, `tech_semiconductor_boom/bust`.
+### 2.2 Tema makro (core3)
+`rates_up/down`, `inflation_up/down`, `usd_up/down`, `risk_on/off`, `geopolitical_tension`, `tariff_up`, `supply_shock`. Pensiun bersama targetnya: `oil_up/down`, `china_demand_up/down`, `crypto_regulation`, `tech_semiconductor_boom/bust`.
 
 ### 2.3 Label
 - `tone` (sentimen teks): `positive | neutral | negative`.
@@ -75,7 +67,7 @@ Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 ### 4.1 Tag target
 1. **Routing**: berita ditarik atas nama target tertentu → kandidat target.
 2. **Kamus kata kunci per target** (tanpa NER emiten) → `basis=explicit` bila disebut langsung.
-3. **Makro**: tema terdeteksi → 12 target lewat `impact_graph.yaml`.
+3. **Makro**: tema terdeteksi → 3 target inti lewat `impact_graph.yaml`.
 
 ### 4.2 Arah (`direction`)
 - **Explicit**: `direction` = `tone` terhadap entitas (positif → bullish).
@@ -84,39 +76,22 @@ Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 
 `impact_graph.yaml` (contoh)
 ```yaml
-version: 2026-10-09   # selaras universe lock; bobot hipotesis awal
+version: 2026-10-12-core3   # selaras universe inti; bobot hipotesis awal
 themes:
   rates_down:
     - {target: XAU, sign: +1, weight: 0.8}
-    - {target: BTC, sign: +1, weight: 0.4}
     - {target: SPX, sign: +1, weight: 0.4}
-    - {target: IHSG, sign: +1, weight: 0.4}
     - {target: RATE_UST, sign: -1, weight: 0.9}
   rates_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: BTC, sign: -1, weight: 0.4}
-    - {target: USDIDR, sign: +1, weight: 0.5}
     - {target: RATE_UST, sign: +1, weight: 0.9}
   usd_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: OIL, sign: -1, weight: 0.3}
-    - {target: USDIDR, sign: +1, weight: 0.8}
-    - {target: DXY, sign: +1, weight: 0.9}
-  oil_up:
-    - {target: OIL, sign: +1, weight: 0.9}
-    - {target: NG, sign: +1, weight: 0.4}
-  china_demand_up:
-    - {target: CU, sign: +1, weight: 0.8}
   risk_off:
     - {target: XAU, sign: +1, weight: 0.6}
-    - {target: VIX, sign: +1, weight: 0.8}
-    - {target: BTC, sign: -1, weight: 0.5}
     - {target: SPX, sign: -1, weight: 0.6}
-    - {target: IHSG, sign: -1, weight: 0.5}
   geopolitical_tension:
     - {target: XAU, sign: +1, weight: 0.7}
-    - {target: OIL, sign: +1, weight: 0.6}
-    - {target: VIX, sign: +1, weight: 0.6}
 ```
 Bobot adalah **hipotesis awal**, bukan fakta; diuji lewat analisis statistik.
 
@@ -143,7 +118,7 @@ penalties= rumor(0.20) + mixed_signal(0.15) + ambiguous_entity(0.15) + weak_sour
 - `effective_trading_date`: berita setelah tutup → hari bursa berikutnya (per timezone bursa).
 
 ### 6.2 Metrik pasar
-Return harian per target; abnormal return vs benchmark relevan (`IHSG` untuk USDIDR, `SPX` untuk komoditas/BTC/VIX); volatilitas (rolling std), perubahan volume.
+Return harian per target; abnormal return vs benchmark `SPX` untuk `XAU` dan `RATE_UST`; volatilitas (rolling std), perubahan volume.
 
 ### 6.3 Uji
 | Uji | Detail |
@@ -186,7 +161,7 @@ Bukan nasihat investasi.
 Arsitektur terpisah: Backend FastAPI (REST JSON) + Frontend Vanilla HTML5/CSS/JS + Apache ECharts offline (zero-CDN, zero-Node). RAM server <50 MB.
 
 - **Endpoints REST FastAPI (`backend/src/serve/app.py`)**:
-  - `GET /api/universe`: Daftar 12 target makro, status metadata, tanggal update terakhir.
+  - `GET /api/universe`: Daftar 3 target inti makro, status metadata, tanggal update terakhir.
   - `GET /api/series/{target}`: Data deret waktu gabungan `DailySentiment` vs `PriceRecord` (return, volume, close).
   - `GET /api/impacts/{target}`: Daftar bukti berita (`evidence.quote`, sumber, URL, tone, direction, confidence, tema makro).
   - `GET /api/stats/{target}`: Koefisien korelasi Spearman, regresi OLS HAC, p-value terkoreksi BH-FDR, Granger causality, CAR event study.
@@ -286,9 +261,9 @@ Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan w
 | Kelas | Sumber skor | Catatan |
 |---|---|---|
 | GOLD | skor target `XAU` | langsung |
-| BTC | skor target `BTC` | langsung |
-| STOCK | skor `IHSG` (emiten dicoret MVP) | langsung |
-| ETF | campuran skor `SPX` + `IHSG` (terkunci) | bobot di config |
+| BTC | dibekukan `(0, 0)` + `no_change` (target pensiun core3) | jaga total 100% |
+| STOCK | skor `SPX` (sejak core3; sebelumnya `IHSG`) | langsung |
+| ETF | skor `SPX` saja (sejak core3; sebelumnya campuran `SPX`+`IHSG`) | bobot di config |
 | BOND | **diturunkan dari tema makro** (`rates_down` +, `inflation_up` −, `risk_off` +, dst.) + berita obligasi/SBN bila ada | tidak ada sentimen langsung; sumber yield TBD |
 | MUTUAL_FUND | campuran BOND & STOCK sesuai jenis (pasar uang / pendapatan tetap / campuran / saham) | komposisi di config |
 
@@ -351,8 +326,8 @@ strength = min(1, |raw| / (2 * θ_p))
 
 ### 12.3 Tampilan
 ```
-Berita: "BI pangkas suku bunga 25 bps"
-Persona               IHSG      Obligasi   Emas
+Berita: "The Fed pangkas suku bunga 25 bps"
+Persona               SPX       Obligasi   Emas
 Retail Investor       🟢 BUY    🟢 BUY     ⚪ HOLD
 Day Trader            🟢 BUY    ⚪ HOLD    ⚪ HOLD
 Fund Manager          ⚪ HOLD   🟢 BUY     ⚪ HOLD

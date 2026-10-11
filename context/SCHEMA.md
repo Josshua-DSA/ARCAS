@@ -20,12 +20,12 @@ class Direction(str, Enum):
     MIXED = "mixed"
 
 class AssetClass(str, Enum):
-    COMMODITY = "commodity"   # XAU, OIL, CU, NG
-    CRYPTO = "crypto"         # BTC
-    INDEX = "index"           # SPX, IHSG
-    FX = "fx"                 # USDIDR, DXY
+    COMMODITY = "commodity"   # XAU (core3; OIL/CU/NG pensiun)
+    CRYPTO = "crypto"         # pensiun core3 (BTC)
+    INDEX = "index"           # SPX (core3; IHSG pensiun)
+    FX = "fx"                 # pensiun core3 (USDIDR/DXY)
     RATE = "rate"             # RATE_UST
-    VOLATILITY = "volatility" # VIX
+    VOLATILITY = "volatility" # pensiun core3 (VIX)
 
 class Track(str, Enum):
     A_IDX = "A"
@@ -68,7 +68,7 @@ class Article(BaseModel):
     language: Lang
     published_at: Optional[datetime]
     fetched_at: datetime
-    effective_trading_date: dict[str, date]   # per target/bursa, mis. {"XAU":"2026-10-09"}
+    effective_trading_date: dict[str, date]   # per target/bursa, mis. {"XAU":"2026-10-12"}
     duplicate_of: Optional[str] = None
     market_relevant: Optional[bool] = None
 
@@ -153,9 +153,9 @@ class StatResult(BaseModel):
   },
   "impacts": [
     {
-      "asset_id": "OIL", "direction": "bullish", "score": 0.74, "confidence": 0.88,
+      "asset_id": "SPX", "direction": "bullish", "score": 0.74, "confidence": 0.88,
       "basis": "explicit", "themes": [], "flags": [],
-      "evidence": [{"quote": "OPEC sepakat pangkas produksi", "start": 0, "end": 30}]
+      "evidence": [{"quote": "S&P 500 ditutup menguat ke rekor baru", "start": 0, "end": 30}]
     },
     {
       "asset_id": "XAU", "direction": "bullish", "score": 0.40, "confidence": 0.62,
@@ -163,7 +163,7 @@ class StatResult(BaseModel):
       "causal_path": ["rates_down", "gold_up"], "flags": []
     }
   ],
-  "model_version": "fusion-v1", "universe_version": "2026-10-09", "schema_version": "0.5.0",
+  "model_version": "fusion-v1", "universe_version": "2026-10-12-core3", "schema_version": "0.5.0",
   "disclaimer": "Bukan nasihat investasi."
 }
 ```
@@ -172,22 +172,22 @@ class StatResult(BaseModel):
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `asset_id` | str PK | LOCKED v2026-10-09 (12): `XAU`, `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `RATE_UST`, `VIX`, `IHSG`, `SPX`, `SOX` |
+| `asset_id` | str PK | INTI v2026-10-12-core3 (3): `XAU`, `RATE_UST`, `SPX` (pensiun: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`, `SOX`) |
 | `asset_class` | enum | commodity/crypto/index/equity/fx |
 | `track` | enum | A / B |
 | `name` | str | Nama resmi |
-| `price_ticker` | str | Ticker Yahoo terkunci (`GC=F`, `CL=F`, `HG=F`, `NG=F`, `BTC-USD`, `IDR=X`, `DX-Y.NYB`, `^TNX`, `^VIX`, `^JKSE`, `^GSPC`, `^SOX`) — verifikasi saat implementasi |
+| `price_ticker` | str | Ticker Yahoo terkunci core3 (`GC=F`, `^TNX`, `^GSPC`) — verifikasi saat implementasi |
 | `exchange` | str | IDX, NYSE, CME, … |
 | `country` | str | ISO alpha-2 |
 | `sector` | str | `NULL` untuk MVP makro (kolom cadangan) |
 | `timezone` | str | mis. `Asia/Jakarta`, `America/New_York` |
 | `session_close` | time | Jam tutup bursa/pasar (untuk time-align) |
-| `valid_from` / `valid_to` | date | Point-in-time (universe v2026-10-09; bump saat tambah/coret target) |
+| `valid_from` / `valid_to` | date | Point-in-time (universe v2026-10-12-core3; bump saat tambah/coret target) |
 | `active` | bool | |
 
-`aliases.csv`: `asset_id`, `alias`, `lang` (mis. "emas", "gold", "bullion" → `XAU`; "minyak", "crude", "wti" → `OIL`). Tanpa alias emiten (dicoret MVP).
+`aliases.csv`: `asset_id`, `alias`, `lang` (mis. "emas", "gold", "bullion" → `XAU`; "treasury yield", "yield obligasi as" → `RATE_UST`; "s&p 500", "wall street" → `SPX`). Tanpa alias emiten (dicoret MVP).
 
-> Aset 24 jam (XAU, OIL, CU, NG, BTC, USDIDR, DXY): konvensi `effective_trading_date` = cut-off harian 00:00 UTC di config, catat di `RULES.md`. RATE_UST/VIX/SPX/IHSG ikut kalender bursa masing-masing.
+> Core3: `XAU` cut-off harian 00:00 UTC; `RATE_UST`/`SPX` ikut kalender bursa US. Ketiganya libur akhir pekan. Konvensi dicatat di `RULES.md`.
 
 ## 5. Source Registry & Impact Graph
 
@@ -363,6 +363,7 @@ ML → `ArticleSentiment {tone, score=p_pos-p_neg, probs[], translation_used}`. 
 
 ## 9. Changelog
 
+- 0.5.0 (core3) — Universe menyusut ke 3 inti (`XAU`, `RATE_UST`, `SPX`) v2026-10-12-core3; pensiun `OIL`/`CU`/`NG`/`BTC`/`USDIDR`/`DXY`/`VIX`/`IHSG`/`SOX`; tanpa perubahan struktur tabel (schema_version tetap 0.5.0); contoh JSON §3 dan §4 diselaraskan; `STOCK`→`SPX`, `ETF`→`SPX`, kelas `BTC` dibekukan.
 - 0.5.0 — Universe LOCKED 11 target (XAU/OIL/CU/NG/BTC/USDIDR/DXY/RATE_UST/VIX/IHSG/SPX); diperluas ke 12 + SOX (Semiconductor Index); coret XAG/NDX/DJI/emiten/SBN-single-name; AssetClass +rate/+volatility, hapus equity; aliases kata kunci komoditas/makro.
 - 0.4.0 — Hapus `llm_fewshot` dari `ModelProbs`; scope tanpa LLM/RAG/agent.
 

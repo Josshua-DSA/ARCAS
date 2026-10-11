@@ -1,7 +1,7 @@
 # RULES — Aturan Wajib Proyek
 
 > Mengikat manusia **dan** AI coding assistant. Jika konflik dengan dokumen lain, `RULES.md` menang.
-> Versi: v0.7 · GUI FastAPI+Vanilla+ECharts · universe locked 12 target · struktur 3-tier (model/backend/frontend) · tanpa LLM/RAG/agent
+> Versi: v0.8 · GUI FastAPI+Vanilla+ECharts · universe inti 3 target (v2026-10-12-core3) · struktur 3-tier (model/backend/frontend) · tanpa LLM/RAG/agent
 
 ## 1. Aturan Domain
 
@@ -29,7 +29,7 @@
 - Rationale ≤ 2 kalimat; dilarang menambahkan fakta yang tidak ada di berita.
 
 ### 1.4 Target
-- Target hanya 11 `asset_id` terkunci v2026-10-09 (`XAU`, `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `RATE_UST`, `VIX`, `IHSG`, `SPX`). Di luar itu → **ditolak**, jangan dikarang. Tambah/coret target = bump `universe_version` + catat Changelog.
+- Target hanya 3 `asset_id` inti terkunci v2026-10-12-core3 (`XAU`, `RATE_UST`, `SPX`). Di luar itu → **ditolak**, jangan dikarang. Tambah/coret target = bump `universe_version` + catat Changelog. Pensiun v2026-10-09: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG` (plus `SOX` yang sempat diusulkan).
 - Ambiguitas nama → resolve dengan konteks; bila tetap ambigu → turunkan confidence + `flag: ambiguous_entity`.
 - Berita **makro** dirutekan ke semua target relevan menurut `impact_graph`.
 
@@ -48,7 +48,7 @@
 6. Kolektor harian harus berjalan sedini mungkin; log kegagalan sumber (`source_health`).
 7. Batas API gratis (kuota, riwayat, hak pakai) **diverifikasi di situs resmi** sebelum diandalkan; jangan hard-code angka dari blog/tutorial.
 8. Ticker Yahoo harus diuji (`yfinance`) sebelum masuk `asset_master`.
-9. Konvensi hari efektif: aset 24 jam (XAU/OIL/CU/NG/BTC/USDIDR/DXY) cut-off 00:00 UTC; RATE_UST/VIX/SPX ikut kalender US, IHSG ikut IDX. Ditetapkan di config dan dicatat.
+9. Konvensi hari efektif (core3): `XAU` cut-off 00:00 UTC; `RATE_UST`/`SPX` ikut kalender bursa US (tutup 15:00/16:00 America/New_York). Ketiganya libur akhir pekan. Ditetapkan di config dan dicatat.
 10. Dataset berlabel publik hanya dipakai bila ketersediaan & lisensinya terverifikasi.
 
 ## 3. Aturan Pelabelan
@@ -153,6 +153,7 @@ ML: probabilitas + tema + kalibrasi usul. Backend: direction/confidence/agregasi
    - **Aksesibilitas wajib**: teks putih di atas `--accent` dilarang; teks kecil beraksen pakai `--accent-text` (terang) / `--accent-text-on-dark` (gelap); tiap warna semantik wajib ikon + tanda + teks; chip BUY/SELL/HOLD label "Simulasi sudut pandang".
 
 ## Changelog Aturan
+- v0.8 — Migrasi universe inti 3 target (`XAU`, `RATE_UST`, `SPX`) v2026-10-12-core3; pensiun `OIL`/`CU`/`NG`/`BTC`/`USDIDR`/`DXY`/`VIX`/`IHSG` (+`SOX` usulan); `impact_graph`/`source_registry`/`alloc_map` dipangkas; kelas alokasi `BTC` dibekukan (`no_change`); `STOCK`→`SPX`, `ETF`→`SPX only`.
 - v0.7 — GUI Web kunci: FastAPI (REST JSON) + Vanilla JS + ECharts offline (zero-Node); fallback snapshot beku CLI report tetap didukung; TUI Rich.
 - v0.6 — Frontend kunci: laporan HTML beku single-file vanilla + ECharts offline; Streamlit/Next.js dicoret artefak sidang.
 - v0.5 — Universe LOCKED 11 target (diperluas ke 12 + SOX); emiten individual + XAG/NDX/DJI + SBN-single-name dicoret MVP; konvensi cut-off 24 jam eksplisit.

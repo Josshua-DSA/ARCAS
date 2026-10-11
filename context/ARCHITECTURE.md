@@ -1,6 +1,6 @@
 # ARCHITECTURE — Financial News Sentiment & Market Association System
 
-> Status: Draft v0.7 · GUI FastAPI+Vanilla+ECharts · universe locked 12 target · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
+> Status: Draft v0.8 · GUI FastAPI+Vanilla+ECharts · universe inti 3 target (v2026-10-12-core3) · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
 > Prinsip utama: **statistik dihitung oleh kode; model hanya membaca teks.**
 
 ## 1. Gambaran Umum
@@ -63,7 +63,7 @@
 4. **Tag** — tentukan target:
    - **Routing** dari `source_registry` (berita diambil karena query/feed milik target X),
    - **Kamus kata kunci per target** (tanpa NER emiten; emiten dicoret MVP),
-   - **Makro** → dirutekan ke semua 12 target.
+   - **Makro** → dirutekan ke 3 target inti.
 5. **Time-align** — `effective_trading_date` per bursa; berita setelah tutup → hari bursa berikutnya (timezone-aware).
 6. **Sentiment** — lihat `DESIGN.md` §3.
 7. **Impact** — `direction` per target; `basis` ∈ {explicit, macro_factor} (sector_inferred dicoret MVP).
@@ -77,25 +77,17 @@
 `data/source_registry.yaml` memetakan target → sumber & kata kunci. Menambah target = menambah satu entri.
 
 ```yaml
-version: 2026-10-09   # UNIVERSE LOCKED: 12 target; tambah/coret = bump version
-macro:                     # dirutekan ke semua 12 target
-  keywords: [fed, fomc, inflation, cpi, pce, jobs report, payrolls, tariff, rate cut, rate hike, war, bank indonesia, suku bunga, opec]
+version: 2026-10-12-core3   # UNIVERSE INTI: 3 target; tambah/coret = bump version
+macro:                     # dirutekan ke 3 target inti
+  keywords: [fed, fomc, inflation, cpi, pce, jobs report, payrolls, tariff, rate cut, rate hike, war]
   feeds:
     - {name: fed_press, type: rss, lang: en}     # URL diverifikasi saat implementasi
     - {name: gdelt, type: api, lang: multi}
 targets:
-  XAU:      {price: "GC=F",    keywords: [gold, bullion, safe haven, real yields], feeds: [kitco_rss, wgc]}
-  OIL:      {price: "CL=F",    alt_price: "BZ=F", keywords: [opec, crude, wti, brent, eia inventory], feeds: [eia, oilprice_rss]}
-  CU:       {price: "HG=F",    keywords: [copper, lme, china demand], feeds: [mining_rss]}
-  NG:       {price: "NG=F",    keywords: [natural gas, henry hub, lng, eia storage], feeds: [eia]}
-  BTC:      {price: "BTC-USD", keywords: [bitcoin, btc, crypto etf, halving, sec], feeds: [coindesk_rss, cointelegraph_rss]}
-  USDIDR:   {price: "IDR=X",   keywords: [rupiah, usd/idr, bank indonesia, devisa], scrapers: [bisnis, cnbc_id, kontan]}
-  DXY:      {price: "DX-Y.NYB", keywords: [dollar index, dxy, greenback], feeds: [fed_press]}
+  XAU:      {price: "GC=F",    keywords: [gold, bullion, safe haven, real yields, emas], feeds: [kitco_rss, wgc]}
   RATE_UST: {price: "^TNX",    keywords: [treasury yield, 10-year, fed funds, fomc], feeds: [fed_press], note: "yield = ^TNX/10"}
-  VIX:      {price: "^VIX",    keywords: [vix, volatility, fear index, risk appetite], api: finnhub_marketaux}
-  IHSG:     {price: "^JKSE",   keywords: [ihsg, bursa efek indonesia, bei], scrapers: [bisnis, cnbc_id, kontan]}
   SPX:      {price: "^GSPC",   keywords: [s&p 500, wall street, earnings, jobs, cpi], api: finnhub_marketaux}
-  SOX:      {price: "^SOX",    keywords: [semiconductor, chip, tsmc, nvidia, ai chip, fab, wafer, foundry, asml], feeds: [techcrunch_rss]}
+# PENSIUN core3: OIL, CU, NG, BTC, USDIDR, DXY, VIX, IHSG (+ SOX usulan).
 # DICORET MVP: XAG (duplikat XAU), NDX/DJI (duplikat SPX), EUR/USD, emiten individual, uranium/lithium/nikel, SUN/SBSN/ORI/SBR + corporate/EM bonds.
 ```
 
@@ -132,7 +124,7 @@ targets:
 │   ├── alloc_profiles.yaml   # baseline & batas per profil
 │   ├── alloc_map.yaml        # kelas aset ← sumber skor
 │   ├── personas.yaml         # parameter 5 persona
-│   ├── universe/asset_master.csv (LOCKED 12 baris, version 2026-10-09)
+│   ├── universe/asset_master.csv (INTI 3 baris aktif, version 2026-10-12-core3)
 │   ├── labeled/              # dataset berlabel manual (400-600 berita)
 │   └── raw/ processed/       # Parquet time-series
 ├── model/                    # ML Engineer track (M1–M7)
@@ -141,7 +133,7 @@ targets:
 │   └── evaluation/           # evaluasi F1 macro, ECE, bootstrap CI, McNemar
 ├── backend/                  # Backend Engineer track (B1–B9)
 │   ├── src/
-│   │   ├── collect/          # scrapers RSS/API + yfinance 12 target
+│   │   ├── collect/          # scrapers RSS/API + yfinance 3 target inti
 │   │   ├── normalize/        # clean, dedupe, cut-off 00:00 UTC, kalender bursa
 │   │   ├── tagging/          # routing registry + impact_graph (tanpa NER)
 │   │   ├── aggregate/        # DailySentiment mean (hari kosong = NULL)
@@ -167,7 +159,7 @@ targets:
 | # | Keputusan | Alasan |
 |---|---|---|
 | D1 | Statistik oleh kode deterministik | Deterministik & reproducible |
-| D2 | Dua track model (ID/EN), satu universe 12 target | Bahasa berbeda, target sama |
+| D2 | Dua track model (ID/EN), satu universe inti 3 target | Bahasa berbeda, target sama |
 | D3 | Fusion = late fusion (stacking) dulu | Aman untuk 500–1.000 data berlabel |
 | D4 | Source routing berbasis registry (data, bukan kode) | Mudah diaudit & ditambah |
 | D5 | Makro dirutekan ke semua target | Dampak lintas aset tidak hilang |
@@ -202,5 +194,5 @@ targets:
 - **alloc/**: membaca `alloc_profiles.yaml` (baseline, min, max, λ, batas pergeseran) dan `alloc_map.yaml` (kelas aset ← sumber skor). Keluaran: alokasi baru (total 100%) + delta + alasan.
 - **persona/**: membaca `personas.yaml`; murni fungsi deterministik. Penjelas teks pakai template deterministik; **stance dihitung kode**.
 - Keduanya mengonsumsi `TargetImpact` dan `DailySentiment` yang sama; tidak ada model baru yang perlu dilatih.
-- Data tambahan: yield SBN/NAV reksadana sumber TBD → lampiran riset, bukan target MVP. ETF acuan = SPX/IHSG (terkunci).
+- Data tambahan: yield SBN/NAV reksadana sumber TBD → lampiran riset, bukan target MVP. ETF acuan = SPX (terkunci, sejak core3).
 - Keputusan: D10 — alokasi & persona **dihitung kode deterministik** agar reproducible; D11 — tilt terbatas relatif baseline.

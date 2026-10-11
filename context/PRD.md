@@ -1,6 +1,6 @@
 # PRD — Financial News Sentiment & Market Association System
 
-> Status: Draft v0.7 · GUI FastAPI+Vanilla+ECharts · universe locked 12 target · tanpa LLM/RAG/agent · Bahasa: ID (istilah teknis tetap EN)
+> Status: Draft v0.8 · GUI FastAPI+Vanilla+ECharts · universe inti 3 target (v2026-10-12-core3) · tanpa LLM/RAG/agent · Bahasa: ID (istilah teknis tetap EN)
 > Dokumen terkait: `ARCHITECTURE.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
 
 ## 1. Ringkasan
@@ -9,23 +9,17 @@ Sistem berbasis teks yang (1) mengklasifikasikan **sentimen berita finansial** (
 
 Sistem **bukan** memprediksi harga dan **bukan** rekomendasi investasi. Statistik dihitung oleh kode deterministik (pandas, statsmodels); model BERT hanya membaca teks.
 
-## 2. Universe Terkunci (v2026-10-09) + Dua Track Model
+## 2. Universe Inti Terkunci (v2026-10-12-core3) + Dua Track Model
 
-Universe dikunci 11 `asset_id`. Dilarang tambah target tanpa bump `universe_version`.
+Universe dikunci 3 `asset_id` inti. Dilarang tambah target tanpa bump `universe_version`.
 
 | `asset_id` | Nama | `price_ticker` (yfinance, verifikasi saat implementasi) | Kelas |
 |---|---|---|---|
 | `XAU` | Emas | `GC=F` | commodity |
-| `OIL` | Minyak WTI (alt Brent `BZ=F`) | `CL=F` | commodity |
-| `CU` | Tembaga | `HG=F` | commodity |
-| `NG` | Gas alam | `NG=F` | commodity |
-| `BTC` | Bitcoin | `BTC-USD` | crypto |
-| `USDIDR` | USD/IDR | `IDR=X` | fx |
-| `DXY` | Indeks dolar AS | `DX-Y.NYB` | fx |
 | `RATE_UST` | Yield UST 10Y (`^TNX`/10) | `^TNX` | rate |
-| `VIX` | Volatilitas US | `^VIX` | volatility |
-| `IHSG` | IHSG | `^JKSE` | index |
 | `SPX` | S&P 500 | `^GSPC` | index |
+
+Pensiun v2026-10-12-core3 (nonaktif, histori DB dipertahankan): `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG` (plus `SOX` yang sempat diusulkan v0.5).
 
 Dicoret MVP: `XAG` (duplikat XAU), `NDX`/`DJI` (duplikat SPX), `EUR/USD` (relevansi ID rendah), 45 emiten individual (beban NER), uranium/lithium/nikel (spot tidak ada di yfinance), SUN/SBSN/ORI/SBR + obligasi korporat/EM (sumber yield TBD, jadi lampiran riset bukan target). CPI/PCE, kebijakan bank sentral, employment = tema makro, bukan target.
 
@@ -33,7 +27,7 @@ Dicoret MVP: `XAG` (duplikat XAU), `NDX`/`DJI` (duplikat SPX), `EUR/USD` (releva
 |---|---|---|
 | Sumber | Bisnis, CNBC Indonesia, Kontan (`news-watch`), RSS BI | Finnhub/Marketaux/Alpha Vantage, RSS Fed/BLS/EIA/Kitco/CoinDesk, GDELT |
 | Model sentimen | **IndoBERT + FinBERT (via terjemahan EN)**, late fusion | **FinBERT** (teks EN asli) |
-| Target | Seluruh 11 universe (routing + impact graph) | Sama |
+| Target | 3 target inti (routing + impact graph) | Sama |
 | Analisis | Korelasi, regresi, Granger, event study | Sama |
 
 ## 3. Masalah
@@ -46,7 +40,7 @@ Dicoret MVP: `XAG` (duplikat XAU), `NDX`/`DJI` (duplikat SPX), `EUR/USD` (releva
 
 ### Goals
 - G1. Klasifikasi sentimen 3 kelas per berita dengan `score [-1,1]` dan `confidence [0,1]` terkalibrasi.
-- G2. Penandaan target (11 universe makro) dengan precision tinggi; target eksplisit → confidence tinggi.
+- G2. Penandaan target (3 universe inti makro) dengan precision tinggi; target eksplisit → confidence tinggi.
 - G3. Agregasi skor harian per target; hari tanpa berita ditangani eksplisit (bukan diisi 0).
 - G4. Uji hubungan sentimen–pasar: korelasi per lag, regresi dengan kontrol, uji Granger, event study (CAR).
 - G5. Penjelasan dapat ditelusuri (rationale + evidence span).
@@ -160,12 +154,12 @@ Target angka ditetapkan **setelah baseline diukur** (jangan dipatok sebelum ada 
 
 1. Ketersediaan dataset berlabel publik (judul CNBC Indonesia) — perlu diverifikasi.
 2. Metode terjemahan ID→EN (model MT lokal vs API).
-3. Periode data (mis. 2024–2026). Universe dikunci v2026-10-09 (12 target di atas); emiten individual dicoret MVP.
+3. Periode data (mis. 2024–2026). Universe dikunci v2026-10-12-core3 (3 target inti di atas); emiten individual dicoret MVP.
 4. Metode ekstraksi tema makro (klasifier tema terlatih).
 5. Apakah dashboard masuk ruang lingkup tugas akhir atau fase lanjutan.
 6. Daftar final 5 persona dan parameternya (horizon, toleransi risiko, ambang).
 7. Baseline alokasi (preset) dan batas min/max per kelas — total harus 100%.
-8. Sumber yield SBN/INDOGB + NAV reksadana TBD → lampiran riset, bukan target MVP. `RATE_UST` via `^TNX` terkunci; ETF acuan = SPX/IHSG.
+8. Sumber yield SBN/INDOGB + NAV reksadana TBD → lampiran riset, bukan target MVP. `RATE_UST` via `^TNX` terkunci; ETF acuan = SPX (sejak core3; sebelumnya SPX/IHSG).
 9. Fitur ini untuk demo/edukasi saja, atau ada rencana dipublikasikan (berpengaruh pada disclaimer & regulasi)?
 
 ## 14. Fitur Tambahan (v0.3)

@@ -1,13 +1,13 @@
 # FinNews: Financial News Sentiment & Market Association System
 
-Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita keuangan makro (Track A Bahasa Indonesia & Track B Bahasa Inggris), memetakan dampaknya ke **11 Target Alam Semesta Terkunci (Locked Universe)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
+Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita keuangan makro (Track A Bahasa Indonesia & Track B Bahasa Inggris), memetakan dampaknya ke **3 Target Inti Terkunci (Core Locked Universe v2026-10-12-core3)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
 
 ---
 
 ## 📌 Ringkasan Proyek
 
 - **Fokus Domain**: Analisis sentimen berita keuangan makro terstruktur & uji ekonometrika empiris.
-- **Batasan Alam Semesta**: Tepat 11 target aset makro terkunci (`XAU`, `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `RATE_UST`, `VIX`, `IHSG`, `SPX`).
+- **Batasan Alam Semesta**: Tepat 3 target aset makro inti terkunci (`XAU`, `RATE_UST`, `SPX`) v2026-10-12-core3. Pensiun: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
 - **Pemisahan Ketat**:
   - Model Transformer/NLP bertindak murni sebagai pembaca teks (menghasilkan probabilitas 3-kelas: Positif, Netral, Negatif).
   - Seluruh inferensi agregasi, pergeseran portofolio (Allocation Tilt), stance persona, dan pengujian asosiasi pasar dihitung secara deterministik dengan matematika dan statistik baku (pandas, scipy, statsmodels).
@@ -34,21 +34,15 @@ Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita ke
 
 ---
 
-## 🎯 11 Locked Universe Specification
+## 🎯 3 Core Locked Universe Specification (v2026-10-12-core3)
 
 | Asset ID | Kelas Aset | Track | Nama Aset | Ticker Harga | Bursa | Zona Waktu | Sesi Tutup |
 |---|---|---|---|---|---|---|---|
 | `XAU` | Commodity | B | Gold Spot / Futures | `GC=F` | CME | America/New_York | 17:00 |
-| `OIL` | Commodity | B | Crude Oil WTI | `CL=F` | NYMEX | America/New_York | 17:00 |
-| `CU` | Commodity | B | Copper Futures | `HG=F` | COMEX | America/New_York | 17:00 |
-| `NG` | Commodity | B | Natural Gas | `NG=F` | NYMEX | America/New_York | 17:00 |
-| `BTC` | Crypto | B | Bitcoin USD | `BTC-USD` | CCC | UTC | 00:00 |
-| `USDIDR` | FX | A | USD / Indonesian Rupiah | `IDR=X` | CCY | Asia/Jakarta | 16:00 |
-| `DXY` | FX | B | US Dollar Index | `DX-Y.NYB` | NYB | America/New_York | 17:00 |
 | `RATE_UST` | Rate | B | US 10-Year Treasury Yield | `^TNX` | CBOE | America/New_York | 15:00 |
-| `VIX` | Volatility | B | CBOE Volatility Index | `^VIX` | CBOE | America/New_York | 16:15 |
-| `IHSG` | Index | A | IDX Composite Index | `^JKSE` | IDX | Asia/Jakarta | 16:00 |
 | `SPX` | Index | B | S&P 500 Index | `^GSPC` | SNP | America/New_York | 16:00 |
+
+Pensiun core3 (nonaktif, histori dipertahankan): `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
 
 ---
 
@@ -76,7 +70,7 @@ FInews/
 ├── context/                     # Dokumen konteks & living specs (PRD, RULES, SCHEMA, dll.)
 ├── data/
 │   ├── universe/
-│   │   ├── asset_master.csv     # Spesifikasi 11 aset terkunci
+│   │   ├── asset_master.csv     # Spesifikasi 3 aset inti terkunci (core3)
 │   │   └── aliases.csv          # Alias kata kunci untuk pemetaan eksplisit
 │   ├── alloc_map.yaml           # Pemetaan kelas aset portofolio ke target skor
 │   ├── alloc_profiles.yaml      # Profil alokasi baseline (konservatif, moderat, agresif)
