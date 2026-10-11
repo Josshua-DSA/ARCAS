@@ -1,19 +1,19 @@
-version: "2026-10-09"
+version: "2026-10-12-core3"
 mappings:
   gold:
     mode: direct
     target: XAU
   btc:
-    mode: direct
-    target: BTC
+    mode: frozen
+    target: null
+    note: "BTC target retired in core3 universe; score forced to 0 with no_change to preserve 100% balance."
   stock:
     mode: direct
-    target: IHSG
+    target: SPX
   etf:
     mode: blend
     components:
-      - {target: SPX, weight: 0.6}
-      - {target: IHSG, weight: 0.4}
+      - {target: SPX, weight: 1.0}
   bond:
     mode: macro_derived
     theme_weights:

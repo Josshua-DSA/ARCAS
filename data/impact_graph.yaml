@@ -1,33 +1,16 @@
-version: "2026-10-09"
+version: "2026-10-12-core3"
 themes:
   rates_down:
     - {target: XAU, sign: 1, weight: 0.8}
-    - {target: BTC, sign: 1, weight: 0.4}
     - {target: SPX, sign: 1, weight: 0.4}
-    - {target: IHSG, sign: 1, weight: 0.4}
     - {target: RATE_UST, sign: -1, weight: 0.9}
   rates_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: BTC, sign: -1, weight: 0.4}
-    - {target: USDIDR, sign: 1, weight: 0.5}
     - {target: RATE_UST, sign: 1, weight: 0.9}
   usd_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: OIL, sign: -1, weight: 0.3}
-    - {target: USDIDR, sign: 1, weight: 0.8}
-    - {target: DXY, sign: 1, weight: 0.9}
-  oil_up:
-    - {target: OIL, sign: 1, weight: 0.9}
-    - {target: NG, sign: 1, weight: 0.4}
-  china_demand_up:
-    - {target: CU, sign: 1, weight: 0.8}
   risk_off:
     - {target: XAU, sign: 1, weight: 0.6}
-    - {target: VIX, sign: 1, weight: 0.8}
-    - {target: BTC, sign: -1, weight: 0.5}
     - {target: SPX, sign: -1, weight: 0.6}
-    - {target: IHSG, sign: -1, weight: 0.5}
   geopolitical_tension:
     - {target: XAU, sign: 1, weight: 0.7}
-    - {target: OIL, sign: 1, weight: 0.6}
-    - {target: VIX, sign: 1, weight: 0.6}
