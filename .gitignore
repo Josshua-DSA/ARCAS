@@ -14,3 +14,4 @@ model/weights/*.onnx
 outputs/
 .venv/
 venv/
+.env
