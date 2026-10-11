@@ -149,6 +149,8 @@ ML: probabilitas + tema + kalibrasi usul. Backend: direction/confidence/agregasi
    - **Token Warna 65/20/10/5**: Base off-white `#F6F4F4` (65%), Typography deep charcoal `#2C2727` (20%), Technical Surface dark warm gray `#3E3939` (10%), Accent orange `#FF7517` (5%).
    - Anti-Orange Overuse: Orange eksklusif untuk CTA utama, indikator fokus, dan penanda seri aktif terpilih. Dilarang mewarnai seluruh kartu dengan orange.
    - Surface `#3E3939` dikhususkan sebagai pembeda konten teknis (panel syntax, CLI, schema, footer).
+   - **Spesifikasi detail ikut `frontend/GUI/THEME.md` v0.1**: font Newsreader (serif narasi) / Inter (sans UI) / JetBrains Mono (mono data, `tabular-nums`); semantik terang UP `#1A7F37` / DOWN `#CF222E` / HOLD `#6B6464` / WARN `#8A5A00` / INFO `#0969DA` dan padanan panel gelap; palet grafik §8; oranye dilarang untuk arah data.
+   - **Aksesibilitas wajib**: teks putih di atas `--accent` dilarang; teks kecil beraksen pakai `--accent-text` (terang) / `--accent-text-on-dark` (gelap); tiap warna semantik wajib ikon + tanda + teks; chip BUY/SELL/HOLD label "Simulasi sudut pandang".
 
 ## Changelog Aturan
 - v0.7 — GUI Web kunci: FastAPI (REST JSON) + Vanilla JS + ECharts offline (zero-Node); fallback snapshot beku CLI report tetap didukung; TUI Rich.

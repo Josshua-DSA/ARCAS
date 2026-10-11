@@ -194,7 +194,7 @@ Arsitektur terpisah: Backend FastAPI (REST JSON) + Frontend Vanilla HTML5/CSS/JS
   - `GET /api/persona/{article_id}`: Stance 5 persona (BUY/HOLD/SELL), kekuatan sinyal, dan narasi penjelasan template.
 - **Frontend SPA Ringan (`frontend/GUI/`)**:
   - `templates/index.html`: Shell dokumen tanpa framework, dilayani static mount FastAPI di `/`.
-  - `src/css/theme.css`: Desain Dark Financial tokens (`#FF7517`, `#3E3939`, `#2C2727`, `#F6F4F4`).
+  - `src/css/theme.css`: Token GUI ikut `frontend/GUI/THEME.md` v0.1 (adaptasi offline, zero-CDN): font Newsreader/Inter/JetBrains Mono via `@font-face` lokal `src/fonts/` (7 woff2 OFL), base `#F6F4F4`, text `#2C2727`, accent `#FF7517`, surface `#3E3939`, semantik up/down/hold + palet grafik §8.
   - `src/js/app.js`: Native `fetch()` ke endpoint `/api/...`, update grafik ECharts reaktif tanpa refresh halaman.
   - `src/js/echarts.min.js`: Berkas pustaka offline tersimpan lokal (zero internet dependency).
 - **Fallback Snapshot**: CLI `report` tetap menyediakan opsi generator satu berkas HTML beku `outputs/report.html` untuk demonstrasi offline darurat tanpa server.
@@ -217,6 +217,28 @@ Distribusi proporsi ketat untuk menghadirkan visual bersih editorial dengan filo
 | **Typography** | `#2C2727` | 20% | Heading, body text, garis tepi halus, teks tombol primer |
 | **Technical Surface** | `#3E3939` | 10% | Panel kode/syntax, panel terminal/log, footer, wadah teknis |
 | **Accent / Highlight** | `#FF7517` | 5% | Tombol utama, penanda seri aktif, badge pilihan, focus state |
+
+Spesifikasi token lengkap (turunan terang/gelap, semantik, skala sentimen, palet grafik, state interaksi) ikut `frontend/GUI/THEME.md` v0.1. `theme.css` adaptasi offline (tanpa `@import` Google Fonts, tanpa Streamlit).
+
+#### Tipografi GUI (ikut THEME.md §10)
+| Peran | Font | Dipakai untuk |
+|---|---|---|
+| Narasi / heading | Newsreader 300–400 (fallback Georgia, serif) | Judul halaman, judul berita, ringkasan, rationale |
+| UI | Inter 400/500/600 (fallback system-ui) | Menu, tombol, label, tab |
+| Data | JetBrains Mono 400/500 (fallback ui-monospace) | Harga, skor, confidence, ticker, tabel, chip |
+
+Angka pakai `tabular-nums`. Chip/label kecil mono kapital 11–12px `letter-spacing 0.06em`.
+
+#### Warna Semantik GUI (ikut THEME.md §6)
+| Makna | Latar terang | Panel gelap |
+|---|---|---|
+| Naik / Bullish / BUY | `#1A7F37` | `#56D364` |
+| Turun / Bearish / SELL | `#CF222E` | `#FF7B72` |
+| Netral / HOLD | `#6B6464` | `#BDB7B7` |
+| Peringatan / Mixed | `#8A5A00` | `#FFB000` |
+| Info | `#0969DA` | `#79B8FF` |
+
+Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan warna saja. Oranye dilarang untuk arah data.
 
 #### Pemetaan Elemen Antarmuka
 | Bagian Antarmuka | Spesifikasi Visual |
