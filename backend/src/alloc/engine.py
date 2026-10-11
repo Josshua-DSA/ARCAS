@@ -49,11 +49,12 @@ class AllocationEngine:
         """
         class_scores: dict[AllocClass, ClassScore] = {}
 
-        # Direct targets: GOLD, BTC, STOCK
+        # Direct targets: GOLD (XAU), STOCK (SPX). BTC is frozen at zero
+        # since its target left the core3 universe; freezing keeps the
+        # 100% allocation balance intact with no_change for that class.
         direct_map = {
             AllocClass.GOLD: "XAU",
-            AllocClass.BTC: "BTC",
-            AllocClass.STOCK: "IHSG",
+            AllocClass.STOCK: "SPX",
         }
         for alloc_cls, tgt in direct_map.items():
             sc, conf = target_scores.get(tgt, (0.0, 0.0))
@@ -61,13 +62,14 @@ class AllocationEngine:
                 alloc_class=alloc_cls, score=sc, confidence=conf, sources=[tgt]
             )
 
-        # ETF: Blend of SPX (60%) and IHSG (40%)
+        class_scores[AllocClass.BTC] = ClassScore(
+            alloc_class=AllocClass.BTC, score=0.0, confidence=0.0, sources=["frozen"]
+        )
+
+        # ETF: SPX only in the core3 universe (was SPX 60% + IHSG 40%)
         spx_s, spx_c = target_scores.get("SPX", (0.0, 0.0))
-        ihsg_s, ihsg_c = target_scores.get("IHSG", (0.0, 0.0))
-        etf_score = 0.6 * spx_s + 0.4 * ihsg_s
-        etf_conf = 0.6 * spx_c + 0.4 * ihsg_c
         class_scores[AllocClass.ETF] = ClassScore(
-            alloc_class=AllocClass.ETF, score=etf_score, confidence=etf_conf, sources=["SPX", "IHSG"]
+            alloc_class=AllocClass.ETF, score=spx_s, confidence=spx_c, sources=["SPX"]
         )
 
         # BOND: Macro derived from themes or proxy
@@ -141,21 +143,42 @@ class AllocationEngine:
             bounded_w = max(min_pct, min(max_pct, target_w))
             tentative[cls_enum] = bounded_w
 
-        # Step 4: Water-filling residual adjustment to guarantee exact 100.0% sum
+        # Pin frozen classes (confidence below conf_min) back to baseline:
+        # normalization in Step 2 would otherwise drag them along with the
+        # tilted classes. The flexible classes absorb the difference below.
+        for cls_enum in list(tentative.keys()):
+            cs = class_scores.get(
+                cls_enum, ClassScore(alloc_class=cls_enum, score=0.0, confidence=0.0)
+            )
+            if cs.confidence < conf_min:
+                tentative[cls_enum] = float(classes_cfg[cls_enum.value]["base_pct"])
+
+        # Step 4: Water-filling residual adjustment to guarantee exact 100.0% sum.
+        # Frozen classes (confidence below conf_min, e.g. retired BTC) stay
+        # pinned at baseline; the residual is spread over flexible classes only.
         total_tentative = sum(tentative.values())
         diff = 100.0 - total_tentative
 
-        # Distribute difference proportionally across flexible classes
         sorted_classes = sorted(tentative.keys(), key=lambda k: tentative[k], reverse=True)
-        adj_per_class = diff / len(sorted_classes)
+        frozen = {
+            cls_enum
+            for cls_enum in sorted_classes
+            if class_scores.get(
+                cls_enum, ClassScore(alloc_class=cls_enum, score=0.0, confidence=0.0)
+            ).confidence
+            < conf_min
+        }
+        flexible = [c for c in sorted_classes if c not in frozen] or list(sorted_classes)
+        adj_per_class = diff / len(flexible)
         final_weights = {}
         for cls_enum in sorted_classes:
-            final_weights[cls_enum] = round(tentative[cls_enum] + adj_per_class, 2)
+            add = adj_per_class if cls_enum in flexible else 0.0
+            final_weights[cls_enum] = round(tentative[cls_enum] + add, 2)
 
-        # Fix rounding residual on largest class
+        # Fix rounding residual on largest flexible class
         residual = round(100.0 - sum(final_weights.values()), 2)
         if abs(residual) > 0.001:
-            first_cls = sorted_classes[0]
+            first_cls = flexible[0]
             final_weights[first_cls] = round(final_weights[first_cls] + residual, 2)
 
         # Build output lines
@@ -188,6 +211,6 @@ class AllocationEngine:
             article_id=article_id,
             profile_id=profile_id,
             lines=lines,
-            params_version="2026-10-09",
+            params_version="2026-10-12-core3",
             disclaimer="Simulasi analitis. Bukan nasihat investasi.",
         )

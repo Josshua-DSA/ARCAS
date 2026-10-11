@@ -83,7 +83,7 @@ class PersonaEngine:
             raw_value=round(raw, 4),
             confidence=round(confidence, 4),
             rationale=rationale_tpl,
-            params_version="2026-10-09",
+            params_version="2026-10-12-core3",
             disclaimer="Simulasi sudut pandang. Bukan nasihat investasi.",
         )
 

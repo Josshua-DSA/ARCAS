@@ -37,14 +37,14 @@ def test_target_impact_invariants():
     # Explicit basis with valid confidence
     impact = TargetImpact(
         article_id="art123",
-        asset_id="IHSG",
+        asset_id="SPX",
         direction=Direction.BULLISH,
         score=0.45,
         confidence=0.90,
         basis=Basis.EXPLICIT,
         evidence=evidence,
         model_version="indobert-v1",
-        universe_version="2026-10-09",
+        universe_version="2026-10-12-core3",
         schema_version="v0.5.0",
         created_at=datetime.utcnow(),
     )
@@ -54,14 +54,14 @@ def test_target_impact_invariants():
     with pytest.raises(ValidationError):
         TargetImpact(
             article_id="art123",
-            asset_id="IHSG",
+            asset_id="SPX",
             direction=Direction.BULLISH,
             score=0.45,
             confidence=0.85,  # Exceeds cap 0.60!
             basis=Basis.SECTOR_INFERRED,
             evidence=evidence,
             model_version="indobert-v1",
-            universe_version="2026-10-09",
+            universe_version="2026-10-12-core3",
             schema_version="v0.5.0",
             created_at=datetime.utcnow(),
         )
@@ -103,7 +103,7 @@ def test_allocation_suggestion_sum_100():
         article_id="art1",
         profile_id="moderate",
         lines=lines,
-        params_version="2026-10-09",
+        params_version="2026-10-12-core3",
         disclaimer="Bukan nasihat investasi.",
     )
     assert len(suggestion.lines) == 3
@@ -118,6 +118,6 @@ def test_allocation_suggestion_sum_100():
             article_id="art1",
             profile_id="moderate",
             lines=bad_lines,
-            params_version="2026-10-09",
+            params_version="2026-10-12-core3",
             disclaimer="Bukan nasihat investasi.",
         )

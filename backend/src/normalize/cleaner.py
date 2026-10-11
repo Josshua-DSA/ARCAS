@@ -68,20 +68,20 @@ class ArticleCleaner:
         else:
             dt = published_at.astimezone(timezone.utc)
 
-        # 24-hr assets cut-off 00:00 UTC; others cut-off at session close
-        is_24h = target_asset in {"XAU", "OIL", "CU", "NG", "BTC", "USDIDR", "DXY"}
+        # Core3 convention: XAU cut-off 00:00 UTC; RATE_UST/SPX cut-off
+        # at session close. All three halt on weekends.
+        is_24h = target_asset == "XAU"
         cutoff_hour = 0 if is_24h else session_close_hour_utc
 
         eff_date = dt.date()
         if dt.hour >= cutoff_hour and not is_24h:
             eff_date = eff_date + timedelta(days=1)
 
-        # Skip weekend to Monday if traditional exchange
-        if target_asset not in {"BTC"}:
-            if eff_date.weekday() == 5:  # Saturday -> Monday
-                eff_date += timedelta(days=2)
-            elif eff_date.weekday() == 6:  # Sunday -> Monday
-                eff_date += timedelta(days=1)
+        # Skip weekend to Monday (CME/CBOE/SNP calendars)
+        if eff_date.weekday() == 5:  # Saturday -> Monday
+            eff_date += timedelta(days=2)
+        elif eff_date.weekday() == 6:  # Sunday -> Monday
+            eff_date += timedelta(days=1)
 
         return eff_date
 

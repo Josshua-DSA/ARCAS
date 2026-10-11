@@ -46,11 +46,11 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
 
     @app.get("/health")
     def health_check() -> dict:
-        return {"status": "ok", "version": "0.5.0", "universe_count": 11}
+        return {"status": "ok", "version": "0.5.0", "universe_count": 3}
 
     @app.get("/api/universe")
     def get_universe() -> list[dict]:
-        """Returns the 11 locked macro targets metadata."""
+        """Returns the 3 core locked macro targets metadata."""
         return db.get_active_universe()
 
     @app.get("/api/series/{target}")
@@ -61,7 +61,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     ) -> dict:
         """Returns paired DailySentiment and PriceRecord time series."""
         if not db.is_valid_target(target):
-            raise HTTPException(status_code=404, detail=f"Target {target} not in 11 locked universe.")
+            raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
 
         p_start = start_date or (date.today() - timedelta(days=90))
         p_end = end_date or date.today()
@@ -84,7 +84,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     ) -> list[dict]:
         """Returns recent article impacts for a target."""
         if not db.is_valid_target(target):
-            raise HTTPException(status_code=404, detail=f"Target {target} not in 11 locked universe.")
+            raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
         impacts = db.query_impacts(target, limit=limit)
         return [imp.model_dump() for imp in impacts]
 
@@ -92,7 +92,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     def get_stats(target: str) -> list[dict]:
         """Returns statistical econometric results for target."""
         if not db.is_valid_target(target):
-            raise HTTPException(status_code=404, detail=f"Target {target} not in 11 locked universe.")
+            raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
         stats = db.query_stats(target)
         return [st.model_dump() for st in stats]
 
@@ -106,9 +106,8 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         # In full run: pulls latest daily sentiment score for key assets
         scores = {
             "XAU": (0.25, 0.70),
-            "BTC": (-0.10, 0.60),
-            "IHSG": (0.15, 0.65),
             "SPX": (0.20, 0.80),
+            "RATE_UST": (0.10, 0.65),
         }
         class_scores = alloc_engine.compute_class_scores(scores)
         suggestion = alloc_engine.tilt_portfolio(
@@ -121,7 +120,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     @app.get("/api/persona/{article_id}")
     def get_persona_views(
         article_id: str,
-        target: str = "IHSG",
+        target: str = "SPX",
         score: float = 0.35,
         confidence: float = 0.75,
         horizon: NewsHorizon = NewsHorizon.SHORT,

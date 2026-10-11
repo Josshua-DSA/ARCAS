@@ -11,8 +11,10 @@ from backend.src.store.db import Database
 
 @pytest.fixture
 def temp_db():
-    with tempfile.NamedTemporaryFile(suffix=".db") as f:
-        db = Database(db_path=f.name)
+    # TemporaryDirectory instead of NamedTemporaryFile: sqlite cannot open
+    # a still-locked temp handle on Windows ("unable to open database file").
+    with tempfile.TemporaryDirectory() as d:
+        db = Database(db_path=str(Path(d) / "test.db"))
         db.init_tables()
         yield db
 
@@ -20,12 +22,13 @@ def temp_db():
 def test_db_seeding(temp_db):
     """Verifies that asset_master and aliases are properly seeded."""
     inserted = temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
-    assert inserted == 11
+    assert inserted == 3
 
     universe = temp_db.get_active_universe()
-    assert len(universe) == 11
-    assert any(u["asset_id"] == "IHSG" for u in universe)
+    assert len(universe) == 3
+    assert any(u["asset_id"] == "SPX" for u in universe)
     assert any(u["asset_id"] == "XAU" for u in universe)
+    assert any(u["asset_id"] == "RATE_UST" for u in universe)
 
     inserted_aliases = temp_db.seed_aliases(Path("data/universe/aliases.csv"))
     assert inserted_aliases > 0
@@ -36,7 +39,7 @@ def test_db_daily_sentiment_crud(temp_db):
     temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
 
     record = DailySentiment(
-        asset_id="IHSG",
+        asset_id="SPX",
         date=date(2026, 10, 9),
         score_mean=0.25,
         score_weighted=0.30,
@@ -46,7 +49,7 @@ def test_db_daily_sentiment_crud(temp_db):
     )
     temp_db.save_daily_sentiment(record)
 
-    results = temp_db.query_daily_sentiment("IHSG", date(2026, 10, 1), date(2026, 10, 10))
+    results = temp_db.query_daily_sentiment("SPX", date(2026, 10, 1), date(2026, 10, 10))
     assert len(results) == 1
     assert results[0].score_mean == 0.25
     assert results[0].has_news is True
@@ -57,7 +60,7 @@ def test_db_price_crud(temp_db):
     temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
 
     price = PriceRecord(
-        asset_id="BTC",
+        asset_id="XAU",
         date=date(2026, 10, 9),
         open=65000.0,
         high=66000.0,
@@ -68,6 +71,6 @@ def test_db_price_crud(temp_db):
     )
     temp_db.save_price(price)
 
-    results = temp_db.query_prices("BTC", date(2026, 10, 1), date(2026, 10, 10))
+    results = temp_db.query_prices("XAU", date(2026, 10, 1), date(2026, 10, 10))
     assert len(results) == 1
     assert results[0].close == 65500.0
