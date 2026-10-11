@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ARCAS Project Document</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 32px;
+        background: #f8f9fb;
+        color: #1f2937;
+        line-height: 1.6;
+      }
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px 48px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+      }
+      h1, h2, h3 { color: #111827; }
+      h1 {
+        font-size: 30px;
+        margin-bottom: 8px;
+      }
+      h2 {
+        font-size: 22px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 8px;
+        margin-top: 28px;
+      }
+      h3 {
+        font-size: 18px;
+        margin-top: 22px;
+      }
+      p, li {
+        font-size: 15px;
+      }
+      ul, ol {
+        padding-left: 22px;
+      }
+      .meta {
+        color: #4b5563;
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+      .badge {
+        display: inline-block;
+        background: #eef2ff;
+        color: #3730a3;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        font-size: 14px;
+      }
+      th, td {
+        border: 1px solid #d1d5db;
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f3f4f6;
+      }
+      .status {
+        display: inline-block;
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .warn {
+        background: #fff7ed;
+        color: #9a5b00;
+        border: 1px solid #fdba74;
+      }
+      .section-note {
+        background: #f9fafb;
+        border-left: 4px solid #6366f1;
+        padding: 12px 14px;
+        margin-top: 12px;
+      }
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+        }
+        .page {
+          box-shadow: none;
+          border: none;
+          max-width: none;
+          margin: 0;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>ARCAS Project Document</h1>
+      <div class="meta">Repository: Josshua-DSA/ARCAS | Status: Internal Project Overview</div>
+
+      <div>
+        <span class="badge">Python</span>
+        <span class="badge">FastAPI</span>
+        <span class="badge">Financial Sentiment</span>
+        <span class="badge">Market Analytics</span>
+      </div>
+
+      <h2>1. Ringkasan Proyek</h2>
+      <p>
+        ARCAS adalah sistem analitik kuantitatif deterministik yang membaca berita keuangan makro, menilai sentimen teks,
+        lalu menghubungkan dampak sentimen tersebut ke 11 aset utama dunia dan pasar Indonesia. Tujuannya bukan untuk
+        memprediksi harga secara langsung, melainkan untuk mengukur asosiasi statistik antara sentimen berita dan
+        pergerakan pasar.
+      </p>
+      <p>
+        Proyek ini fokus pada sentimen berita dalam Bahasa Indonesia dan Inggris, klasifikasi 3 kelas (positif, netral,
+        negatif), pemetaan dampak ke aset tertentu, serta analisis statistik yang deterministik. Sistem ini membangun
+        konteks pasar yang dapat dijelaskan, terukur, dan dibenarkan secara data.
+      </p>
+
+      <div class="section-note">
+        Intinya: proyek ini menghubungkan data tekstual (berita) dengan data pasar (harga, indeks, komoditas, FX,
+        dan volatilitas) dengan cara yang transparent, explainable, dan tidak bergantung pada agen generatif di jalur
+        utama.
+      </div>
+
+      <h2>2. Masalah yang Diselesaikan</h2>
+      <ul>
+        <li>Berita keuangan sering kali berisi informasi yang relevan, tetapi tidak semua berita berdampak sama.</li>
+        <li>Satu berita dapat memengaruhi emas, dolar, indeks, dan market risk sekaligus.</li>
+        <li>Sering kali dampak tidak langsung, tidak jelas, atau terlalu ambigu.</li>
+        <li>Tim membutuhkan sistem yang mampu membaca berita secara otomatis, mengaitkan aset, menilai arah dampak, dan mengukur signifikansi statistiknya.</li>
+      </ul>
+
+      <h2>3. Domain Knowledge Penting</h2>
+
+      <h3>3.1 Tone vs Direction</h3>
+      <p>
+        Dalam proyek ini, ada perbedaan penting antara <strong>tone</strong> dan <strong>direction</strong>:
+      </p>
+      <ul>
+        <li><strong>Tone</strong>: sentimen teks (positive, neutral, negative)</li>
+        <li><strong>Direction</strong>: dampak terhadap target aset (bullish, bearish, neutral, mixed)</li>
+      </ul>
+      <p>
+        Contoh: kalimat “USD menguat akibat data inflasi AS yang kuat” memiliki tone positif, tetapi terhadap emas,
+        direction bisa bersifat bearish karena USD yang kuat biasanya negatif bagi harga emas.
+      </p>
+
+      <h3>3.2 Asosiasi Statistik, Bukan Prediksi Harga</h3>
+      <p>
+        ARCAS tidak menargetkan prediksi harga secara langsung. Sistem ini mengukur apakah sentimen berita berkorelasi
+        atau mendahului pergerakan pasar. Dengan demikian, output sistem lebih dekat ke analisis market association
+        daripada sinyal trading otomatis.
+      </p>
+
+      <h3>3.3 Universe Aset Terkunci</h3>
+      <p>Proyek ini fokus pada 11 aset yang telah ditetapkan:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Kategori</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>XAU</td><td>Gold</td><td>Commodity</td></tr>
+          <tr><td>OIL</td><td>Crude Oil WTI</td><td>Commodity</td></tr>
+          <tr><td>CU</td><td>Copper</td><td>Commodity</td></tr>
+          <tr><td>NG</td><td>Natural Gas</td><td>Commodity</td></tr>
+          <tr><td>BTC</td><td>Bitcoin</td><td>Crypto</td></tr>
+          <tr><td>USDIDR</td><td>USD/IDR</td><td>FX</td></tr>
+          <tr><td>DXY</td><td>US Dollar Index</td><td>FX</td></tr>
+          <tr><td>RATE_UST</td><td>US Treasury 10Y</td><td>Rate</td></tr>
+          <tr><td>VIX</td><td>Volatility Index</td><td>Volatility</td></tr>
+          <tr><td>IHSG</td><td>IDX Composite</td><td>Index</td></tr>
+          <tr><td>SPX</td><td>S&P 500</td><td>Index</td></tr>
+        </tbody>
+      </table>
+
+      <h2>4. Arsitektur Sistem</h2>
+      <p>Proyek ini dibagi dalam 3 lapisan utama.</p>
+
+      <h3>4.1 Lapisan 1 — Data Ingestion & Storage</h3>
+      <ul>
+        <li>mengambil berita dari berbagai sumber dan API/RSS;</li>
+        <li>mengambil data harga pasar dari yfinance atau sumber yang setara;</li>
+        <li>menyimpan hasil ke SQLite dan Parquet;</li>
+        <li>menjaga konsistensi dan kualitas data.</li>
+      </ul>
+
+      <h3>4.2 Lapisan 2 — NLP dan Engine Analitik</h3>
+      <ul>
+        <li>membersihkan teks;</li>
+        <li>mendeteksi bahasa dan timezone;</li>
+        <li>menseleksi aset target yang relevan;</li>
+        <li>menilai sentimen teks;</li>
+        <li>menghitung agregasi harian;</li>
+        <li>mengukur hubungan dengan return dan market movement.</li>
+      </ul>
+
+      <h3>4.3 Lapisan 3 — Presentation Layer</h3>
+      <ul>
+        <li>REST API FastAPI;</li>
+        <li>dashboard web statis (Vanilla JS + ECharts);</li>
+        <li>terminal dashboard berbasis Python Rich.</li>
+      </ul>
+
+      <h2>5. Alur Kerja Sistem</h2>
+      <ol>
+        <li>Ambil berita dan harga pasar</li>
+        <li>Bersihkan dan standarkan data</li>
+        <li>Deteksi bahasa dan waktu efektif pasar</li>
+        <li>Pemetaan berita ke aset target</li>
+        <li>Menilai sentimen teks</li>
+        <li>Menentukan arah dampak terhadap target aset</li>
+        <li>Mengagregasi hasil per hari</li>
+        <li>Menguji hubungan dengan harga dan return</li>
+        <li>Menyusun rekomendasi portofolio dan stance investor</li>
+        <li>Menyajikan hasil ke API dan dashboard</li>
+      </ol>
+
+      <h2>6. Struktur Folder</h2>
+      <pre style="background:#f3f4f6; padding:16px; overflow:auto; border:1px solid #e5e7eb;">
+ARCAS/
+├── context/                 # dokumen spesifikasi dan aturan
+├── backend/src/            # core business logic
+│   ├── collect/
+│   ├── normalize/
+│   ├── tagging/
+│   ├── aggregate/
+│   ├── alloc/
+│   ├── persona/
+│   ├── stats/
+│   ├── store/
+│   ├── serve/
+│   ├── schema.py
+│   └── tests/
+├── model/                  # model sentimen dan evaluasi
+├── frontend/               # GUI dan TUI
+├── data/                   # asset config, impact graph, personas
+├── pyproject.toml
+├── requirements.txt
+├── README.md
+└── backend/README.md
+      </pre>
+
+      <h2>7. Penjelasan Komponen Utama</h2>
+
+      <h3>7.1 context/</h3>
+      <p>Folder ini adalah fondasi dokumentasi proyek:</p>
+      <ul>
+        <li><strong>PRD.md</strong> — ringkasan produk dan kebutuhan bisnis</li>
+        <li><strong>ARCHITECTURE.md</strong> — arsitektur sistem</li>
+        <li><strong>DESIGN.md</strong> — model dan statistik</li>
+        <li><strong>SCHEMA.md</strong> — struktur data dan kontrak</li>
+        <li><strong>RULES.md</strong> — aturan yang wajib diikuti tim</li>
+      </ul>
+
+      <h3>7.2 backend/src/schema.py</h3>
+      <p>
+        File ini berisi kontrak data utama dalam bentuk Pydantic v2. Model-model seperti RawArticle, Article,
+        TargetTag, ModelProbs, TargetImpact, DailySentiment, dan AllocationSuggestion menjadi jantung integritas data.
+      </p>
+      <p>
+        Contoh aturan penting: hari tanpa berita tidak boleh diubah menjadi 0; total alokasi harus selalu 100%; setiap
+        model output harus konsisten secara validasi.
+      </p>
+
+      <h3>7.3 backend/src/serve/app.py</h3>
+      <p>
+        File ini mendefinisikan REST API untuk sistem. Beberapa endpoint yang sudah ada mencakup:
+      </p>
+      <ul>
+        <li>/health</li>
+        <li>/api/universe</li>
+        <li>/api/series/{target}</li>
+        <li>/api/impacts/{target}</li>
+        <li>/api/stats/{target}</li>
+        <li>/api/allocation</li>
+        <li>/api/persona/{article_id}</li>
+      </ul>
+
+      <h3>7.4 data/impact_graph.yaml</h3>
+      <p>
+        File ini mendefinisikan hubungan tema makro dengan aset. Contoh: suku bunga naik, inflasi naik, USD menguat,
+        geopolitik, dan risk-off semuanya dipetakan ke target relevan.
+      </p>
+
+      <h3>7.5 data/personas.yaml</h3>
+      <p>
+        File ini mendefinisikan lima profil investor: Retail, Day Trader, Fund Manager, Pension, dan Risk Manager.
+        Profil ini menghasilkan stance BUY/HOLD/SELL dengan mempertimbangkan loss aversion dan horizon waktu.
+      </p>
+
+      <h2>8. Aturan Wajib Proyek</h2>
+      <ul>
+        <li>Hanya 11 aset yang dipakai dalam universe</li>
+        <li>Hari tanpa berita = NULL, bukan 0</li>
+        <li>Anti-lookahead bias harus diperhatikan</li>
+        <li>Allocation portfolio harus selalu total 100%</li>
+        <li>Semua output harus jelas dan dapat ditelusuri (explainable)</li>
+        <li>Semua output wajib mencantumkan disclaimer: “Bukan nasihat investasi”</li>
+        <li>Semua model utama tidak boleh bergantung pada LLM runtime</li>
+      </ul>
+
+      <h2>9. Progress Proyek Saat Ini</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Status</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Dokumentasi proyek</td>
+            <td><span class="status">Selesai</span></td>
+            <td>PRD, RULES, SCHEMA, ARCHITECTURE, DESIGN sudah ada dan cukup jelas.</td>
+          </tr>
+          <tr>
+            <td>Struktur repo</td>
+            <td><span class="status">Selesai</span></td>
+            <td>Folder inti sudah terbentuk dengan komponen yang disebutkan.</td>
+          </tr>
+          <tr>
+            <td>Data contracts</td>
+            <td><span class="status">Selesai</span></td>
+            <td>Kontrak Pydantic v2 sudah dibuat dan diuji sebagian.</td>
+          </tr>
+          <tr>
+            <td>API skeleton</td>
+            <td><span class="status">Selesai</span></td>
+            <td>Endpoint utama untuk universe, series, stats, allocation, dan persona sudah ada.</td>
+          </tr>
+          <tr>
+            <td>Config domain</td>
+            <td><span class="status">Selesai</span></td>
+            <td>Impact graph, personas, alloc profiles, dan master asset sudah tersedia.</td>
+          </tr>
+          <tr>
+            <td>Pipeline berita &amp; normalisasi</td>
+            <td><span class="status warn">Dalam pengerjaan</span></td>
+            <td>Belum sepenuhnya terintegrasi secara end-to-end dengan sumber real.</td>
+          </tr>
+          <tr>
+            <td>Model ML &amp; evaluasi</td>
+            <td><span class="status warn">Dalam pengerjaan</span></td>
+            <td>Baseline model dan evaluasi ada, tapi perlu validasi real-data.</td>
+          </tr>
+          <tr>
+            <td>Frontend dashboard &amp; TUI</td>
+            <td><span class="status warn">Dalam pengerjaan</span></td>
+            <td>Struktur sudah dirancang, implementasi detail perlu diselesaikan.</td>
+          </tr>
+          <tr>
+            <td>Integrasi end-to-end</td>
+            <td><span class="status warn">Dalam pengerjaan</span></td>
+            <td>Belum sepenuhnya beroperasi sebagai system yang siap production.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-note">
+        Kesimpulannya, proyek ini sudah memiliki fondasi yang kuat dan struktur yang matang, tetapi masih dalam tahapan
+        pembangunan fungsional dan integrasi end-to-end.
+      </div>
+
+      <h2>10. Kesimpulan</h2>
+      <p>
+        ARCAS adalah proyek yang ambisius dan terstruktur. Ia bukan sekadar sistem NLP, melainkan ecosystem analisis
+        sentimen market yang menghubungkan teks berita dengan alat analisis ekonomi, portofolio, dan risiko pasar.
+      </p>
+      <p>
+        Kelebihan proyek ini adalah kejelasan domain, kontrak data yang kuat, dokumentasi yang matang, dan arsitektur yang
+        konsisten. Tantangan utamanya adalah integrasi end-to-end, validasi data real, dan penyelesaian pipeline antar modul.
+      </p>
+
+      <h2>11. Rekomendasi Tim</h2>
+      <ul>
+        <li>Mulai dari <strong>context/</strong> sebelum coding</li>
+        <li>Pahami <strong>SCHEMA</strong> dan <strong>RULES</strong> sebagai sumber kebenaran</li>
+        <li>Fokus satu modul pada satu waktu</li>
+        <li>Selalu validasi hasil terhadap contract data</li>
+        <li>Prioritaskan pipeline end-to-end di atas eksperimen yang terlalu luas</li>
+      </ul>
+
+      <h2>12. Urutan Pembelajaran Untuk Tim Baru</h2>
+      <ol>
+        <li>PRD.md</li>
+        <li>RULES.md</li>
+        <li>SCHEMA.md</li>
+        <li>ARCHITECTURE.md</li>
+        <li>backend/src/schema.py</li>
+        <li>backend/src/serve/app.py</li>
+        <li>data/impact_graph.yaml</li>
+        <li>data/personas.yaml</li>
+        <li>backend/tests/test_schema.py</li>
+      </ol>
+    </div>
+  </body>
+</html>
