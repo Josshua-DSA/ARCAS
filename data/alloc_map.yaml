@@ -1,19 +1,14 @@
-version: "2026-10-09"
+version: "2026-10-11-p3"
 mappings:
   gold:
     mode: direct
     target: XAU
-  btc:
-    mode: direct
-    target: BTC
   stock:
     mode: direct
-    target: IHSG
+    target: SPX
   etf:
-    mode: blend
-    components:
-      - {target: SPX, weight: 0.6}
-      - {target: IHSG, weight: 0.4}
+    mode: direct
+    target: SPX
   bond:
     mode: macro_derived
     theme_weights:
