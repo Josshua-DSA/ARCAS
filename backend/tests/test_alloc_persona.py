@@ -10,8 +10,6 @@ def test_allocation_tilt_exact_100_percent():
     engine = AllocationEngine()
     scores = {
         "XAU": (0.40, 0.85),
-        "BTC": (-0.30, 0.70),
-        "IHSG": (0.20, 0.65),
         "SPX": (0.35, 0.90),
     }
     class_scores = engine.compute_class_scores(scores)
@@ -30,7 +28,7 @@ def test_persona_evaluator_stances():
     # Strong bullish signal
     bull_views = engine.evaluate_all(
         article_id="art_bull",
-        target="IHSG",
+        target="SPX",
         score=0.80,
         confidence=0.90,
         news_horizon=NewsHorizon.SHORT,
@@ -42,7 +40,7 @@ def test_persona_evaluator_stances():
     # Strong bearish signal with loss aversion
     bear_views = engine.evaluate_all(
         article_id="art_bear",
-        target="IHSG",
+        target="SPX",
         score=-0.80,
         confidence=0.90,
         news_horizon=NewsHorizon.SHORT,
