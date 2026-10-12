@@ -112,14 +112,10 @@ Grafik diutamakan di panel gelap. Syarat komponen grafis ≥ 3:1 terpenuhi untuk
 | Seri | Panel gelap | Kontras di surface | Latar terang | Kontras di base |
 |---|---|---|---|---|
 | Emas (XAU) | `#FFD33D` | 7,9:1 | `#9A6700` | 4,4:1 |
-| Perak (XAG) | `#D4CFCF` | 7,4:1 | `#6B6464` | 5,3:1 |
-| Minyak (OIL) | `#FF7517` | 4,2:1 | `#C2410C` | 4,7:1 |
-| Tembaga (CU) | `#2FC4B2` | 5,2:1 | `#1F9D8A` | 3,1:1 |
-| Bitcoin (BTC) | `#D2A8FF` | 5,8:1 | `#8B5CF6` | 3,9:1 |
-| SBN | `#58A6FF` | 4,5:1 | `#0969DA` | 4,7:1 |
-| Sektor Semikonduktor | `#FF8FC7` | 5,4:1 | `#D6409F` | 3,8:1 |
-| Sektor Tambang | `#D9B38C` | 5,8:1 | `#8C5A2B` | 5,3:1 |
-| Sektor Perbankan | `#B8E986` | 8,1:1 | `#4D7C0F` | 4,6:1 |
+| Yield UST (RATE_UST) | `#58A6FF` | 4,5:1 | `#0969DA` | 4,7:1 |
+| S&P 500 (SPX) | `#FF7517` | 4,2:1 | `#C2410C` | 4,7:1 |
+| Netral A | `#2FC4B2` | 5,2:1 | `#1F9D8A` | 3,1:1 |
+| Netral B | `#D2A8FF` | 5,8:1 | `#8B5CF6` | 3,9:1 |
 
 Aturan grafik:
 - Warna seri **bukan** warna arah. Untuk naik/turun (candlestick, bar perubahan) pakai warna semantik bagian 6.
