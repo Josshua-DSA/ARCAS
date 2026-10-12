@@ -1,12 +1,4 @@
 asset_id,asset_class,track,name,price_ticker,exchange,country,sector,timezone,session_close,valid_from,valid_to,active
-XAU,commodity,B,Gold,GC=F,CME,US,,America/New_York,17:00,2026-10-09,,True
-OIL,commodity,B,Crude Oil WTI,CL=F,NYMEX,US,,America/New_York,17:00,2026-10-09,,True
-CU,commodity,B,Copper,HG=F,COMEX,US,,America/New_York,17:00,2026-10-09,,True
-NG,commodity,B,Natural Gas,NG=F,NYMEX,US,,America/New_York,17:00,2026-10-09,,True
-BTC,crypto,B,Bitcoin,BTC-USD,CCC,US,,UTC,00:00,2026-10-09,,True
-USDIDR,fx,A,USD/IDR,IDR=X,CCY,ID,,Asia/Jakarta,16:00,2026-10-09,,True
-DXY,fx,B,US Dollar Index,DX-Y.NYB,NYB,US,,America/New_York,17:00,2026-10-09,,True
-RATE_UST,rate,B,US 10-Year Treasury Yield,^TNX,CBOE,US,,America/New_York,15:00,2026-10-09,,True
-VIX,volatility,B,CBOE Volatility Index,^VIX,CBOE,US,,America/New_York,16:15,2026-10-09,,True
-IHSG,index,A,IDX Composite,^JKSE,IDX,ID,,Asia/Jakarta,16:00,2026-10-09,,True
-SPX,index,B,S&P 500,^GSPC,SNP,US,,America/New_York,16:00,2026-10-09,,True
+XAU,commodity,B,Gold,GC=F,CME,US,,America/New_York,17:00,2026-10-11,,True
+RATE_UST,rate,B,US 10-Year Treasury Yield,^TNX,CBOE,US,,America/New_York,15:00,2026-10-11,,True
+SPX,index,B,S&P 500,^GSPC,SNP,US,,America/New_York,16:00,2026-10-11,,True
