@@ -49,11 +49,10 @@ class AllocationEngine:
         """
         class_scores: dict[AllocClass, ClassScore] = {}
 
-        # Direct targets: GOLD, BTC, STOCK
+        # Direct targets: GOLD, STOCK (kelas-kripto dicoret 2026-10-11, murni 3)
         direct_map = {
             AllocClass.GOLD: "XAU",
-            AllocClass.BTC: "BTC",
-            AllocClass.STOCK: "IHSG",
+            AllocClass.STOCK: "SPX",
         }
         for alloc_cls, tgt in direct_map.items():
             sc, conf = target_scores.get(tgt, (0.0, 0.0))
@@ -61,13 +60,10 @@ class AllocationEngine:
                 alloc_class=alloc_cls, score=sc, confidence=conf, sources=[tgt]
             )
 
-        # ETF: Blend of SPX (60%) and IHSG (40%)
+        # ETF: direct SPX (IHSG dicoret 2026-10-11)
         spx_s, spx_c = target_scores.get("SPX", (0.0, 0.0))
-        ihsg_s, ihsg_c = target_scores.get("IHSG", (0.0, 0.0))
-        etf_score = 0.6 * spx_s + 0.4 * ihsg_s
-        etf_conf = 0.6 * spx_c + 0.4 * ihsg_c
         class_scores[AllocClass.ETF] = ClassScore(
-            alloc_class=AllocClass.ETF, score=etf_score, confidence=etf_conf, sources=["SPX", "IHSG"]
+            alloc_class=AllocClass.ETF, score=spx_s, confidence=spx_c, sources=["SPX"]
         )
 
         # BOND: Macro derived from themes or proxy
