@@ -9,7 +9,7 @@ from backend.src.schema import Article, Basis, Direction, EvidenceSpan, TargetIm
 
 
 LOCKED_UNIVERSE = {
-    "XAU", "OIL", "CU", "NG", "BTC", "USDIDR", "DXY", "RATE_UST", "VIX", "IHSG", "SPX"
+    "XAU", "RATE_UST", "SPX"
 }
 
 
