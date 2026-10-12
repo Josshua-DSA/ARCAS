@@ -157,6 +157,7 @@ ML: probabilitas + tema + kalibrasi usul. Backend: direction/confidence/agregasi
    - **Aksesibilitas wajib**: teks putih di atas `--accent` dilarang; teks kecil beraksen pakai `--accent-text` (terang) / `--accent-text-on-dark` (gelap); tiap warna semantik wajib ikon + tanda + teks; chip BUY/SELL/HOLD label "Simulasi sudut pandang".
 
 ## Changelog Aturan
+- v0.8-core3 — Pin Tools: kelas alokasi `BTC` dibekukan (`no_change`, residu ke kelas fleksibel); `STOCK`→`SPX`, `ETF`→`SPX`; seed nonaktifkan aset pensiun; stempel `universe_version`/`params_version` core3.
 - v1.1-p3 — Murni 3 (`XAU/RATE_UST/SPX`): 7 dicoret total (OIL/CU/NG/BTC/USDIDR/DXY/VIX); data/backend/context/docs sync; `universe_version` 2026-10-11-p3.
 - v1.0 — Fokus supervised 3 (`XAU/RATE_UST/SPX`): gold Sinha 10.570 + FOMC 48 xlsx lokal; Track A ID mati; 7 sisa router-only.
 - v0.9 — PhraseBank 2.264 dihapus (topik Nordik perusahaan, bukan makro); `dataset/` kosong, label wajib manual baru.

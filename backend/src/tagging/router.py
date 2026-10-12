@@ -66,8 +66,6 @@ class TargetRouter:
             "rates_down": ["pangkas suku bunga", "rate cut", "pemotongan bunga", "dovish"],
             "rates_up": ["naikkan suku bunga", "rate hike", "kenaikan bunga", "hawkish"],
             "usd_up": ["dolar perkasa", "usd menguat", "dollar surges", "strong dollar"],
-            "oil_up": ["opec pangkas produksi", "oil rally", "minyak melonjak"],
-            "china_demand_up": ["permintaan china", "china manufacturing", "stimulus china"],
             "risk_off": ["gejolak pasar", "ketidakpastian global", "panic selling", "flight to safety"],
             "geopolitical_tension": ["eskalasi perang", "geopolitik", "konflik timur tengah", "sanksi dagang"],
         }

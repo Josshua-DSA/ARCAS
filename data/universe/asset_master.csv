@@ -1,4 +1,4 @@
 asset_id,asset_class,track,name,price_ticker,exchange,country,sector,timezone,session_close,valid_from,valid_to,active
-XAU,commodity,B,Gold,GC=F,CME,US,,America/New_York,17:00,2026-10-11,,True
-RATE_UST,rate,B,US 10-Year Treasury Yield,^TNX,CBOE,US,,America/New_York,15:00,2026-10-11,,True
-SPX,index,B,S&P 500,^GSPC,SNP,US,,America/New_York,16:00,2026-10-11,,True
+XAU,commodity,B,Gold,GC=F,CME,US,,America/New_York,17:00,2026-10-12-core3,,True
+RATE_UST,rate,B,US 10-Year Treasury Yield,^TNX,CBOE,US,,America/New_York,15:00,2026-10-12-core3,,True
+SPX,index,B,S&P 500,^GSPC,SNP,US,,America/New_York,16:00,2026-10-12-core3,,True

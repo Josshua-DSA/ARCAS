@@ -1,4 +1,4 @@
-version: "2026-10-11-p3"
+version: "2026-10-12-core3"
 macro:
   keywords:
     - fed
@@ -12,7 +12,6 @@ macro:
     - rate cut
     - rate hike
     - war
-    - suku bunga
   feeds:
     - name: fed_press
       type: rss

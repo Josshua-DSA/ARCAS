@@ -11,8 +11,10 @@ from backend.src.store.db import Database
 
 @pytest.fixture
 def temp_db():
-    with tempfile.NamedTemporaryFile(suffix=".db") as f:
-        db = Database(db_path=f.name)
+    # TemporaryDirectory instead of NamedTemporaryFile: sqlite cannot open
+    # a still-locked temp handle on Windows ("unable to open database file").
+    with tempfile.TemporaryDirectory() as d:
+        db = Database(db_path=str(Path(d) / "test.db"))
         db.init_tables()
         yield db
 
@@ -26,6 +28,7 @@ def test_db_seeding(temp_db):
     assert len(universe) == 3
     assert any(u["asset_id"] == "SPX" for u in universe)
     assert any(u["asset_id"] == "XAU" for u in universe)
+    assert any(u["asset_id"] == "RATE_UST" for u in universe)
 
     inserted_aliases = temp_db.seed_aliases(Path("data/universe/aliases.csv"))
     assert inserted_aliases > 0

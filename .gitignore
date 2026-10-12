@@ -12,6 +12,8 @@ model/weights/*.safetensors
 model/weights/*.pt
 model/weights/*.onnx
 outputs/
+*.db
+*.db-journal
 .venv/
 venv/
 .env

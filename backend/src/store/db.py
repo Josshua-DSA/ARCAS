@@ -227,7 +227,7 @@ class Database:
             conn.executescript(DDL_SCHEMA)
 
     def seed_asset_master(self, csv_path: Path | str = Path("data/universe/asset_master.csv")) -> int:
-        """Seeds the 10 locked assets from asset_master.csv."""
+        """Seeds the 3 core locked assets from asset_master.csv."""
         csv_file = Path(csv_path)
         if not csv_file.exists():
             return 0
@@ -267,6 +267,16 @@ class Database:
                         ),
                     )
                     inserted += 1
+                # Deactivate retired assets missing from the CSV so existing
+                # databases transition cleanly to the pruned universe.
+                with open(csv_file, mode="r", encoding="utf-8") as f2:
+                    keep = {r["asset_id"] for r in csv.DictReader(f2)}
+                if keep:
+                    placeholders = ",".join("?" for _ in keep)
+                    conn.execute(
+                        f"UPDATE asset_master SET active = 0 WHERE asset_id NOT IN ({placeholders});",
+                        tuple(keep),
+                    )
         return inserted
 
     def seed_aliases(self, csv_path: Path | str = Path("data/universe/aliases.csv")) -> int:
@@ -367,7 +377,7 @@ class Database:
         self.init_schema()
 
     def get_active_universe(self) -> list[dict]:
-        """Returns all 3 active universe assets."""
+        """Returns all 3 active core universe assets."""
         with self.get_connection() as conn:
             rows = conn.execute(
                 "SELECT * FROM asset_master WHERE active = 1 ORDER BY asset_id ASC;"
@@ -375,7 +385,7 @@ class Database:
             return [dict(r) for r in rows]
 
     def is_valid_target(self, target: str) -> bool:
-        """Checks if a target belongs to the 3 locked universe."""
+        """Checks if a target belongs to the 3 core locked universe."""
         with self.get_connection() as conn:
             row = conn.execute(
                 "SELECT 1 FROM asset_master WHERE asset_id = ? AND active = 1;", (target,)

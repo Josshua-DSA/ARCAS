@@ -11,6 +11,7 @@ def test_allocation_tilt_exact_100_percent():
     scores = {
         "XAU": (0.40, 0.85),
         "SPX": (0.35, 0.90),
+        "RATE_UST": (0.10, 0.65),
     }
     class_scores = engine.compute_class_scores(scores)
 

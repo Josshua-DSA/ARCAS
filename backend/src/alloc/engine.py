@@ -49,7 +49,9 @@ class AllocationEngine:
         """
         class_scores: dict[AllocClass, ClassScore] = {}
 
-        # Direct targets: GOLD, STOCK (kelas-kripto dicoret 2026-10-11, murni 3)
+        # Direct targets: GOLD (XAU), STOCK (SPX). The BTC class was
+        # removed from AllocClass on main; classes below conf_min stay
+        # pinned at baseline so the 100% balance holds regardless.
         direct_map = {
             AllocClass.GOLD: "XAU",
             AllocClass.STOCK: "SPX",
@@ -60,7 +62,7 @@ class AllocationEngine:
                 alloc_class=alloc_cls, score=sc, confidence=conf, sources=[tgt]
             )
 
-        # ETF: direct SPX (IHSG dicoret 2026-10-11)
+        # ETF: SPX only in the core3 universe (was SPX 60% + IHSG 40%)
         spx_s, spx_c = target_scores.get("SPX", (0.0, 0.0))
         class_scores[AllocClass.ETF] = ClassScore(
             alloc_class=AllocClass.ETF, score=spx_s, confidence=spx_c, sources=["SPX"]
@@ -137,21 +139,42 @@ class AllocationEngine:
             bounded_w = max(min_pct, min(max_pct, target_w))
             tentative[cls_enum] = bounded_w
 
-        # Step 4: Water-filling residual adjustment to guarantee exact 100.0% sum
+        # Pin low-confidence classes back to baseline: normalization in
+        # Step 2 would otherwise drag them along with the tilted classes.
+        # The flexible classes absorb the difference below.
+        for cls_enum in list(tentative.keys()):
+            cs = class_scores.get(
+                cls_enum, ClassScore(alloc_class=cls_enum, score=0.0, confidence=0.0)
+            )
+            if cs.confidence < conf_min:
+                tentative[cls_enum] = float(classes_cfg[cls_enum.value]["base_pct"])
+
+        # Step 4: Water-filling residual adjustment to guarantee exact 100.0% sum.
+        # Low-confidence classes stay pinned at baseline; the residual is
+        # spread over flexible classes only.
         total_tentative = sum(tentative.values())
         diff = 100.0 - total_tentative
 
-        # Distribute difference proportionally across flexible classes
         sorted_classes = sorted(tentative.keys(), key=lambda k: tentative[k], reverse=True)
-        adj_per_class = diff / len(sorted_classes)
+        frozen = {
+            cls_enum
+            for cls_enum in sorted_classes
+            if class_scores.get(
+                cls_enum, ClassScore(alloc_class=cls_enum, score=0.0, confidence=0.0)
+            ).confidence
+            < conf_min
+        }
+        flexible = [c for c in sorted_classes if c not in frozen] or list(sorted_classes)
+        adj_per_class = diff / len(flexible)
         final_weights = {}
         for cls_enum in sorted_classes:
-            final_weights[cls_enum] = round(tentative[cls_enum] + adj_per_class, 2)
+            add = adj_per_class if cls_enum in flexible else 0.0
+            final_weights[cls_enum] = round(tentative[cls_enum] + add, 2)
 
-        # Fix rounding residual on largest class
+        # Fix rounding residual on largest flexible class
         residual = round(100.0 - sum(final_weights.values()), 2)
         if abs(residual) > 0.001:
-            first_cls = sorted_classes[0]
+            first_cls = flexible[0]
             final_weights[first_cls] = round(final_weights[first_cls] + residual, 2)
 
         # Build output lines
@@ -184,6 +207,6 @@ class AllocationEngine:
             article_id=article_id,
             profile_id=profile_id,
             lines=lines,
-            params_version="2026-10-09",
+            params_version="2026-10-12-core3",
             disclaimer="Simulasi analitis. Bukan nasihat investasi.",
         )

@@ -1,13 +1,13 @@
 # FinNews: Financial News Sentiment & Market Association System
 
-Sistem analitis kuantitatif deterministik untuk sentimen berita makro EN (Track B), memetakan dampaknya ke **10 target routing (3 supervised: `XAU/RATE_UST/SPX`)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
+Sistem analitis kuantitatif deterministik untuk sentimen berita keuangan makro EN (Track B), memetakan dampaknya ke **3 Target Tersupervisi Terkunci (`XAU`, `RATE_UST`, `SPX`)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
 
 ---
 
 ## 📌 Ringkasan Proyek
 
 - **Fokus Domain**: Analisis sentimen berita keuangan makro terstruktur & uji ekonometrika empiris.
-- **Batasan Alam Semesta**: Routing 10 target terkunci; **supervised 3** (`XAU` gold Sinha 10.570 human, `RATE_UST`+`SPX` FOMC human); 7 sisa router-only tanpa klaim classifier.
+- **Batasan Alam Semesta**: Tepat 3 target tersupervisi (`XAU` gold Sinha human, `RATE_UST`+`SPX` FOMC human). Pensiun: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
 - **Pemisahan Ketat**:
   - Model Transformer/NLP bertindak murni sebagai pembaca teks (menghasilkan probabilitas 3-kelas: Positif, Netral, Negatif).
   - Seluruh inferensi agregasi, pergeseran portofolio (Allocation Tilt), stance persona, dan pengujian asosiasi pasar dihitung secara deterministik dengan matematika dan statistik baku (pandas, scipy, statsmodels).
@@ -34,7 +34,7 @@ Sistem analitis kuantitatif deterministik untuk sentimen berita makro EN (Track 
 
 ---
 
-## 🎯 Murni 3 Supervised (`XAU` ✅ / `RATE_UST` ✅ / `SPX` ✅ — 7 dicoret 2026-10-11)
+## 🎯 Murni 3 Supervised (`XAU` / `RATE_UST` / `SPX`)
 
 | Asset ID | Kelas Aset | Track | Nama Aset | Ticker Harga | Bursa | Zona Waktu | Sesi Tutup |
 |---|---|---|---|---|---|---|---|
@@ -42,7 +42,7 @@ Sistem analitis kuantitatif deterministik untuk sentimen berita makro EN (Track 
 | `RATE_UST` | Rate | B | US 10-Year Treasury Yield | `^TNX` | CBOE | America/New_York | 15:00 |
 | `SPX` | Index | B | S&P 500 Index | `^GSPC` | SNP | America/New_York | 16:00 |
 
-Dicoret 2026-10-11: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX` (bukan supervised, bukan router).
+Dicoret 2026-10-11: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, plus `IHSG`; histori DB dipertahankan.
 
 ---
 
@@ -70,7 +70,7 @@ FInews/
 ├── context/                     # Dokumen konteks & living specs (PRD, RULES, SCHEMA, dll.)
 ├── data/
 │   ├── universe/
-│   │   ├── asset_master.csv     # Spesifikasi 11 aset terkunci
+│   │   ├── asset_master.csv     # Spesifikasi 3 aset inti terkunci (core3)
 │   │   └── aliases.csv          # Alias kata kunci untuk pemetaan eksplisit
 │   ├── alloc_map.yaml           # Pemetaan kelas aset portofolio ke target skor
 │   ├── alloc_profiles.yaml      # Profil alokasi baseline (konservatif, moderat, agresif)

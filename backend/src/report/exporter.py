@@ -19,8 +19,9 @@ class ReportExporter:
         stats: list[dict],
         allocations: dict[str, Any],
         report_name: str = "report.html",
+        universe_version: str = "2026-10-12-core3",
     ) -> Path:
-        """Renders self-contained static HTML report."""
+        """Renders self-contained static HTML report for the 3 core targets."""
         out_file = self.output_dir / report_name
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -49,10 +50,10 @@ class ReportExporter:
 <body>
   <div class="container">
     <h1>FinNews Macro Sentiment Report</h1>
-    <p>Dibuat: {timestamp} | Versi Skema: v0.5.0</p>
+    <p>Dibuat: {timestamp} | Versi Skema: v0.5.0 | Universe: {universe_version} (3 target inti)</p>
 
     <div class="card">
-      <h2>Locked Macro Universe (11 Target)</h2>
+      <h2>Core Locked Universe (3 Target)</h2>
       <table>
         <thead>
           <tr><th>ID</th><th>Nama</th><th>Track</th><th>Kelas</th><th>Sesi Tutup</th></tr>

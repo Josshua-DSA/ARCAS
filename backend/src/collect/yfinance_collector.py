@@ -1,4 +1,4 @@
-"""Price data collector for the 3 locked assets (XAU/RATE_UST/SPX)."""
+"""Price data collector for the 3 core locked assets (XAU, RATE_UST, SPX)."""
 
 import csv
 from datetime import date, timedelta
@@ -9,8 +9,11 @@ import numpy as np
 from backend.src.schema import PriceRecord
 
 
+CORE_ASSETS = ("XAU", "RATE_UST", "SPX")
+
+
 class PriceCollector:
-    """Fetches daily prices for locked universe assets."""
+    """Fetches daily prices for core locked universe assets."""
 
     def __init__(self, asset_master_path: Path | str = Path("data/universe/asset_master.csv")):
         self.asset_master_path = Path(asset_master_path)
@@ -22,7 +25,19 @@ class PriceCollector:
             with open(self.asset_master_path, mode="r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    if row.get("active", "True").lower() not in ("true", "1"):
+                        continue
                     self.ticker_map[row["asset_id"]] = row["price_ticker"]
+
+    def fetch_universe_prices(
+        self, start_date: date, end_date: date
+    ) -> dict[str, list[PriceRecord]]:
+        """Fetches prices for all active core assets (XAU, RATE_UST, SPX)."""
+        return {
+            asset_id: self.fetch_prices(asset_id, start_date, end_date)
+            for asset_id in CORE_ASSETS
+            if asset_id in self.ticker_map
+        }
 
     def fetch_prices_synthetic(
         self,
@@ -42,7 +57,7 @@ class PriceCollector:
         np.random.seed(abs(hash(asset_id)) % (2**31))
 
         while curr <= end_date:
-            # Skip weekend (semua 3 target ikut kalender bursa)
+            # All 3 core assets halt on weekends (CME/CBOE/SNP calendars)
             if curr.weekday() in (5, 6):
                 curr += timedelta(days=1)
                 continue

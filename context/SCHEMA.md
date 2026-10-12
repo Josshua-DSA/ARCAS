@@ -65,7 +65,7 @@ class Article(BaseModel):
     language: Lang
     published_at: Optional[datetime]
     fetched_at: datetime
-    effective_trading_date: dict[str, date]   # per target/bursa, mis. {"XAU":"2026-10-09"}
+    effective_trading_date: dict[str, date]   # per target/bursa, mis. {"XAU":"2026-10-12"}
     duplicate_of: Optional[str] = None
     market_relevant: Optional[bool] = None
 
@@ -160,7 +160,7 @@ class StatResult(BaseModel):
       "causal_path": ["rates_down", "gold_up"], "flags": []
     }
   ],
-  "model_version": "fusion-v1", "universe_version": "2026-10-09", "schema_version": "0.5.0",
+  "model_version": "fusion-v1", "universe_version": "2026-10-12-core3", "schema_version": "0.5.0",
   "disclaimer": "Bukan nasihat investasi."
 }
 ```
@@ -179,7 +179,7 @@ class StatResult(BaseModel):
 | `sector` | str | `NULL` untuk MVP makro (kolom cadangan) |
 | `timezone` | str | mis. `Asia/Jakarta`, `America/New_York` |
 | `session_close` | time | Jam tutup bursa/pasar (untuk time-align) |
-| `valid_from` / `valid_to` | date | Point-in-time (universe v2026-10-09; bump saat tambah/coret target) |
+| `valid_from` / `valid_to` | date | Point-in-time (universe v2026-10-12-core3; bump saat tambah/coret target) |
 | `active` | bool | |
 
 `aliases.csv`: `asset_id`, `alias`, `lang` (mis. "emas", "gold", "bullion" → `XAU`; "treasury yield", "10-year" → `RATE_UST`; "s&p 500", "sp500" → `SPX`). Tanpa alias emiten (dicoret MVP).
@@ -359,6 +359,7 @@ ML → `ArticleSentiment {tone, score=p_pos-p_neg, probs[], translation_used}`. 
 
 ## 9. Changelog
 
+- 0.7.0-core3 — Pin Tools: `STOCK`→`SPX`, `ETF`→`SPX`, kelas alokasi `BTC` dibekukan (`no_change`); seed nonaktifkan aset pensiun; tanpa perubahan struktur tabel (schema_version tetap 0.5.0).
 - 0.7.0 — Supervised 3 (`XAU/RATE_UST/SPX`); Track A mati; `ModelProbs` tanpa indobert/finbert_mt; dataset gold+FOMC lokal.
 - 0.6.1 — PhraseBank dihapus (bukan makro); `dataset/` kosong.
 - 0.6.0 — Universe 11→10 (IHSG + `^JKSE` dicoret); dataset FNSPID/IHSG dihapus, sisa PhraseBank.

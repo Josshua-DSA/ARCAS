@@ -22,12 +22,12 @@ from backend.src.schema import (
 def test_model_probs_sum_to_one():
     """Probabilities must sum to 1.0 within tolerance."""
     # Valid
-    p = ModelProbs(model="finbert", p_pos=0.6, p_neu=0.3, p_neg=0.1, model_version="v1")
+    p = ModelProbs(model="indobert", p_pos=0.6, p_neu=0.3, p_neg=0.1, model_version="v1")
     assert p.p_pos == 0.6
 
     # Invalid sum
     with pytest.raises(ValidationError):
-        ModelProbs(model="finbert", p_pos=0.8, p_neu=0.3, p_neg=0.1, model_version="v1")
+        ModelProbs(model="indobert", p_pos=0.8, p_neu=0.3, p_neg=0.1, model_version="v1")
 
 
 def test_target_impact_invariants():
@@ -43,8 +43,8 @@ def test_target_impact_invariants():
         confidence=0.90,
         basis=Basis.EXPLICIT,
         evidence=evidence,
-        model_version="finbert-v1",
-        universe_version="2026-10-09",
+        model_version="indobert-v1",
+        universe_version="2026-10-12-core3",
         schema_version="v0.5.0",
         created_at=datetime.utcnow(),
     )
@@ -60,8 +60,8 @@ def test_target_impact_invariants():
             confidence=0.85,  # Exceeds cap 0.60!
             basis=Basis.SECTOR_INFERRED,
             evidence=evidence,
-            model_version="finbert-v1",
-            universe_version="2026-10-09",
+            model_version="indobert-v1",
+            universe_version="2026-10-12-core3",
             schema_version="v0.5.0",
             created_at=datetime.utcnow(),
         )
@@ -103,7 +103,7 @@ def test_allocation_suggestion_sum_100():
         article_id="art1",
         profile_id="moderate",
         lines=lines,
-        params_version="2026-10-09",
+        params_version="2026-10-12-core3",
         disclaimer="Bukan nasihat investasi.",
     )
     assert len(suggestion.lines) == 3
@@ -118,6 +118,6 @@ def test_allocation_suggestion_sum_100():
             article_id="art1",
             profile_id="moderate",
             lines=bad_lines,
-            params_version="2026-10-09",
+            params_version="2026-10-12-core3",
             disclaimer="Bukan nasihat investasi.",
         )

@@ -68,20 +68,20 @@ class ArticleCleaner:
         else:
             dt = published_at.astimezone(timezone.utc)
 
-        # XAU cut-off 00:00 UTC; RATE_UST/SPX ikut kalender US (murni 3)
-        is_24h = target_asset in {"XAU"}
+        # Core3 convention: XAU cut-off 00:00 UTC; RATE_UST/SPX cut-off
+        # at session close. All three halt on weekends.
+        is_24h = target_asset == "XAU"
         cutoff_hour = 0 if is_24h else session_close_hour_utc
 
         eff_date = dt.date()
         if dt.hour >= cutoff_hour and not is_24h:
             eff_date = eff_date + timedelta(days=1)
 
-        # Skip weekend to Monday (semua 3 target ikut kalender bursa)
-        if True:
-            if eff_date.weekday() == 5:  # Saturday -> Monday
-                eff_date += timedelta(days=2)
-            elif eff_date.weekday() == 6:  # Sunday -> Monday
-                eff_date += timedelta(days=1)
+        # Skip weekend to Monday (CME/CBOE/SNP calendars)
+        if eff_date.weekday() == 5:  # Saturday -> Monday
+            eff_date += timedelta(days=2)
+        elif eff_date.weekday() == 6:  # Sunday -> Monday
+            eff_date += timedelta(days=1)
 
         return eff_date
 

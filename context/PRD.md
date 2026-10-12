@@ -20,6 +20,8 @@ Routing murni 3 `asset_id` v2026-10-11-p3 (7 dicoret 2026-10-11: `OIL`, `CU`, `N
 | `SPX` | S&P 500 | `^GSPC` | index | ✅ FOMC sama, arah balik |
 | Dicoret 2026-10-11 (bukan supervised, bukan router): `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`. |
 
+Nonaktif + histori DB dipertahankan untuk `IHSG` (plus `SOX` yang sempat diusulkan v0.5).
+
 Dicoret MVP: `XAG` (duplikat XAU), `NDX`/`DJI` (duplikat SPX), `EUR/USD` (relevansi ID rendah), 45 emiten individual (beban NER), uranium/lithium/nikel (spot tidak ada di yfinance), SUN/SBSN/ORI/SBR + obligasi korporat/EM (sumber yield TBD, jadi lampiran riset bukan target). CPI/PCE, kebijakan bank sentral, employment = tema makro, bukan target.
 
 | | Track A — berita ID (MATI 2026-10-11) | Track B — berita EN (AKTIF) |

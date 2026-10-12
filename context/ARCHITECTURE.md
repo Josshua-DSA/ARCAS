@@ -77,16 +77,16 @@
 `data/source_registry.yaml` memetakan target → sumber & kata kunci. Menambah target = menambah satu entri.
 
 ```yaml
-version: 2026-10-11-p3    # UNIVERSE LOCKED MURNI 3 (7 dicoret 2026-10-11; IHSG dicoret); tambah/coret = bump version
-macro:                     # dirutekan ke semua 3 target
-  keywords: [fed, fomc, inflation, cpi, pce, jobs report, payrolls, tariff, rate cut, rate hike, war, suku bunga]
+version: 2026-10-12-core3   # UNIVERSE INTI: 3 target; tambah/coret = bump version
+macro:                     # dirutekan ke 3 target inti
+  keywords: [fed, fomc, inflation, cpi, pce, jobs report, payrolls, tariff, rate cut, rate hike, war]
   feeds:
     - {name: fed_press, type: rss, lang: en}     # URL diverifikasi saat implementasi
     - {name: gdelt, type: api, lang: multi}
 targets:
-  XAU:      {price: "GC=F",  keywords: [gold, bullion, safe haven, real yields, emas], feeds: [kitco_rss]}
-  RATE_UST: {price: "^TNX",  keywords: [treasury yield, 10-year, fed funds, fomc], feeds: [fed_press], note: "yield = ^TNX/10"}
-  SPX:      {price: "^GSPC", keywords: [s&p 500, wall street, earnings, jobs, cpi, sp500], api: finnhub_marketaux}
+  XAU:      {price: "GC=F",    keywords: [gold, bullion, safe haven, real yields, emas], feeds: [kitco_rss, wgc]}
+  RATE_UST: {price: "^TNX",    keywords: [treasury yield, 10-year, fed funds, fomc], feeds: [fed_press], note: "yield = ^TNX/10"}
+  SPX:      {price: "^GSPC",   keywords: [s&p 500, wall street, earnings, jobs, cpi], api: finnhub_marketaux}
 # DICORET MVP: XAG (duplikat XAU), NDX/DJI (duplikat SPX), EUR/USD, emiten individual, uranium/lithium/nikel, SUN/SBSN/ORI/SBR + corporate/EM bonds.
 ```
 
@@ -123,7 +123,7 @@ targets:
 │   ├── alloc_profiles.yaml   # baseline & batas per profil
 │   ├── alloc_map.yaml        # kelas aset ← sumber skor
 │   ├── personas.yaml         # parameter 5 persona
-│   ├── universe/asset_master.csv (LOCKED 12 baris, version 2026-10-09)
+│   ├── universe/asset_master.csv (INTI 3 baris aktif, version 2026-10-12-core3)
 │   ├── labeled/              # arsip (manual 400-600 MATI; label dari dataset/gold_sinha + dataset/fomc)
 │   └── raw/ processed/       # Parquet time-series
 ├── model/                    # ML Engineer track (M1–M7)
@@ -158,7 +158,7 @@ targets:
 | # | Keputusan | Alasan |
 |---|---|---|
 | D1 | Statistik oleh kode deterministik | Deterministik & reproducible |
-|| D2 | Satu track EN, murni 3 supervised (XAU/RATE_UST/SPX) | Label human cover 3; 7 dicoret; klaim jujur, hindari 10-way |
+| D2 | Satu track EN, murni 3 supervised (XAU/RATE_UST/SPX) | Label human cover 3; 7 dicoret; klaim jujur, hindari 10-way |
 | D3 | ~~Fusion late~~ — MATI (Track A hapus); ablation langsung TF-IDF+LR vs transformer | Satu track EN, data human cukup |
 | D4 | Source routing berbasis registry (data, bukan kode) | Mudah diaudit & ditambah |
 | D5 | Makro dirutekan ke semua target | Dampak lintas aset tidak hilang |

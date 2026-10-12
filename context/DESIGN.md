@@ -97,7 +97,7 @@ Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 
 `impact_graph.yaml` (contoh)
 ```yaml
-version: 2026-10-11-p3   # selaras universe lock murni 3 (7 dicoret; IHSG dicoret); bobot hipotesis awal
+version: 2026-10-12-core3   # selaras universe inti; bobot hipotesis awal
 themes:
   rates_down:
     - {target: XAU, sign: +1, weight: 0.8}
@@ -282,8 +282,8 @@ Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan w
 | Kelas | Sumber skor | Catatan |
 |---|---|---|
 | GOLD | skor target `XAU` | langsung |
-| STOCK | skor `SPX` (IHSG dicoret 2026-10-11; emiten dicoret MVP) | langsung |
-| ETF | skor `SPX` (terkunci) | langsung |
+| STOCK | skor `SPX` (IHSG dicoret; emiten dicoret MVP) | langsung |
+| ETF | skor `SPX` saja (terkunci) | bobot di config |
 | BOND | **diturunkan dari tema makro** (`rates_down` +, `inflation_up` −, `risk_off` +, dst.) + berita obligasi/SBN bila ada | tidak ada sentimen langsung; sumber yield TBD |
 | MUTUAL_FUND | campuran BOND & STOCK sesuai jenis (pasar uang / pendapatan tetap / campuran / saham) | komposisi di config |
 
