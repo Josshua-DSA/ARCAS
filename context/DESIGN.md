@@ -1,6 +1,6 @@
 # DESIGN — Model, Scoring, Statistik & Antarmuka
 
-> Status: Draft v0.7 · GUI FastAPI+Vanilla+ECharts · universe locked 12 target · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md` (struktur) dan `SCHEMA.md` (kontrak data).
+> Status: Draft v0.8-p3 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md` (struktur) dan `SCHEMA.md` (kontrak data).
 
 ## 1. Prinsip
 
@@ -11,25 +11,18 @@
 
 ## 2. Taksonomi
 
-### 2.1 Target (TERKUNCI v2026-10-09 — 12 asset_id, dilarang tambah tanpa bump universe_version)
+### 2.1 Target (MURNI 3 — v2026-10-11-p3; 7 dicoret; IHSG dicoret; tambah/coret = bump universe_version)
 | `asset_id` | Nama | Ticker | Kelas |
 |---|---|---|---|
 | `XAU` | Emas | `GC=F` | commodity |
-| `OIL` | Minyak WTI (alt `BZ=F`) | `CL=F` | commodity |
-| `CU` | Tembaga | `HG=F` | commodity |
-| `NG` | Gas alam | `NG=F` | commodity |
-| `BTC` | Bitcoin | `BTC-USD` | crypto |
-| `USDIDR` | USD/IDR | `IDR=X` | fx |
-| `DXY` | Indeks dolar AS | `DX-Y.NYB` | fx |
 | `RATE_UST` | Yield UST 10Y (`^TNX`/10) | `^TNX` | rate |
-| `VIX` | Volatilitas US | `^VIX` | volatility |
-| `IHSG` | IHSG | `^JKSE` | index |
 | `SPX` | S&P 500 | `^GSPC` | index |
-| `SOX` | Indeks Semikonduktor | `^SOX` | index |
+
+Dicoret 2026-10-11: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`.
 CPI/PCE, kebijakan bank sentral, employment = tema makro (§2.2), bukan target.
 
 ### 2.2 Tema makro (awal)
-`rates_up/down`, `inflation_up/down`, `usd_up/down`, `risk_on/off`, `oil_up/down`, `china_demand_up/down`, `geopolitical_tension`, `crypto_regulation`, `tariff_up`, `supply_shock`, `tech_semiconductor_boom/bust`.
+`rates_up/down`, `inflation_up/down`, `usd_up/down`, `risk_on/off`, `geopolitical_tension`, `tariff_up`, `supply_shock`.
 
 ### 2.3 Label
 - `tone` (sentimen teks): `positive | neutral | negative`.
@@ -39,12 +32,18 @@ CPI/PCE, kebijakan bank sentral, employment = tema makro (§2.2), bukan target.
 ## 3. Model Sentimen
 
 ### 3.1 Baseline & pembanding [ML: M1-M4]
-1. **TF-IDF + Logistic Regression** (baseline wajib, M1).
-2. **IndoBERT** fine-tuned (teks ID asli).
-3. **FinBERT** (teks EN): pada Track A memakai **terjemahan ID→EN**; pada Track B memakai teks EN asli.
-4. **Fusion** (Track A): IndoBERT + FinBERT(terjemahan).
+1. **TF-IDF + Logistic Regression** (baseline wajib, M1) — jalan dulu tiap dataset
+   (gold 6882 pasca-DROP `none`; FOMC `split-combine-5768` 1939). Patokan murah
+   sebelum transformer. Lapor wajib: F1 macro + kappa + confusion 3x3 + ECE.
+   Lanjut FinBERT/FOMC-RoBERTa hanya bila kalahkan baseline bermakna
+   (McNemar/bootstrap). Eksekusi di chat ML, bukan chat planning ini.
+2. **Gold (`XAU`)**: FinBERT fine-tune ringan; mapping `Price Direction Up→positive, Down→negative, Constant→neutral` (kolom `none` diputus §3.4).
+3. **FOMC (`RATE_UST`+`SPX`)**: `gtfintechlab/FOMC-RoBERTa`; mapping resmi `LABEL_1 Hawkish, LABEL_0 Dovish, LABEL_2 Neutral`.
+4. **IndoBERT + terjemahan ID→EN MATI** 2026-10-11 (dataset ID dihapus).
 
-### 3.2 Fusion (Track A)
+### 3.2 Fusion (Track A — MATI 2026-10-11, dataset ID dihapus; arsip, jangan pakai)
+
+**Arsip MATI — jangan implementasi.**
 
 **Versi 1 — Late fusion (stacking), default MVP**
 ```
@@ -62,7 +61,7 @@ Concatenate embedding `[CLS]` kedua model → classification head → fine-tune 
 **Versi 3 — Tanpa terjemahan (opsional)**
 Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 
-**Ablation wajib**: IndoBERT saja, FinBERT(MT) saja, fusion, +/− terjemahan berbeda, vs baseline. Laporkan F1 macro + uji signifikansi (McNemar/bootstrap) + biaya & latensi.
+**Ablation wajib**: TF-IDF+LR vs FinBERT (gold) / FOMC-RoBERTa (FOMC). Laporkan F1 macro + McNemar/bootstrap + biaya & latensi. IndoBERT/fusion/terjemahan MATI 2026-10-11.
 
 **Track B**: FinBERT langsung (opsional fine-tune ringan jika ada label); bandingkan dengan skor sentimen bawaan vendor API sebagai pembanding, bukan sebagai kebenaran.
 
@@ -70,12 +69,26 @@ Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 - Judul + N token pertama isi (atau judul saja jika isi panjang/noisy); panjang konfigurasi.
 - Berita panjang → chunking, agregasi probabilitas (rata-rata/max-conf).
 
+### 3.4 Putus `none` gold + adapter (beku 2026-10-11)
+- `none` gold = **DROP** (bukan gabung ke `neutral`). Bukti: 1574 train + 394 test
+  `none` semua `Up=0/Constant=0/Down=0`; sampel isi promosi/irrelevan. Gabung
+  cemari kelas `Constant` murni (301 train). Hasil: train 6882
+  (`positive` 3531 / `negative` 3050 / `neutral` 301), test 1720 (881/764/75).
+- Adapter tunggal ikut SCHEMA (`backend/src/normalize/adapters.py`):
+  gold `News→title`, `Dates(%d-%m-%Y)→published_at UTC`, `query_target=XAU`,
+  dedup `article_id`; FOMC `sentence→title=body`, `published_at=None`,
+  `year` audit, stance `LABEL_2/1/0→neutral/hawkish/dovish`, dual tone
+  (`RATE_UST`: hawkish→positive/dovish→negative; `SPX` sebaliknya).
+- FOMC terkunci 1 varian `split-combine-5768` (train 1939 setelah dedup dari
+  1984: neutral 955/dovish 512/hawkish 472; test 495 dari 496: 244/129/122).
+  Raw immutable, olahan via adapter saja.
+
 ## 4. Penentuan Target & Arah
 
 ### 4.1 Tag target
 1. **Routing**: berita ditarik atas nama target tertentu → kandidat target.
 2. **Kamus kata kunci per target** (tanpa NER emiten) → `basis=explicit` bila disebut langsung.
-3. **Makro**: tema terdeteksi → 12 target lewat `impact_graph.yaml`.
+3. **Makro**: tema terdeteksi → 3 target lewat `impact_graph.yaml` (evaluasi statistik 3 supervised).
 
 ### 4.2 Arah (`direction`)
 - **Explicit**: `direction` = `tone` terhadap entitas (positif → bullish).
@@ -84,39 +97,22 @@ Continued pretraining IndoBERT pada korpus berita keuangan ID → fine-tune.
 
 `impact_graph.yaml` (contoh)
 ```yaml
-version: 2026-10-09   # selaras universe lock; bobot hipotesis awal
+version: 2026-10-11-p3   # selaras universe lock murni 3 (7 dicoret; IHSG dicoret); bobot hipotesis awal
 themes:
   rates_down:
     - {target: XAU, sign: +1, weight: 0.8}
-    - {target: BTC, sign: +1, weight: 0.4}
     - {target: SPX, sign: +1, weight: 0.4}
-    - {target: IHSG, sign: +1, weight: 0.4}
     - {target: RATE_UST, sign: -1, weight: 0.9}
   rates_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: BTC, sign: -1, weight: 0.4}
-    - {target: USDIDR, sign: +1, weight: 0.5}
     - {target: RATE_UST, sign: +1, weight: 0.9}
   usd_up:
     - {target: XAU, sign: -1, weight: 0.7}
-    - {target: OIL, sign: -1, weight: 0.3}
-    - {target: USDIDR, sign: +1, weight: 0.8}
-    - {target: DXY, sign: +1, weight: 0.9}
-  oil_up:
-    - {target: OIL, sign: +1, weight: 0.9}
-    - {target: NG, sign: +1, weight: 0.4}
-  china_demand_up:
-    - {target: CU, sign: +1, weight: 0.8}
   risk_off:
     - {target: XAU, sign: +1, weight: 0.6}
-    - {target: VIX, sign: +1, weight: 0.8}
-    - {target: BTC, sign: -1, weight: 0.5}
     - {target: SPX, sign: -1, weight: 0.6}
-    - {target: IHSG, sign: -1, weight: 0.5}
   geopolitical_tension:
     - {target: XAU, sign: +1, weight: 0.7}
-    - {target: OIL, sign: +1, weight: 0.6}
-    - {target: VIX, sign: +1, weight: 0.6}
 ```
 Bobot adalah **hipotesis awal**, bukan fakta; diuji lewat analisis statistik.
 
@@ -143,7 +139,7 @@ penalties= rumor(0.20) + mixed_signal(0.15) + ambiguous_entity(0.15) + weak_sour
 - `effective_trading_date`: berita setelah tutup → hari bursa berikutnya (per timezone bursa).
 
 ### 6.2 Metrik pasar
-Return harian per target; abnormal return vs benchmark relevan (`IHSG` untuk USDIDR, `SPX` untuk komoditas/BTC/VIX); volatilitas (rolling std), perubahan volume.
+Return harian per target; abnormal return vs benchmark relevan (`SPX` untuk XAU/RATE_UST, pasar luas untuk masing-masing); volatilitas (rolling std), perubahan volume.
 
 ### 6.3 Uji
 | Uji | Detail |
@@ -152,7 +148,7 @@ Return harian per target; abnormal return vs benchmark relevan (`IHSG` untuk USD
 | Regresi | `ret_t = a + b*sent_{t-l} + kontrol (ret_{t-1}, volume, ret_pasar) + e`; SE robust (HAC) |
 | Granger | Apakah sentimen membantu memprediksi return; cek stasioneritas dulu |
 | Event study | Abnormal return di sekitar berita bersentimen kuat; CAR [−1,+1], [0,+5] |
-| Multiple testing | Koreksi Bonferroni / Benjamini–Hochberg atas target×lag |
+| Multiple testing | Koreksi Bonferroni / Benjamini–Hochberg atas 3 supervised×lag |
 | Robustness | Split waktu, sub-sampel per sumber, ukuran efek + CI |
 
 ### 6.4 Peringatan dini (P2)
@@ -186,7 +182,7 @@ Bukan nasihat investasi.
 Arsitektur terpisah: Backend FastAPI (REST JSON) + Frontend Vanilla HTML5/CSS/JS + Apache ECharts offline (zero-CDN, zero-Node). RAM server <50 MB.
 
 - **Endpoints REST FastAPI (`backend/src/serve/app.py`)**:
-  - `GET /api/universe`: Daftar 12 target makro, status metadata, tanggal update terakhir.
+  - `GET /api/universe`: Daftar 3 target (`XAU/RATE_UST/SPX`), status metadata, tanggal update terakhir.
   - `GET /api/series/{target}`: Data deret waktu gabungan `DailySentiment` vs `PriceRecord` (return, volume, close).
   - `GET /api/impacts/{target}`: Daftar bukti berita (`evidence.quote`, sumber, URL, tone, direction, confidence, tema makro).
   - `GET /api/stats/{target}`: Koefisien korelasi Spearman, regresi OLS HAC, p-value terkoreksi BH-FDR, Granger causality, CAR event study.
@@ -279,16 +275,15 @@ Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan w
 ## 11. Allocation Tilt
 
 ### 11.1 Kelas aset
-`BOND` (obligasi), `MUTUAL_FUND` (reksadana), `STOCK` (saham), `ETF`, `BTC`, `GOLD`. (Opsional: `CASH` sebagai penyangga.)
+`BOND` (obligasi), `MUTUAL_FUND` (reksadana), `STOCK` (saham), `ETF`, `GOLD`. (Opsional: `CASH` sebagai penyangga; `BTC` dicoret 2026-10-11.)
 
 ### 11.2 Skor per kelas (`alloc_map.yaml`)
 
 | Kelas | Sumber skor | Catatan |
 |---|---|---|
 | GOLD | skor target `XAU` | langsung |
-| BTC | skor target `BTC` | langsung |
-| STOCK | skor `IHSG` (emiten dicoret MVP) | langsung |
-| ETF | campuran skor `SPX` + `IHSG` (terkunci) | bobot di config |
+| STOCK | skor `SPX` (IHSG dicoret 2026-10-11; emiten dicoret MVP) | langsung |
+| ETF | skor `SPX` (terkunci) | langsung |
 | BOND | **diturunkan dari tema makro** (`rates_down` +, `inflation_up` −, `risk_off` +, dst.) + berita obligasi/SBN bila ada | tidak ada sentimen langsung; sumber yield TBD |
 | MUTUAL_FUND | campuran BOND & STOCK sesuai jenis (pasar uang / pendapatan tetap / campuran / saham) | komposisi di config |
 
@@ -312,9 +307,8 @@ jika conf_c < conf_min  → delta_c = 0
 | Obligasi | 60 | 40 | 20 | 55 |
 | Reksadana | 15 | 15 | 10 | 10 |
 | Saham | 5 | 15 | 30 | 10 |
-| ETF | 10 | 20 | 25 | 15 |
-| BTC | 0 | 5 | 10 | 5 |
-| Emas | 10 | 5 | 5 | 5 |
+| ETF | 10 | 20 | 30 | 15 |
+| Emas | 10 | 10 | 5 | 10 |
 | **Total** | 100 | 100 | 100 | 100 |
 
 Angka di atas **ilustrasi**, bukan rekomendasi.
@@ -352,7 +346,7 @@ strength = min(1, |raw| / (2 * θ_p))
 ### 12.3 Tampilan
 ```
 Berita: "BI pangkas suku bunga 25 bps"
-Persona               IHSG      Obligasi   Emas
+Persona               SPX       Obligasi   Emas
 Retail Investor       🟢 BUY    🟢 BUY     ⚪ HOLD
 Day Trader            🟢 BUY    ⚪ HOLD    ⚪ HOLD
 Fund Manager          ⚪ HOLD   🟢 BUY     ⚪ HOLD
