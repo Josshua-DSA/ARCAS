@@ -1,7 +1,7 @@
 # SCHEMA — Data Contracts
 
 > Sumber kebenaran struktur data. Ubah skema → naikkan `schema_version` + catat Changelog.
-> `schema_version: 0.5.0`
+> `schema_version: 0.7.0`
 
 ## 1. Enum
 
@@ -20,16 +20,13 @@ class Direction(str, Enum):
     MIXED = "mixed"
 
 class AssetClass(str, Enum):
-    COMMODITY = "commodity"   # XAU, OIL, CU, NG
-    CRYPTO = "crypto"         # BTC
-    INDEX = "index"           # SPX, IHSG
-    FX = "fx"                 # USDIDR, DXY
+    COMMODITY = "commodity"   # XAU
+    INDEX = "index"           # SPX
     RATE = "rate"             # RATE_UST
-    VOLATILITY = "volatility" # VIX
 
 class Track(str, Enum):
-    A_IDX = "A"
-    B_GLOBAL = "B"
+    A_IDX = "A"   # MATI 2026-10-11 (dataset ID dihapus)
+    B_GLOBAL = "B"   # AKTIF: gold + FOMC
 
 class Basis(str, Enum):
     EXPLICIT = "explicit"
@@ -80,7 +77,7 @@ class TargetTag(BaseModel):
     routed_from: Optional[str] = None   # "registry" | "alias" | "ner" | "macro"
 
 class ModelProbs(BaseModel):
-    model: str                   # "tfidf_lr" | "indobert" | "finbert_mt" | "finbert" | "fusion"
+    model: str                   # "tfidf_lr" | "finbert" | "fomc_roberta" | "fusion" (indobert/finbert_mt mati 2026-10-11)
     p_pos: float; p_neu: float; p_neg: float
     model_version: str
 
@@ -152,11 +149,11 @@ class StatResult(BaseModel):
     "translation_used": true
   },
   "impacts": [
-    {
-      "asset_id": "OIL", "direction": "bullish", "score": 0.74, "confidence": 0.88,
-      "basis": "explicit", "themes": [], "flags": [],
-      "evidence": [{"quote": "OPEC sepakat pangkas produksi", "start": 0, "end": 30}]
-    },
+  {
+    "asset_id": "XAU", "direction": "bullish", "score": 0.74, "confidence": 0.88,
+    "basis": "explicit", "themes": [], "flags": [],
+    "evidence": [{"quote": "Gold rises on rate-cut bets", "start": 0, "end": 27}]
+  },
     {
       "asset_id": "XAU", "direction": "bullish", "score": 0.40, "confidence": 0.62,
       "basis": "macro_factor", "themes": ["rates_down"],
@@ -172,11 +169,11 @@ class StatResult(BaseModel):
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| `asset_id` | str PK | LOCKED v2026-10-09 (12): `XAU`, `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `RATE_UST`, `VIX`, `IHSG`, `SPX`, `SOX` |
+| `asset_id` | str PK | Murni 3 v2026-10-11-p3: `XAU`, `RATE_UST`, `SPX` (7 dicoret 2026-10-11) |
 | `asset_class` | enum | commodity/crypto/index/equity/fx |
 | `track` | enum | A / B |
 | `name` | str | Nama resmi |
-| `price_ticker` | str | Ticker Yahoo terkunci (`GC=F`, `CL=F`, `HG=F`, `NG=F`, `BTC-USD`, `IDR=X`, `DX-Y.NYB`, `^TNX`, `^VIX`, `^JKSE`, `^GSPC`, `^SOX`) — verifikasi saat implementasi |
+| `price_ticker` | str | Ticker Yahoo terkunci (`GC=F`, `^TNX`, `^GSPC`) — verifikasi saat implementasi |
 | `exchange` | str | IDX, NYSE, CME, … |
 | `country` | str | ISO alpha-2 |
 | `sector` | str | `NULL` untuk MVP makro (kolom cadangan) |
@@ -185,9 +182,9 @@ class StatResult(BaseModel):
 | `valid_from` / `valid_to` | date | Point-in-time (universe v2026-10-09; bump saat tambah/coret target) |
 | `active` | bool | |
 
-`aliases.csv`: `asset_id`, `alias`, `lang` (mis. "emas", "gold", "bullion" → `XAU`; "minyak", "crude", "wti" → `OIL`). Tanpa alias emiten (dicoret MVP).
+`aliases.csv`: `asset_id`, `alias`, `lang` (mis. "emas", "gold", "bullion" → `XAU`; "treasury yield", "10-year" → `RATE_UST`; "s&p 500", "sp500" → `SPX`). Tanpa alias emiten (dicoret MVP).
 
-> Aset 24 jam (XAU, OIL, CU, NG, BTC, USDIDR, DXY): konvensi `effective_trading_date` = cut-off harian 00:00 UTC di config, catat di `RULES.md`. RATE_UST/VIX/SPX/IHSG ikut kalender bursa masing-masing.
+> XAU: konvensi `effective_trading_date` = cut-off harian 00:00 UTC di config, catat di `RULES.md`. RATE_UST/SPX ikut kalender US.
 
 ## 5. Source Registry & Impact Graph
 
@@ -284,9 +281,8 @@ class AllocClass(str, Enum):
     MUTUAL_FUND = "mutual_fund"
     STOCK = "stock"
     ETF = "etf"
-    BTC = "btc"
-    GOLD = "gold"
-    CASH = "cash"          # opsional
+    GOLD = "gold"          # XAU direct
+    CASH = "cash"          # opsional (BTC dicoret 2026-10-11)
 
 class Stance(str, Enum):
     BUY = "buy"            # hijau
@@ -363,7 +359,10 @@ ML → `ArticleSentiment {tone, score=p_pos-p_neg, probs[], translation_used}`. 
 
 ## 9. Changelog
 
-- 0.5.0 — Universe LOCKED 11 target (XAU/OIL/CU/NG/BTC/USDIDR/DXY/RATE_UST/VIX/IHSG/SPX); diperluas ke 12 + SOX (Semiconductor Index); coret XAG/NDX/DJI/emiten/SBN-single-name; AssetClass +rate/+volatility, hapus equity; aliases kata kunci komoditas/makro.
+- 0.7.0 — Supervised 3 (`XAU/RATE_UST/SPX`); Track A mati; `ModelProbs` tanpa indobert/finbert_mt; dataset gold+FOMC lokal.
+- 0.6.1 — PhraseBank dihapus (bukan makro); `dataset/` kosong.
+- 0.6.0 — Universe 11→10 (IHSG + `^JKSE` dicoret); dataset FNSPID/IHSG dihapus, sisa PhraseBank.
+- 0.5.0 — Universe LOCKED 11 target (XAU/OIL/CU/NG/BTC/USDIDR/DXY/RATE_UST/VIX/IHSG/SPX); coret XAG/NDX/DJI/emiten/SBN-single-name; AssetClass +rate/+volatility, hapus equity; aliases kata kunci komoditas/makro.
 - 0.4.0 — Hapus `llm_fewshot` dari `ModelProbs`; scope tanpa LLM/RAG/agent.
 
 - 0.3.0 — Tambah `news_horizon`, `AllocationSuggestion`, `PersonaView`, kelas aset obligasi/reksadana/ETF.
