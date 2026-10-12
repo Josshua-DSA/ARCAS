@@ -1,4 +1,4 @@
-"""Price data collector for the 11 locked assets."""
+"""Price data collector for the 3 locked assets (XAU/RATE_UST/SPX)."""
 
 import csv
 from datetime import date, timedelta
@@ -42,8 +42,8 @@ class PriceCollector:
         np.random.seed(abs(hash(asset_id)) % (2**31))
 
         while curr <= end_date:
-            # Skip weekend for traditional assets (except BTC)
-            if asset_id != "BTC" and curr.weekday() in (5, 6):
+            # Skip weekend (semua 3 target ikut kalender bursa)
+            if curr.weekday() in (5, 6):
                 curr += timedelta(days=1)
                 continue
 
