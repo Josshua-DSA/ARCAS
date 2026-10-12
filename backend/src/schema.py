@@ -1,4 +1,4 @@
-"""Data contracts and validation models (SCHEMA v0.5.0)."""
+"""Data contracts and validation models (SCHEMA v0.6.0)."""
 
 from datetime import date, datetime
 from enum import Enum
@@ -24,12 +24,9 @@ class Direction(str, Enum):
 
 
 class AssetClass(str, Enum):
-    COMMODITY = "commodity"    # XAU, OIL, CU, NG
-    CRYPTO = "crypto"          # BTC
-    INDEX = "index"            # SPX, IHSG
-    FX = "fx"                  # USDIDR, DXY
+    COMMODITY = "commodity"    # XAU
+    INDEX = "index"            # SPX
     RATE = "rate"              # RATE_UST
-    VOLATILITY = "volatility"  # VIX
     BOND = "bond"              # Allocation target
     MUTUAL_FUND = "mutual_fund"
     ETF = "etf"
@@ -57,7 +54,6 @@ class AllocClass(str, Enum):
     MUTUAL_FUND = "mutual_fund"
     STOCK = "stock"
     ETF = "etf"
-    BTC = "btc"
     GOLD = "gold"
     CASH = "cash"
 
@@ -113,7 +109,7 @@ class TargetTag(BaseModel):
 
 
 class ModelProbs(BaseModel):
-    model: str  # tfidf_lr | indobert | finbert_mt | finbert | fusion
+    model: str  # tfidf_lr | finbert | fomc_roberta (EN-only; track-ID/MT/fusion mati 2026-10-11)
     p_pos: float = Field(ge=0.0, le=1.0)
     p_neu: float = Field(ge=0.0, le=1.0)
     p_neg: float = Field(ge=0.0, le=1.0)

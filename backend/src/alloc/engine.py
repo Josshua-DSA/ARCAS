@@ -49,9 +49,9 @@ class AllocationEngine:
         """
         class_scores: dict[AllocClass, ClassScore] = {}
 
-        # Direct targets: GOLD (XAU), STOCK (SPX). BTC is frozen at zero
-        # since its target left the core3 universe; freezing keeps the
-        # 100% allocation balance intact with no_change for that class.
+        # Direct targets: GOLD (XAU), STOCK (SPX). The BTC class was
+        # removed from AllocClass on main; classes below conf_min stay
+        # pinned at baseline so the 100% balance holds regardless.
         direct_map = {
             AllocClass.GOLD: "XAU",
             AllocClass.STOCK: "SPX",
@@ -61,10 +61,6 @@ class AllocationEngine:
             class_scores[alloc_cls] = ClassScore(
                 alloc_class=alloc_cls, score=sc, confidence=conf, sources=[tgt]
             )
-
-        class_scores[AllocClass.BTC] = ClassScore(
-            alloc_class=AllocClass.BTC, score=0.0, confidence=0.0, sources=["frozen"]
-        )
 
         # ETF: SPX only in the core3 universe (was SPX 60% + IHSG 40%)
         spx_s, spx_c = target_scores.get("SPX", (0.0, 0.0))
@@ -143,9 +139,9 @@ class AllocationEngine:
             bounded_w = max(min_pct, min(max_pct, target_w))
             tentative[cls_enum] = bounded_w
 
-        # Pin frozen classes (confidence below conf_min) back to baseline:
-        # normalization in Step 2 would otherwise drag them along with the
-        # tilted classes. The flexible classes absorb the difference below.
+        # Pin low-confidence classes back to baseline: normalization in
+        # Step 2 would otherwise drag them along with the tilted classes.
+        # The flexible classes absorb the difference below.
         for cls_enum in list(tentative.keys()):
             cs = class_scores.get(
                 cls_enum, ClassScore(alloc_class=cls_enum, score=0.0, confidence=0.0)
@@ -154,8 +150,8 @@ class AllocationEngine:
                 tentative[cls_enum] = float(classes_cfg[cls_enum.value]["base_pct"])
 
         # Step 4: Water-filling residual adjustment to guarantee exact 100.0% sum.
-        # Frozen classes (confidence below conf_min, e.g. retired BTC) stay
-        # pinned at baseline; the residual is spread over flexible classes only.
+        # Low-confidence classes stay pinned at baseline; the residual is
+        # spread over flexible classes only.
         total_tentative = sum(tentative.values())
         diff = 100.0 - total_tentative
 

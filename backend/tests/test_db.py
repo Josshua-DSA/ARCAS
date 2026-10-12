@@ -62,15 +62,15 @@ def test_db_price_crud(temp_db):
     price = PriceRecord(
         asset_id="XAU",
         date=date(2026, 10, 9),
-        open=65000.0,
-        high=66000.0,
-        low=64500.0,
-        close=65500.0,
-        adj_close=65500.0,
-        volume=12000000.0,
+        open=2650.0,
+        high=2660.0,
+        low=2645.0,
+        close=2655.0,
+        adj_close=2655.0,
+        volume=120000.0,
     )
     temp_db.save_price(price)
 
     results = temp_db.query_prices("XAU", date(2026, 10, 1), date(2026, 10, 10))
     assert len(results) == 1
-    assert results[0].close == 65500.0
+    assert results[0].close == 2655.0

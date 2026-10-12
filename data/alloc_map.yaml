@@ -3,10 +3,6 @@ mappings:
   gold:
     mode: direct
     target: XAU
-  btc:
-    mode: frozen
-    target: null
-    note: "BTC target retired in core3 universe; score forced to 0 with no_change to preserve 100% balance."
   stock:
     mode: direct
     target: SPX

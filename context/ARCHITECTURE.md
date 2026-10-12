@@ -1,6 +1,6 @@
 # ARCHITECTURE — Financial News Sentiment & Market Association System
 
-> Status: Draft v0.8 · GUI FastAPI+Vanilla+ECharts · universe inti 3 target (v2026-10-12-core3) · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
+> Status: Draft v0.8-p3 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
 > Prinsip utama: **statistik dihitung oleh kode; model hanya membaca teks.**
 
 ## 1. Gambaran Umum
@@ -19,8 +19,8 @@
  └──────┬────────┘           │
         ▼                    │
  ┌───────────────┐           │
- │ Sentiment     │ Track A: IndoBERT + FinBERT(MT) → fusion
- │               │ Track B: FinBERT
+ │ Sentiment     │ Gold: TF-IDF+LR → FinBERT; FOMC: TF-IDF+LR → FOMC-RoBERTa
+ │               │ (Track A ID mati 2026-10-11; 1 track EN aktif)
  └──────┬────────┘           │
         ▼                    │
  ┌───────────────┐           │
@@ -46,9 +46,9 @@
 
 | Lapisan | Fungsi | Teknologi | Owner |
 |---|---|---|
-| Pengumpulan | Ambil berita & harga (B1,B9) | `news-watch`, scraper, Finnhub/Marketaux/Alpha Vantage, RSS, GDELT, yfinance | Backend |
+| Pengumpulan | Ambil berita & harga (B1,B9) | Dataset lokal gold+FOMC, RSS Fed/EIA/Kitco, yfinance 3 supervised (`GC=F`,`^TNX`,`^GSPC`) | Backend |
 | Pemrosesan teks | Bersih, dedupe, tag routing + kamus (B3), time-align cut-off UTC (B4) | Python, sentence-transformers, registry + impact graph | Backend |
-| Model sentimen | Probabilitas 3 kelas (M1-M5) | TF-IDF+LR, IndoBERT, FinBERT, fusion, klasifier tema | ML |
+| Model sentimen | Probabilitas 3 kelas (M1-M5) | TF-IDF+LR, FinBERT (gold), FOMC-RoBERTa (FOMC), klasifier tema | ML |
 | Penentuan target | `TargetImpact` writer + validator (B5), kalibrasi terapan (M6-M7) | Rule + impact graph, bobot di config | Backend hitung, ML tuning |
 | Penyimpanan | 8 tabel SCHEMA (B9), idempotent hash URL+judul | PostgreSQL/SQLite, Parquet | Backend |
 | Analisis | Spearman lag, OLS+HAC, Granger, CAR, BH-FDR (B7) | pandas, statsmodels, scipy | Backend |
@@ -63,7 +63,7 @@
 4. **Tag** — tentukan target:
    - **Routing** dari `source_registry` (berita diambil karena query/feed milik target X),
    - **Kamus kata kunci per target** (tanpa NER emiten; emiten dicoret MVP),
-   - **Makro** → dirutekan ke 3 target inti.
+   - **Makro** → dirutekan ke semua 3 target.
 5. **Time-align** — `effective_trading_date` per bursa; berita setelah tutup → hari bursa berikutnya (timezone-aware).
 6. **Sentiment** — lihat `DESIGN.md` §3.
 7. **Impact** — `direction` per target; `basis` ∈ {explicit, macro_factor} (sector_inferred dicoret MVP).
@@ -87,7 +87,6 @@ targets:
   XAU:      {price: "GC=F",    keywords: [gold, bullion, safe haven, real yields, emas], feeds: [kitco_rss, wgc]}
   RATE_UST: {price: "^TNX",    keywords: [treasury yield, 10-year, fed funds, fomc], feeds: [fed_press], note: "yield = ^TNX/10"}
   SPX:      {price: "^GSPC",   keywords: [s&p 500, wall street, earnings, jobs, cpi], api: finnhub_marketaux}
-# PENSIUN core3: OIL, CU, NG, BTC, USDIDR, DXY, VIX, IHSG (+ SOX usulan).
 # DICORET MVP: XAG (duplikat XAU), NDX/DJI (duplikat SPX), EUR/USD, emiten individual, uranium/lithium/nikel, SUN/SBSN/ORI/SBR + corporate/EM bonds.
 ```
 
@@ -116,7 +115,7 @@ targets:
 ```
 .
 ├── context/                  # spesifikasi inti (PRD, ARCHITECTURE, DESIGN, RULES, SCHEMA)
-├── dataset/                  # benchmark publik (PhraseBank, FNSPID_reduced, IHSG-IndoBERT)
+├── dataset/                  # gold_sinha/ (10.570 human) + fomc/ (48 xlsx human); detail `dataset/README.md`
 ├── research/                 # katalog riset & PDF 11 paper primer/pendukung
 ├── data/
 │   ├── source_registry.yaml
@@ -125,15 +124,15 @@ targets:
 │   ├── alloc_map.yaml        # kelas aset ← sumber skor
 │   ├── personas.yaml         # parameter 5 persona
 │   ├── universe/asset_master.csv (INTI 3 baris aktif, version 2026-10-12-core3)
-│   ├── labeled/              # dataset berlabel manual (400-600 berita)
+│   ├── labeled/              # arsip (manual 400-600 MATI; label dari dataset/gold_sinha + dataset/fomc)
 │   └── raw/ processed/       # Parquet time-series
 ├── model/                    # ML Engineer track (M1–M7)
-│   ├── notebooks/            # EDA, pelatihan, ablasi MT, validasi temporal
+│   ├── notebooks/            # EDA, pelatihan, ablation TF-IDF vs transformer, validasi temporal
 │   ├── weights/              # bobot model beku (.pkl, safetensors, ECE calibrator)
 │   └── evaluation/           # evaluasi F1 macro, ECE, bootstrap CI, McNemar
 ├── backend/                  # Backend Engineer track (B1–B9)
 │   ├── src/
-│   │   ├── collect/          # scrapers RSS/API + yfinance 3 target inti
+│   │   ├── collect/          # scrapers RSS/API + yfinance 3 target (GC=F, ^TNX, ^GSPC)
 │   │   ├── normalize/        # clean, dedupe, cut-off 00:00 UTC, kalender bursa
 │   │   ├── tagging/          # routing registry + impact_graph (tanpa NER)
 │   │   ├── aggregate/        # DailySentiment mean (hari kosong = NULL)
@@ -159,8 +158,8 @@ targets:
 | # | Keputusan | Alasan |
 |---|---|---|
 | D1 | Statistik oleh kode deterministik | Deterministik & reproducible |
-| D2 | Dua track model (ID/EN), satu universe inti 3 target | Bahasa berbeda, target sama |
-| D3 | Fusion = late fusion (stacking) dulu | Aman untuk 500–1.000 data berlabel |
+| D2 | Satu track EN, murni 3 supervised (XAU/RATE_UST/SPX) | Label human cover 3; 7 dicoret; klaim jujur, hindari 10-way |
+| D3 | ~~Fusion late~~ — MATI (Track A hapus); ablation langsung TF-IDF+LR vs transformer | Satu track EN, data human cukup |
 | D4 | Source routing berbasis registry (data, bukan kode) | Mudah diaudit & ditambah |
 | D5 | Makro dirutekan ke semua target | Dampak lintas aset tidak hilang |
 | D6 | Confidence dihitung kode + dikalibrasi | Konsisten, anti-overconfidence |
@@ -194,5 +193,5 @@ targets:
 - **alloc/**: membaca `alloc_profiles.yaml` (baseline, min, max, λ, batas pergeseran) dan `alloc_map.yaml` (kelas aset ← sumber skor). Keluaran: alokasi baru (total 100%) + delta + alasan.
 - **persona/**: membaca `personas.yaml`; murni fungsi deterministik. Penjelas teks pakai template deterministik; **stance dihitung kode**.
 - Keduanya mengonsumsi `TargetImpact` dan `DailySentiment` yang sama; tidak ada model baru yang perlu dilatih.
-- Data tambahan: yield SBN/NAV reksadana sumber TBD → lampiran riset, bukan target MVP. ETF acuan = SPX (terkunci, sejak core3).
+- Data tambahan: yield SBN/NAV reksadana sumber TBD → lampiran riset, bukan target MVP. ETF acuan = SPX (terkunci).
 - Keputusan: D10 — alokasi & persona **dihitung kode deterministik** agar reproducible; D11 — tilt terbatas relatif baseline.

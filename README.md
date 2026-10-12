@@ -1,13 +1,13 @@
 # FinNews: Financial News Sentiment & Market Association System
 
-Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita keuangan makro (Track A Bahasa Indonesia & Track B Bahasa Inggris), memetakan dampaknya ke **3 Target Inti Terkunci (Core Locked Universe v2026-10-12-core3)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
+Sistem analitis kuantitatif deterministik untuk sentimen berita keuangan makro EN (Track B), memetakan dampaknya ke **3 Target Tersupervisi Terkunci (`XAU`, `RATE_UST`, `SPX`)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
 
 ---
 
 ## 📌 Ringkasan Proyek
 
 - **Fokus Domain**: Analisis sentimen berita keuangan makro terstruktur & uji ekonometrika empiris.
-- **Batasan Alam Semesta**: Tepat 3 target aset makro inti terkunci (`XAU`, `RATE_UST`, `SPX`) v2026-10-12-core3. Pensiun: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
+- **Batasan Alam Semesta**: Tepat 3 target tersupervisi (`XAU` gold Sinha human, `RATE_UST`+`SPX` FOMC human). Pensiun: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
 - **Pemisahan Ketat**:
   - Model Transformer/NLP bertindak murni sebagai pembaca teks (menghasilkan probabilitas 3-kelas: Positif, Netral, Negatif).
   - Seluruh inferensi agregasi, pergeseran portofolio (Allocation Tilt), stance persona, dan pengujian asosiasi pasar dihitung secara deterministik dengan matematika dan statistik baku (pandas, scipy, statsmodels).
@@ -22,7 +22,7 @@ Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita ke
    - Parquet (`data/processed/`) untuk dump analitis skala besar.
    - Normalisasi teks deterministik (`article_id` berbasis SHA-256), deteksi bahasa, dan perataan kalender bursa non-lookahead (cut-off UTC 00:00).
 2. **Tier 2 — NLP Inference & Econometric Engines**:
-   - Model Sentimen: Baseline TF-IDF + LR, IndoBERT (Track A), FinBERT + MT (Track B), Late Fusion.
+   - Model Sentimen: Baseline TF-IDF + LR, FinBERT (gold `XAU`), FOMC-RoBERTa (FOMC `RATE_UST`+`SPX`). Track A ID mati 2026-10-11.
    - Router Aset: Pemetaan eksplisit kata kunci (`aliases.csv`) dan perambatan tema makro (`impact_graph.yaml`).
    - Ekonometrika Pasar: Korelasi Spearman lintas lag (0..5), regresi OLS dengan galat baku Newey-West HAC, uji kausalitas Granger, dan Event Study Cumulative Abnormal Return (CAR) dengan koreksi multi-testing Benjamini-Hochberg (BH-FDR).
    - Allocation Tilt: Pergeseran alokasi eksponensial dengan konstrain ketat jumlah tepat 100.0%.
@@ -34,7 +34,7 @@ Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita ke
 
 ---
 
-## 🎯 3 Core Locked Universe Specification (v2026-10-12-core3)
+## 🎯 Murni 3 Supervised (`XAU` / `RATE_UST` / `SPX`)
 
 | Asset ID | Kelas Aset | Track | Nama Aset | Ticker Harga | Bursa | Zona Waktu | Sesi Tutup |
 |---|---|---|---|---|---|---|---|
@@ -42,7 +42,7 @@ Sistem analitis kuantitatif deterministik untuk mengekstraksi sentimen berita ke
 | `RATE_UST` | Rate | B | US 10-Year Treasury Yield | `^TNX` | CBOE | America/New_York | 15:00 |
 | `SPX` | Index | B | S&P 500 Index | `^GSPC` | SNP | America/New_York | 16:00 |
 
-Pensiun core3 (nonaktif, histori dipertahankan): `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, `IHSG`.
+Dicoret 2026-10-11: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, plus `IHSG`; histori DB dipertahankan.
 
 ---
 
@@ -77,7 +77,7 @@ FInews/
 │   ├── impact_graph.yaml        # Graf tema makro (rates, inflation, usd, geopolitical)
 │   ├── personas.yaml            # Konfigurasi parameter 5 persona investor
 │   └── source_registry.yaml     # Registry sumber berita & routing target
-├── dataset/                     # Panduan dataset berita Track A & B
+├── dataset/                     # gold_sinha/ (10.570 human) + fomc/ (48 xlsx human)
 ├── frontend/
 │   ├── GUI/                     # Web Dashboard (Vanilla JS + ECharts offline)
 │   └── TUI/                     # Terminal Dashboard (Python Rich)

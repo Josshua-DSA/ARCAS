@@ -22,7 +22,7 @@ Ada dua pertanyaan mendasar yang ingin dijawab:
 Kedua pertanyaan ini merupakan masalah **klasifikasi teks multi-kelas (NLP)** dan **analisis asosiasi statistik empiris (ekonometrika)**, **bukan** prediksi harga langsung (*price prediction*) dan **bukan** rekomendasi investasi otomatis.
 
 #### B. Problem Statement
-> *"Bagaimana merancang sistem klasifikasi teks otomatis berbasis model bahasa domain finansial (IndoBERT & FinBERT) yang mampu mengekstraksi sentimen berita makro dwibahasa secara terkalibrasi, memetakan transmisi dampaknya secara deterministik ke dalam 11 aset makro global terkunci, serta menguji ada-tidaknya signifikansi hubungan statistik antara dinamika sentimen teks dengan pergerakan harga pasar tanpa mengandalkan model generatif berisiko halusinasi?"*
+> *"Bagaimana merancang sistem klasifikasi teks otomatis berbasis model bahasa domain finansial EN-only (FinBERT + FOMC-RoBERTa) yang mampu mengekstraksi sentimen berita makro secara terkalibrasi, memetakan transmisi dampaknya secara deterministik ke dalam 3 target makro terkunci (`XAU`/`RATE_UST`/`SPX`), serta menguji ada-tidaknya signifikansi hubungan statistik antara dinamika sentimen teks dengan pergerakan harga pasar tanpa mengandalkan model generatif berisiko halusinasi? (Murni 3 v2026-10-11-p3; 7 dicoret: OIL/CU/NG/BTC/USDIDR/DXY/VIX; Track A ID + IndoBERT + MT + fusion mati.)"*
 
 #### C. Pengguna Utama & Kebutuhan
 - **Peneliti / Akademisi (Utama):** Membutuhkan dataset terstandarisasi, pipeline inferensi reproducible (seed terkunci, non-lookahead), dan metodologi ekonometrika yang valid dengan koreksi uji berganda.
@@ -37,7 +37,7 @@ Kedua pertanyaan ini merupakan masalah **klasifikasi teks multi-kelas (NLP)** da
 |---|---|---|---|
 | **Membaca arah berita dengan benar** | Kesesuaian label model dengan konsensus analis manusia | Macro F1-score, Precision/Recall per kelas, Cohen's kappa ($\kappa$), Confusion Matrix | Macro F1 $\ge 0.82$, $\kappa \ge 0.70$ terhadap anotator |
 | **Keandalan probabilitas model** | Tingkat keyakinan model sebanding dengan akurasi empiris | Expected Calibration Error (ECE), Brier Score | ECE $\le 0.10$ pasca-kalibrasi suhu (*temperature scaling*) |
-| **Pemantauan target makro** | Cakupan 11 aset makro dan hari perdagangan terpantau | Precision/Recall penandaan target, proporsi hari aktif dengan $\ge 1$ berita | Precision tag $\ge 0.90$, hari kosong ditandai `NaN` eksplisit |
+| **Pemantauan target makro** | Cakupan 3 target makro (`XAU`/`RATE_UST`/`SPX`) dan hari perdagangan terpantau | Precision/Recall penandaan target, proporsi hari aktif dengan $\ge 1$ berita | Precision tag $\ge 0.90$, hari kosong ditandai `NaN` eksplisit |
 | **Menguji nilai informasi sentimen** | Signifikansi hubungan sentimen dengan return/volatilitas/volume | Korelasi rank Spearman per lag ($t$ s.d. $t+5$), koefisien & p-value OLS Newey-West HAC, Uji Kausalitas Granger, CAR Event Study | $p < 0.05$ setelah koreksi Benjamini-Hochberg FDR |
 | **Pencegahan bias data masa depan** | Integritas deret waktu (*zero lookahead bias*) | Validasi cut-off waktu perdagangan per bursa (UTC 00:00 untuk aset 24 jam) | 100% berita pasca-tutup bursa dialihkan ke $t+1$ |
 | **Efisiensi komputasi** | Kecepatan inferensi dan biaya operasional rendah | Latensi per 1.000 berita, konsumsi RAM inferensi | Latensi $< 60$ detik / 1.000 artikel (GPU) atau $< 180$ detik (CPU), RAM $< 2$ GB |
@@ -54,18 +54,18 @@ Komponen arsitektur hanya dipertahankan apabila pembanding yang lebih sederhana 
 | Komponen | Masalah yang Dijawab | Pembanding Sederhana | Syarat Dipakai dalam Sistem | Status Komponen |
 |---|---|---|---|---|
 | **TF-IDF + Logistic Regression** | Baseline klasifikasi teks cepat | Aturan leksikon / kata kunci | Selalu dipakai sebagai tolok ukur dasar (M1) | **Wajib (Baseline)** |
-| **IndoBERT Fine-Tuned** | Memahami teks berita makro Bahasa Indonesia (Track A) | TF-IDF + Logistic Regression | Macro F1 IndoBERT mengungguli baseline secara signifikan ($> +5\%$) | **Terpilih (Track A)** |
-| **FinBERT (Domain-Specific)** | Ekstraksi sentimen berita makro Bahasa Inggris (Track B) | General BERT / VADER | Menghasilkan separasi kelas finansial lebih tajam pada dataset benchmark | **Terpilih (Track B)** |
-| **Late Fusion (Stacking)** | Integrasi sinyal IndoBERT dan FinBERT (via terjemahan) | IndoBERT tunggal | Uji signifikansi McNemar membuktikan fusion meningkatkan F1 di atas biaya latensi MT | **Terpilih (Track A Opt)** |
+| **Track A ID (mati)** | Memahami teks berita makro Bahasa Indonesia | TF-IDF + Logistic Regression | — | **Dicoret 2026-10-11 (EN-only)** |
+| **FinBERT (Domain-Specific)** | Ekstraksi sentimen berita makro EN (`XAU` gold) | General BERT / VADER | Menghasilkan separasi kelas finansial lebih tajam pada dataset benchmark | **Terpilih (EN gold)** |
+| **Fusion via terjemahan (mati)** | Integrasi sinyal dua track via terjemahan | Track tunggal | — | **Dicoret 2026-10-11 (tanpa MT/fusion)** |
 | **Mesin Statistik Deterministik** | Uji korelasi, OLS HAC, Granger, CAR | Tidak ada pengganti kode | Wajib kode murni deterministik (pandas/statsmodels/scipy) agar dapat direproduksi penuh | **Wajib Mutlak** |
 | **LLM Generatif / RAG / Agent** | Otomasi narasi atau ekstraksi generatif | Pipeline kode terstruktur + template | **Dieliminasi (v0.4+)**: Berisiko halusinasi, latensi tinggi, non-deterministik, dan rawan lookahead bias | **Dicoret dari MVP** |
-| **Graf Transmisi Makro (`impact_graph`)** | Pemetaan transmisi tema makro ke 11 aset | Rule hardcoded satu persatu | Memisahkan konfigurasi transmisi ekonomi ke format YAML deklaratif yang mudah diaudit | **Terpilih** |
+| **Graf Transmisi Makro (`impact_graph`)** | Pemetaan transmisi tema makro ke 3 target | Rule hardcoded satu persatu | Memisahkan konfigurasi transmisi ekonomi ke format YAML deklaratif yang mudah diaudit | **Terpilih** |
 
 ---
 
 ## 2. Deskripsi Sistem
 
-Sistem **FInews** adalah platform analitis kuantitatif terstruktur yang bertugas mengekstraksi nada sentimen berita ekonomi makro dalam dua bahasa (Bahasa Indonesia & Bahasa Inggris), memetakan arah dampaknya secara deterministik terhadap **11 Target Aset Makro Global Terkunci**, serta menguji hubungan statistik empiris antara sentimen agregat harian dengan dinamika pergerakan pasar.
+Sistem **FInews** adalah platform analitis kuantitatif terstruktur yang bertugas mengekstraksi nada sentimen berita ekonomi makro EN-only, memetakan arah dampaknya secara deterministik terhadap **3 Target Makro Terkunci** (`XAU`/`RATE_UST`/`SPX`, v2026-10-11-p3), serta menguji hubungan statistik empiris antara sentimen agregat harian dengan dinamika pergerakan pasar.
 
 ### 2.1 Tujuan Sistem
 1. Mengklasifikasikan sentimen artikel berita makro ke dalam 3 kelas: `positive`, `neutral`, `negative` dengan probabilitas terkalibrasi.
@@ -75,27 +75,19 @@ Sistem **FInews** adalah platform analitis kuantitatif terstruktur yang bertugas
 5. Menyajikan visualisasi interaktif melalui Web GUI ringan dan Bloomberg-style Terminal UI (TUI) beserta simulasi alokasi portofolio multi-persona.
 
 ### 2.2 Prinsip Desain
-- **Pemisahan Model Teks & Matematika Pasar:** Model Transformer (IndoBERT/FinBERT) murni bertindak sebagai pembaca teks (*text reader*). Seluruh agregasi, korelasi, regresi, uji Granger, pergeseran alokasi, dan penilaian persona dihitung 100% oleh kode deterministik.
+- **Pemisahan Model Teks & Matematika Pasar:** Model Transformer EN-only (FinBERT untuk `XAU`, FOMC-RoBERTa untuk `RATE_UST`/`SPX`) murni bertindak sebagai pembaca teks (*text reader*). Seluruh agregasi, korelasi, regresi, uji Granger, pergeseran alokasi, dan penilaian persona dihitung 100% oleh kode deterministik.
 - **Tanpa LLM Generatif / Nol Halusinasi:** Sistem bebas dari runtime generative LLM, RAG probabilistik, atau autonomous agents yang tidak deterministik.
 - **Auditabilitas Penuh:** Setiap inferensi memiliki riwayat input mentah, hash SHA-256 artikel, stempel waktu UTC, bukti kutipan teks (*evidence quote*), dan versi model yang tercatat.
 
-### 2.3 Cakupan 11 Target Makro Terkunci (Locked Universe v2026-10-09)
+### 2.3 Cakupan 3 Target Makro Terkunci (Murni 3 v2026-10-11-p3)
 
 | Asset ID | Nama Instrumen | Kelas Aset | Ticker Harga | Bursa Utama | Zona Waktu | Jam Tutup |
 |---|---|---|---|---|---|---|
 | `XAU` | Emas Spot / Futures | Commodity | `GC=F` | CME | America/New_York | 17:00 |
-| `OIL` | Minyak Mentah WTI | Commodity | `CL=F` | NYMEX | America/New_York | 17:00 |
-| `CU` | Tembaga (Copper) | Commodity | `HG=F` | COMEX | America/New_York | 17:00 |
-| `NG` | Gas Alam (Natural Gas) | Commodity | `NG=F` | NYMEX | America/New_York | 17:00 |
-| `BTC` | Bitcoin USD | Crypto | `BTC-USD` | CCC | UTC | 00:00 |
-| `USDIDR` | Kurs USD / Rupiah | FX | `IDR=X` | CCY | Asia/Jakarta | 16:00 |
-| `DXY` | Indeks Dolar AS | FX | `DX-Y.NYB` | NYB | America/New_York | 17:00 |
 | `RATE_UST` | Yield Obligasi US 10Y | Rate | `^TNX` | CBOE | America/New_York | 15:00 |
-| `VIX` | Indeks Volatilitas CBOE | Volatility | `^VIX` | CBOE | America/New_York | 16:15 |
-| `IHSG` | Indeks Harga Saham Gabungan | Index | `^JKSE` | IDX | Asia/Jakarta | 16:00 |
 | `SPX` | S&P 500 Index | Index | `^GSPC` | SNP | America/New_York | 16:00 |
 
-*(Catatan: Emiten saham individual dan komoditas minor dicoret dari lingkup MVP demi menjaga fokus makro).*
+*(Catatan: 7 dicoret 2026-10-11 — `OIL`/`CU`/`NG`/`BTC`/`USDIDR`/`DXY`/`VIX` — plus emiten individual dan komoditas minor, demi fokus makro murni 3).*
 
 ---
 
@@ -119,7 +111,7 @@ Arsitektur FInews dibangun di atas pola **3-Tier Layered Architecture** yang mod
 ┌───────────────────────────┼───────────────────────────────────┼────────┐
 │                           ▼                                   │        │
 │                 TIER 2: INFERENCE & ENGINES                   │        │
-│  [Track A: IndoBERT / Fusion]     [Track B: FinBERT]          │        │
+│  [EN: FinBERT gold + FOMC-RoBERTa]                             │        │
 │            │                             │                    │        │
 │            └──────────────┬──────────────┘                    │        │
 │                           ▼                                   │        │
@@ -154,10 +146,10 @@ Arsitektur FInews dibangun di atas pola **3-Tier Layered Architecture** yang mod
 |---|---|---|---|
 | **Tier 1: Pengumpulan & Penyimpanan** | Pengambilan artikel berkala, ingest harga pasar, deduplikasi idempotence, standarisasi waktu bursa | `requests`, `feedparser`, `yfinance`, SQLite (`finews.db`), Apache Parquet | `raw_articles`, `articles`, `market_prices` |
 | **Tier 2: Pemrosesan Teks & Normalisasi** | Sanitasi regex HTML/ad, deteksi bahasa, mapping cut-off bursa UTC | Python standard, `re`, dateutil | Entitas `Article` bersih bertanggal bursa efektif |
-| **Tier 2: Model Sentimen (NLP)** | Ekstraksi fitur teks, inferensi 3 kelas, kalibrasi suhu (*temperature scaling*) | PyTorch, HuggingFace Transformers (`IndoBERT`, `FinBERT`), Scikit-Learn | `ArticleSentiment` ($P_{pos}, P_{neu}, P_{neg}$, score $[-1, 1]$) |
-| **Tier 2: Routing & Graf Makro** | Resolusi kata kunci eksplisit dan propagasi tema makro ke 11 aset | `aliases.csv`, `impact_graph.yaml` | `TargetImpact` (`direction`, `basis`, `confidence`) |
+| **Tier 2: Model Sentimen (NLP)** | Ekstraksi fitur teks, inferensi 3 kelas, kalibrasi suhu (*temperature scaling*) | PyTorch, HuggingFace Transformers (FinBERT EN, FOMC-RoBERTa), Scikit-Learn | `ArticleSentiment` ($P_{pos}, P_{neu}, P_{neg}$, score $[-1, 1]$) |
+| **Tier 2: Routing & Graf Makro** | Resolusi kata kunci eksplisit dan propagasi tema makro ke 3 target | `aliases.csv`, `impact_graph.yaml` | `TargetImpact` (`direction`, `basis`, `confidence`) |
 | **Tier 2: Mesin Ekonometrika** | Agregasi harian deret waktu, uji korelasi lag, regresi OLS robust, uji kausalitas | `pandas`, `statsmodels`, `scipy` | `StatResult` ($r_s$, koefisien OLS, p-value Granger, FDR) |
-| **Tier 2: Simulasi Portofolio** | Simulasi kemiringan alokasi 6 kelas aset dan stance 5 persona investor | Formulasi matematika eksponensial deterministik | `AllocationResult` (total 100.0%), `PersonaStance` |
+| **Tier 2: Simulasi Portofolio** | Simulasi kemiringan alokasi 5 kelas aset dan stance 5 persona investor | Formulasi matematika eksponensial deterministik | `AllocationResult` (total 100.0%), `PersonaStance` |
 | **Tier 3: Antarmuka Penyajian** | REST API endpoints, Web GUI dashboard interaktif responsif, dan terminal TUI | FastAPI, Uvicorn, Vanilla HTML/CSS/JS, Apache ECharts offline, Python Rich | Port 8000 dashboard, Rich CLI screen, `report.html` |
 
 ---
@@ -165,30 +157,28 @@ Arsitektur FInews dibangun di atas pola **3-Tier Layered Architecture** yang mod
 ## 4. Metodologi Rinci
 
 ### 4.1 Pengumpulan Data (Ingestion)
-1. **Berita Bahasa Indonesia (Track A):** Ingest terjadwal portal CNBC Indonesia, Bisnis.com, dan Kontan menggunakan pustaka `news-watch` serta feed RSS Bank Indonesia.
-2. **Berita Bahasa Inggris (Track B):** Ingest API Finnhub/Marketaux dan RSS rujukan (Federal Reserve, US BLS, EIA Energy, Kitco, CoinDesk, GDELT).
-3. **Data Deret Waktu Pasar:** Pengambilan harga harian ($Open, High, Low, Close, Volume, Yield$) untuk 11 aset via `yfinance`.
+1. **Berita EN-only:** Ingest API Finnhub/Marketaux dan RSS rujukan (Federal Reserve, US BLS, Kitco) + dataset gold Sinha (HF) + FOMC hawkish-dovish (GitHub gtfintechlab). Track A ID mati 2026-10-11.
+3. **Data Deret Waktu Pasar:** Pengambilan harga harian ($Open, High, Low, Close, Volume, Yield$) untuk 3 target via `yfinance` (`GC=F`, `^TNX`, `^GSPC`).
 4. **Idempotensi Penyimpanan:** Kunci unik berbasis `sha256(norm(title) + norm(body))[:16]` untuk mencegah duplikasi artikel.
 
 ### 4.2 Preprocessing & Temporal Alignment
 1. **Pembersihan Teks:** Menghapus tag HTML, entitas unicode rusak, boilerplate disclaimer redaksi, dan nomor kontak iklan.
 2. **Deduplikasi Semantik:** Mengeliminasi artikel duplikat menggunakan pencocokan hash SHA-256 dan kemiripan kosinus embedding teks $\ge 0.90$.
 3. **Penyelarasan Kalender Bursa (*Non-Lookahead Temporal Alignment*):**
-   - Aset beroperasi 24 jam (`XAU`, `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`): Titik potong (*cut-off*) ditetapkan tepat pukul `00:00 UTC`.
-   - Aset bursa berjadwal (`IHSG`, `SPX`, `RATE_UST`, `VIX`): Mengikuti jam penutupan bursa lokal masing-masing (misal: IHSG tutup pukul 16:00 WIB / 09:00 UTC).
+   - Aset beroperasi 24 jam (`XAU`): Titik potong (*cut-off*) ditetapkan tepat pukul `00:00 UTC`.
+   - Aset bursa berjadwal (`SPX`, `RATE_UST`): Mengikuti jam penutupan bursa lokal masing-masing (misal: SPX tutup pukul 16:00 ET).
    - **Aturan Non-Lookahead:** Berita yang terbit *setelah* jam tutup bursa secara otomatis dipetakan ke hari bursa efektif berikutnya ($t+1$). Tidak ada data masa depan yang boleh bocor ke inferensi hari ini.
 
 ### 4.3 Pelabelan dan Model Sentimen
 
 #### A. Dataset Benchmark & Anotasi Manual
-- **Benchmark Internasional:** Financial PhraseBank (4.840 kalimat finansial berlabel multi-anotator) dan FNSPID reduced (3.1 GB deret waktu berita finansial).
-- **Anotasi Manual Bahasa Indonesia:** 500–1.000 artikel berita finansial makro diverifikasi secara independen oleh minimal 2 anotator manusia menggunakan panduan tertulis (`GUIDELINES.md`). Tingkat kesepakatan antar-anotator diukur menggunakan koefisien *Cohen's kappa* ($\kappa$).
+- **Benchmark:** Sinha gold (HF, `XAU`) + FOMC hawkish-dovish (GitHub gtfintechlab, `RATE_UST`/`SPX`). FNSPID + CNBC-IHSG + PhraseBank dihapus 2026-10-11. Label wajib anotasi manual baru group-by-article/meeting.
+- **Anotasi Manual EN:** artikel makro EN diverifikasi minimal 2 anotator manusia. Tingkat kesepakatan antar-anotator diukur menggunakan koefisien *Cohen's kappa* ($\kappa$).
 
 #### B. Pipeline Model
 1. **Baseline Model (M1):** Unigram & bigram TF-IDF dipasangkan dengan Logistic Regression teratur.
-2. **Track A — IndoBERT (M2):** Model pre-trained `indolem/indobert-base-uncased` yang di-fine-tune untuk klasifikasi 3-kelas dengan *Weighted Cross-Entropy Loss* guna mengatasi ketidakseimbangan kelas (*class imbalance*).
-3. **Track B — FinBERT (M3):** Model `ProsusAI/finbert` yang telah terlatih pada korpus bahasa finansial global.
-4. **Track A Option — Late Fusion (M4):** Penggabungan vektor probabilitas `softmax` IndoBERT teks asli dengan `softmax` FinBERT (atas teks hasil terjemahan mesin ID $\rightarrow$ EN), dilatih menggunakan regresi logistik meta-classifier pada split validasi *out-of-fold*.
+2. **EN gold — FinBERT (M3):** Model `ProsusAI/finbert` untuk `XAU` (dataset Sinha).
+3. **EN FOMC — FOMC-RoBERTa (M4):** Model `gtfintechlab/FOMC-RoBERTa` untuk stance `RATE_UST`/`SPX` (dataset FOMC hawkish-dovish).
 
 #### C. Kalibrasi Probabilitas & Skor Terstruktur
 Probabilitas mentah dikalibrasi menggunakan metode *Temperature Scaling* untuk meminimalkan *Expected Calibration Error* (ECE). Skor sentimen kontinu dihitung:
@@ -214,13 +204,13 @@ Seluruh komputasi dijalankan secara deterministik menggunakan pustaka `statsmode
    $$R_{i, t+1} = \alpha + \beta_1 S_{i, t} + \beta_2 R_{i, t} + \beta_3 \Delta \text{Vol}_{i, t} + \epsilon_t$$
 4. **Uji Kausalitas Granger:** Menguji secara empiris apakah lag sentimen berita secara statistik menyediakan informasi tambahan untuk memproyeksikan return aset dibanding hanya mengandalkan lag return historis.
 5. **Event Study (Cumulative Abnormal Return / CAR):** Mengukur abnormal return di sekitar jendela peristiwa lonjakan sentimen ekstrem ($[\tau_1, \tau_2]$).
-6. **Koreksi Multi-Testing Benjamini-Hochberg (BH-FDR):** Menyesuaikan seluruh nilai $p$-value lintas 11 target dan 5 lag guna menekan laju penemuan palsu (*false discovery rate*):
+6. **Koreksi Multi-Testing Benjamini-Hochberg (BH-FDR):** Menyesuaikan seluruh nilai $p$-value lintas 3 target dan 5 lag guna menekan laju penemuan palsu (*false discovery rate*):
    $$p_{(k)} \le \frac{k}{m} \cdot Q$$
 
 ### 4.6 Simulasi Portofolio Hilir
 
 #### A. Allocation Tilt Engine
-Menyesuaikan proporsi 6 kelas aset (Obligasi, Reksadana, Saham, ETF, Kripto, Emas) dari profil risiko baseline (Konservatif, Moderat, Agresif) berdasarkan sinyal sentimen makro.
+Menyesuaikan proporsi 5 kelas aset (Obligasi, Reksadana, Saham, ETF, Emas; BTC dicoret 2026-10-11) dari profil risiko baseline (Konservatif, Moderat, Agresif) berdasarkan sinyal sentimen makro.
 - Menggunakan fungsi eksponensial deterministik terkendali (*bounded shift*).
 - **Konstrain Absolut:** Total alokasi akhir terkonfirmasi wajib **tepat 100.0%**, dengan mematuhi batas alokasi minimum dan maksimum tiap kelas aset.
 
@@ -272,7 +262,7 @@ Evaluasi proyek diukur secara multidimensi:
 ```
 Minggu 1: Fondasi Skema, Ingestion & Data Registry
   ├── Finalisasi kontrak data Pydantic v2 (SCHEMA v0.5.0)
-  ├── Konfigurasi asset_master.csv & aliases.csv 11 aset
+  ├── Konfigurasi asset_master.csv & aliases.csv 3 target
   └── Implementasi collector harga yfinance & feeder berita
 
 Minggu 2: Preprocessing Teks, Normalisasi & Baseline Model
@@ -281,9 +271,7 @@ Minggu 2: Preprocessing Teks, Normalisasi & Baseline Model
   └── Pembangunan baseline model TF-IDF + Logistic Regression
 
 Minggu 3: Deep NLP Modeling & Kalibrasi Probabilitas
-  ├── Fine-tuning IndoBERT Track A dengan weighted cross-entropy
-  ├── Konfigurasi inferensi FinBERT Track B
-  ├── Pengujian Late Fusion meta-classifier
+  ├── Fine-tuning FinBERT gold + FOMC-RoBERTa EN-only
   └── Kalibrasi suhu model & evaluasi ECE
 
 Minggu 4: Engine Routing Makro & Ekonometrika Deterministik
