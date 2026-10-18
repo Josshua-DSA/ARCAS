@@ -48,6 +48,37 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     def health_check() -> dict:
         return {"status": "ok", "version": "0.5.0", "universe_count": 3}
 
+    @app.get("/api/meta")
+    def get_meta() -> dict:
+        """Returns provenance metadata: mode, versions, freshness, coverage.
+
+        Feeds the GUI Data Provenance Bar and the splash boot screen, so
+        ilustrasi is never mistaken for real data (Upgrade.md UI-01).
+        """
+        facts = db.get_meta_summary()
+        has_data = bool(facts["targets"]) and (facts["last_price_date"] or facts["last_news_date"])
+        return {
+            "status": "ok",
+            "mode": "live" if has_data else "empty",
+            "api_version": "0.5.0",
+            "schema_version": facts["schema_version"],
+            "universe_version": facts["universe_version"],
+            "model_version": facts["model_version"],
+            "params_version": facts["params_version"],
+            "calibrated": False,
+            "universe_count": facts["universe_count"],
+            "targets": facts["targets"],
+            "coverage": {
+                "articles": facts["articles"],
+                "sources": facts["sources"],
+                "days_with_news": facts["days_with_news"],
+                "last_price_date": facts["last_price_date"],
+                "last_news_date": facts["last_news_date"],
+                "last_impact_at": facts["last_impact_at"],
+            },
+            "updated_at": facts["updated_at"],
+        }
+
     @app.get("/api/universe")
     def get_universe() -> list[dict]:
         """Returns the 3 core locked macro targets metadata."""

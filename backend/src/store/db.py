@@ -384,6 +384,43 @@ class Database:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def get_meta_summary(self) -> dict:
+        """Returns real provenance facts for GET /api/meta.
+
+        Everything comes from a table count or version column, so the GUI
+        provenance bar can show fresh vs stale data without guessing.
+        """
+        with self.get_connection() as conn:
+            universe = conn.execute(
+                "SELECT asset_id, valid_from FROM asset_master WHERE active = 1 ORDER BY asset_id ASC;"
+            ).fetchall()
+            universe_versions = sorted({r["valid_from"] for r in universe if r["valid_from"]})
+
+            def scalar(sql: str) -> object:
+                return conn.execute(sql).fetchone()[0]
+
+            last_price = scalar("SELECT MAX(date) FROM prices;")
+            last_sentiment = scalar("SELECT MAX(date) FROM daily_sentiment;")
+            last_impact = scalar("SELECT MAX(created_at) FROM impacts;")
+            stamp = max(
+                [str(last_price or ""), str(last_sentiment or ""), str(last_impact or "")] or [""]
+            )
+            return {
+                "universe_count": len(universe),
+                "targets": [r["asset_id"] for r in universe],
+                "universe_version": universe_versions[0] if len(universe_versions) == 1 else (universe_versions[0] if universe_versions else None),
+                "articles": scalar("SELECT COUNT(*) FROM articles;"),
+                "sources": scalar("SELECT COUNT(DISTINCT source) FROM articles;"),
+                "days_with_news": scalar("SELECT COUNT(DISTINCT date) FROM daily_sentiment WHERE has_news = 1;"),
+                "last_price_date": str(last_price) if last_price else None,
+                "last_news_date": str(last_sentiment) if last_sentiment else None,
+                "last_impact_at": str(last_impact) if last_impact else None,
+                "updated_at": stamp or None,
+                "params_version": scalar("SELECT MAX(params_version) FROM persona_views;"),
+                "model_version": scalar("SELECT MAX(model_version) FROM impacts;"),
+                "schema_version": scalar("SELECT MAX(schema_version) FROM impacts;"),
+            }
+
     def is_valid_target(self, target: str) -> bool:
         """Checks if a target belongs to the 3 core locked universe."""
         with self.get_connection() as conn:
