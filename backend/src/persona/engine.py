@@ -1,6 +1,7 @@
 """Deterministic Persona POV engine computing BUY/HOLD/SELL stances."""
 
 from pathlib import Path
+
 import yaml
 
 from backend.src.schema import NewsHorizon, PersonaView, Stance

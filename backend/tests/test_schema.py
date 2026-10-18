@@ -1,6 +1,7 @@
 """Unit tests for SCHEMA v0.5.0 data contracts and invariants."""
 
 from datetime import date, datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -8,14 +9,12 @@ from backend.src.schema import (
     AllocationLine,
     AllocationSuggestion,
     AllocClass,
-    ArticleSentiment,
     Basis,
     DailySentiment,
     Direction,
     EvidenceSpan,
     ModelProbs,
     TargetImpact,
-    Tone,
 )
 
 

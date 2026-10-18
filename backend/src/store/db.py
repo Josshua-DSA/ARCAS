@@ -9,7 +9,6 @@ from typing import Generator, Optional
 
 from backend.src.schema import DailySentiment, PriceRecord, StatResult, TargetImpact
 
-
 DEFAULT_DB_PATH = Path("data/finews.db")
 
 

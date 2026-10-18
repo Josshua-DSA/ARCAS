@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+.env
+.env.*
+.venv/
+env/
+venv/
+ENV/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS / Temporary files
+.DS_Store
+Thumbs.db
+*.log
+
+# Outputs & Reports
+outputs/*.html
+outputs/*.json
+!outputs/.gitkeep
