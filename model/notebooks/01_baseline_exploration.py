@@ -6,6 +6,7 @@ Jalankan dengan: /home/josjiez/my_env/ai_env/bin/python model/notebooks/01_basel
 """
 
 from typing import List, Optional, Tuple
+
 from model.evaluation.metrics import evaluate_predictions
 from model.src.baseline import BaselineTfidfSentiment
 

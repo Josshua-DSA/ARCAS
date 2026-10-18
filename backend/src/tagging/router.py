@@ -2,11 +2,10 @@
 
 import csv
 from pathlib import Path
-from typing import Optional
+
 import yaml
 
 from backend.src.schema import Article, Basis, Direction, EvidenceSpan, TargetImpact
-
 
 LOCKED_UNIVERSE = {
     "XAU", "RATE_UST", "SPX"
