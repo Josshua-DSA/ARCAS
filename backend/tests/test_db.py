@@ -1,11 +1,12 @@
 """Tests for SQLite database initialization, seeding, and operations."""
 
-from datetime import date, datetime
-from pathlib import Path
 import tempfile
+from datetime import date
+from pathlib import Path
+
 import pytest
 
-from backend.src.schema import DailySentiment, PriceRecord, StatResult
+from backend.src.schema import DailySentiment, PriceRecord
 from backend.src.store.db import Database
 
 

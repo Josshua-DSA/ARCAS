@@ -1,7 +1,6 @@
 """M1 Baseline Model: TF-IDF + Logistic Regression."""
 
 from typing import Optional, Sequence
-import numpy as np
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore

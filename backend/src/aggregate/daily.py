@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from datetime import date
-from typing import Optional
 
 from backend.src.schema import DailySentiment, TargetImpact
 
