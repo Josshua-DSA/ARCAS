@@ -12,6 +12,7 @@ from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
     NewsHorizon,
 )
+from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
 
 
@@ -129,12 +130,29 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         return out
 
     @app.get("/api/stats/{target}")
-    def get_stats(target: str) -> list[dict]:
-        """Returns statistical econometric results for target."""
+    def get_stats(
+        target: str,
+        max_lag: Optional[int] = Query(default=None, ge=0, le=10),
+    ) -> list[dict]:
+        """Returns statistical econometric results for target.
+
+        Default returns the stored run results. With max_lag set, Spearman is
+        recomputed live across lags 0..max_lag on the daily close and
+        sentiment series (association workbench, Upgrade.md UI-05). Response
+        shape stays StatResult; direction and size of the association can
+        change per lag, which the stored rows alone cannot show.
+        """
         if not db.is_valid_target(target):
             raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
-        stats = db.query_stats(target)
-        return [st.model_dump() for st in stats]
+        if max_lag is None:
+            return [st.model_dump() for st in db.query_stats(target)]
+        # Table dates are ISO strings; a wide sentinel range reads the full history.
+        broad_start, broad_end = date(2000, 1, 1), date(2100, 1, 1)
+        daily = db.query_daily_sentiment(target, broad_start, broad_end)
+        prices = db.query_prices(target, broad_start, broad_end)
+        frame = StatEngine.frame_from_daily_prices(daily, prices)
+        results = StatEngine.compute_spearman_lags(frame, target, max_lag=max_lag)
+        return [r.model_dump() for r in results]
 
     @app.get("/api/allocation")
     def get_allocation_tilt(
