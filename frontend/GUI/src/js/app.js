@@ -22,7 +22,7 @@
   var CLASS_LABEL = { bond: "Obligasi", mutual_fund: "Reksadana", stock: "Saham", etf: "ETF", btc: "BTC", gold: "Emas", cash: "Kas" };
   var PERSONA_LABEL = { retail: "Retail Investor", day_trader: "Day Trader", fund_manager: "Fund Manager", pension: "Long-term / Pension", risk_manager: "Risk Manager" };
 
-  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "", meta: null };
+  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "", meta: null, lastStats: [] };
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -240,8 +240,93 @@
         ". Asosiasi historis, bukan sebab.</p>";
     }
     box.innerHTML = html;
+    state.lastStats = rows.slice();
+    updateWorkbenchControls(rows);
   }
 
+  /* Meja kerja asosiasi (Upgrade.md UI-05): kontrol minimum metrik + lag.
+     Tujuan yang diuji spec: pembaca melihat arah/ukuran hubungan berubah menurut
+     lag tanpa membuka database. Rolling window tidak dipalsukan: engine belum
+     punya fitur itu, jadi kontrolnya tidak ada di UI. */
+  function metricLabel(m) {
+    return { "return": "perubahan harga (return)", abnormal_return: "abnormal return (CAR)", volatility: "volatilitas", volume_change: "perubahan volume" }[m] || m;
+  }
+  function renderWorkbench(rows, note) {
+    var box = $("wbTables");
+    if (!rows || !rows.length) {
+      box.innerHTML = "";
+      showState("wbState", note || "Belum ada hasil untuk metrik ini. Engine saat ini menghitung return dan abnormal return.");
+      return;
+    }
+    showState("wbState", note || "");
+    var sorted = rows.slice().sort(function (a, b) {
+      return (a.lag == null ? -1 : a.lag) - (b.lag == null ? -1 : b.lag);
+    });
+    var maxAbs = 0.001;
+    rows.forEach(function (r) { maxAbs = Math.max(maxAbs, Math.abs(Number(r.estimate)) || 0); });
+    var html = "<table class='data'><thead><tr><th>Uji</th><th>Lag</th><th>Est</th><th>95% CI</th><th>p_adj</th><th>n</th></tr></thead><tbody>";
+    sorted.forEach(function (r) {
+      var est = Number(r.estimate);
+      var cls = est > 0 ? "pos" : est < 0 ? "neg" : "flat";
+      var w = Math.round(Math.abs(est) / maxAbs * 80);
+      var ci = (r.ci_low != null && r.ci_high != null) ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]" : "-";
+      var sig = r.p_adjusted != null && Number(r.p_adjusted) < 0.05;
+      var win = "";
+      try {
+        var p = JSON.parse(r.params_json || "{}");
+        if (p.window_pre != null && p.window_post != null) win = "jendela " + p.window_pre + " sebelum .. " + p.window_post + " sesudah";
+      } catch (e) { /* params_json bukan JSON: biarkan kosong, jangan mengarang. */ }
+      html += "<tr><td>" + esc(testLabel(r.test) + (win ? " : " + win : "")) + "</td>" +
+        "<td>" + (r.lag == null ? "-" : "L" + esc(r.lag)) + "</td>" +
+        "<td class='" + cls + "'><span class='wb-bar " + cls + "' style='width:" + w + "px'></span>" + fmt(est, 3) + (sig ? "<span class='sig'>sig</span>" : "") + "</td>" +
+        "<td>" + ci + "</td>" +
+        "<td>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "-") + "</td>" +
+        "<td>" + esc(r.n_obs) + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    var starts = [], ends = [];
+    sorted.forEach(function (r) {
+      if (r.period_start) starts.push(String(r.period_start));
+      if (r.period_end) ends.push(String(r.period_end));
+    });
+    if (starts.length && ends.length) {
+      starts.sort(); ends.sort();
+      html += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Periode: " +
+        esc(starts[0]) + " .. " + esc(ends[ends.length - 1]) +
+        (state.meta && state.meta.coverage ? " : hari berita (universe) " + esc(state.meta.coverage.days_with_news) : "") +
+        ". Lag lebih panjang makan observasi lebih sedikit; bandingkan est per lag, bukan pilih yang paling menarik.</p>";
+    }
+    box.innerHTML = html;
+  }
+  function updateWorkbenchControls(rows) {
+    var sel = $("wbMetric");
+    var metrics = [];
+    rows.forEach(function (r) {
+      if (r.market_metric != null && metrics.indexOf(r.market_metric) === -1) metrics.push(r.market_metric);
+    });
+    metrics.sort();
+    var current = sel.value;
+    var previous = (metrics.indexOf(current) !== -1) ? current : "return";
+    sel.innerHTML = "";
+    metrics.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m;
+      o.textContent = metricLabel(m);
+      sel.appendChild(o);
+    });
+    sel.value = (metrics.indexOf(previous) !== -1) ? previous : (metrics[0] || "");
+    renderWorkbench(rows.filter(function (r) { return r.market_metric === sel.value; }), "");
+  }
+  function runWorkbench() {
+    var t = state.target;
+    showState("wbState", "Menghitung ulang Spearman L0..L5 dari data harian : " + t + " ...");
+    api("/api/stats/" + t + "?max_lag=5").then(function (rows) {
+      renderWorkbench(rows, "");
+    }).catch(function () {
+      var byMetric = (state.lastStats || []).filter(function (r) { return r.market_metric === $("wbMetric").value; });
+      renderWorkbench(byMetric, "Perhitungan ulang tidak terjangkau : tabel berisi data tersimpan/ilustrasi berlabel, bukan hasil hitung baru.");
+    });
+  }
   /* Alokasi: bar baseline vs baru + validasi total persis 100. Alasan: konstrain domain paling mudah dilanggar diam-diam. */
   function renderAllocation(data) {
     var bars = $("allocBars");
@@ -441,7 +526,7 @@
 
     api("/api/stats/" + t).then(function (rows) { renderStats(rows); })
       .catch(function () {
-        renderStats([{ test: "spearman", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }]);
+        renderStats([{ test: "spearman", market_metric: "return", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", market_metric: "return", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", market_metric: "return", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", market_metric: "abnormal_return", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }]);
         /* Setelah renderStats, bukan sebelum: renderStats mengosongkan state di awal. */
         showState("statState", "API statistik tidak terjangkau : tabel ini ilustrasi berlabel, bukan hasil uji nyata.");
       });
@@ -536,6 +621,10 @@
     });
     $("newsFilter").addEventListener("input", applyNewsFilter);
     $("dirFilter").addEventListener("change", applyNewsFilter);
+    $("wbMetric").addEventListener("change", function () {
+      updateWorkbenchControls(state.lastStats);
+    });
+    $("wbRun").addEventListener("click", runWorkbench);
     $("personaClose").addEventListener("click", function () { $("personaModal").close(); });
     $("personaModal").addEventListener("click", function (e) {
       var r = $("personaModal").getBoundingClientRect();

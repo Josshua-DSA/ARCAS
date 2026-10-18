@@ -146,6 +146,16 @@
   .quote{font-family:var(--font-serif);font-size:16px;line-height:1.55;border-left:3px solid var(--accent);
     background:var(--accent-subtle);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0;color:var(--text-primary)}
   .audit-line{border-top:1px dashed var(--border-subtle);padding-top:8px;margin-top:10px;color:var(--text-muted)}
+  /* Meja kerja asosiasi (UI-05): kontrol lag+metrik. Tujuan: ukuran/arah hubungan
+     terlihat berubah menurut lag, bukan satu angka tunggal yang mengesankan pasti. */
+  .wb-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+  .wb-controls select{background:var(--surface-dark);color:var(--on-dark-primary);
+    border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:12px;
+    padding:6px 8px;min-height:44px}
+  .wb-controls select:focus{outline:2px solid var(--accent-text);outline-offset:1px}
+  .wb-bar{display:inline-block;height:7px;border-radius:3px;vertical-align:middle;margin-right:6px}
+  .wb-bar.pos{background:#56D364}.wb-bar.neg{background:#FF7B72}.wb-bar.flat{background:#5A5454}
+  #wbTables{margin-top:10px}
   /* Evidence drawer: summary native keyboard-accessible, marca +/- sebagai tanda open/closed */
   .evidence-drawer{margin-top:10px}
   .evidence-drawer summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
@@ -326,8 +336,16 @@
       <div class="panel-body">
         <div class="state" id="statState" hidden></div>
         <div id="statTables"></div>
+        <div class="wb-controls" id="wbControls">
+          <label style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">Metrik pasar
+            <select id="wbMetric" aria-label="Filter metrik pasar"></select>
+          </label>
+          <button class="btn small" id="wbRun" type="button" title="Hitung ulang Spearman untuk lag 0 sampai 5 dari data harian lewat API">Hitung Spearman L0..L5</button>
+          <div class="state" id="wbState" hidden></div>
+        </div>
+        <div id="wbTables"></div>
         <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n_obs = jumlah observasi. Bukan nasihat investasi.
+          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n_obs = jumlah observasi. Hari tanpa berita dibiarkan kosong (NaN), bukan nol. Bukan nasihat investasi.
         </p>
       </div>
     </section>
