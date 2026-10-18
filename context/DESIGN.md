@@ -1,6 +1,6 @@
 # DESIGN — Model, Scoring, Statistik & Antarmuka
 
-> Status: Draft v0.8-p3 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md` (struktur) dan `SCHEMA.md` (kontrak data).
+> Status: Draft v0.9-p3 · diperbarui 2026-10-18 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Melengkapi `ARCHITECTURE.md`, `SCHEMA.md`, dan roadmap `Upgrade.md`.
 
 ## 1. Prinsip
 
@@ -179,24 +179,27 @@ Bukan nasihat investasi.
 ```
 
 ### 8.3 GUI Web Dashboard (FR-15)
-Arsitektur terpisah: Backend FastAPI (REST JSON) + Frontend Vanilla HTML5/CSS/JS + Apache ECharts offline (zero-CDN, zero-Node). RAM server <50 MB.
 
-- **Endpoints REST FastAPI (`backend/src/serve/app.py`)**:
-  - `GET /api/universe`: Daftar 3 target (`XAU/RATE_UST/SPX`), status metadata, tanggal update terakhir.
-  - `GET /api/series/{target}`: Data deret waktu gabungan `DailySentiment` vs `PriceRecord` (return, volume, close).
-  - `GET /api/impacts/{target}`: Daftar bukti berita (`evidence.quote`, sumber, URL, tone, direction, confidence, tema makro).
-  - `GET /api/stats/{target}`: Koefisien korelasi Spearman, regresi OLS HAC, p-value terkoreksi BH-FDR, Granger causality, CAR event study.
-  - `GET /api/allocation`: Alokasi baseline profil dan simulasi pergeseran Tilt (total konstrain 100%).
-  - `GET /api/persona/{article_id}`: Stance 5 persona (BUY/HOLD/SELL), kekuatan sinyal, dan narasi penjelasan template.
-- **Frontend SPA Ringan (`frontend/GUI/`)**:
-  - `templates/index.html`: Shell dokumen tanpa framework, dilayani static mount FastAPI di `/`.
-  - `src/css/theme.css`: Token GUI ikut `frontend/GUI/THEME.md` v0.1 (adaptasi offline, zero-CDN): font Newsreader/Inter/JetBrains Mono via `@font-face` lokal `src/fonts/` (7 woff2 OFL), base `#F6F4F4`, text `#2C2727`, accent `#FF7517`, surface `#3E3939`, semantik up/down/hold + palet grafik §8.
-  - `src/js/app.js`: Native `fetch()` ke endpoint `/api/...`, update grafik ECharts reaktif tanpa refresh halaman.
-  - `src/js/echarts.min.js`: Berkas pustaka offline tersimpan lokal (zero internet dependency).
-- **Fallback Snapshot**: CLI `report` tetap menyediakan opsi generator satu berkas HTML beku `outputs/report.html` untuk demonstrasi offline darurat tanpa server.
+Arsitektur aktif: FastAPI menyajikan REST JSON; `frontend/GUI/index.html` adalah dashboard statis Vanilla HTML/CSS/JS + Apache ECharts lokal. GUI dilayani terpisah saat ini, mencoba API relatif lalu `localhost:8000`, dan memakai fallback demo yang wajib berlabel. Tidak ada Node.js, CDN, atau framework frontend.
 
-### 8.4 TUI Terminal (Bloomberg Style)
-Antarmuka terminal interaktif (`frontend/TUI/`) berbasis Python Rich / Textual dengan tema visual konsisten (Technical Surface `#3E3939`, Accent `#FF7517`, Typography `#F6F4F4`). Navigasi keyboard-driven: tab hotkeys `1-5`, filter `/`, inspeksi sparkline deret waktu, tabel sentimen real-time, dan kartu Persona POV untuk workflow riset quant cepat tanpa membuka browser.
+- **Endpoint aktif (`backend/src/serve/app.py`)**:
+  - `GET /health`: status API, versi, jumlah universe.
+  - `GET /api/universe`: tiga target aktif.
+  - `GET /api/series/{target}`: `DailySentiment` dan `PriceRecord` untuk rentang tanggal.
+  - `GET /api/impacts/{target}`: dampak berita terbaru.
+  - `GET /api/stats/{target}`: hasil ekonometrika tersimpan.
+  - `GET /api/allocation`: simulasi Allocation Tilt.
+  - `GET /api/persona/{article_id}`: stance lima persona.
+- **GUI aktif (`frontend/GUI/`)**:
+  - tab target dinamis dari `/api/universe`;
+  - grafik harga–sentimen 30/90/180 hari;
+  - tabel statistik, alokasi, berita, filter, dan dialog Persona POV;
+  - ECharts, font, CSS, dan JS tersedia lokal/offline.
+- **Snapshot**: `ReportExporter` menulis `outputs/report.html` dan JSON sebagai jalur terpisah; belum memakai template/payload yang sama dengan dashboard aktif.
+- **Roadmap**: provenance, audit waktu/lag, evaluasi kalibrasi, association workbench, dan data quality mengikuti `Upgrade.md`.
+
+### 8.4 TUI Terminal (Roadmap)
+`frontend/TUI/` saat ini baru memiliki token tema Rich dan README; layar interaktif belum diimplementasikan. Targetnya tetap keyboard-driven: hotkey tab, filter `/`, sparkline, tabel evidence/statistik, Allocation Tilt, dan Persona POV. Jangan menyebut TUI selesai sebelum entry point dan smoke test keymap tersedia.
 
 ### 8.5 Sistem Desain & Visual Tokens (Proporsi 65/20/10/5)
 
@@ -253,6 +256,25 @@ Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan w
 1. **Anti-Orange Overuse**: Dilarang membuat semua card orange. Orange adalah aksen penarik perhatian (5%), bukan warna latar massal.
 2. **Pembeda Konten Teknis**: Gunakan dark warm gray (`#3E3939`) khusus membedakan blok teknis (code, schema preview, CLI snippet, footer) dari area narasi data.
 
+### 8.6 Hirarki Audit Data
+
+Urutan informasi pada layar riset:
+
+1. **Status & provenance** — live/snapshot/demo, freshness, rentang, versi model/universe/skema.
+2. **Hasil utama** — skor, return/perubahan yield, estimate, CI, `p_adjusted`, `n_obs`.
+3. **Konteks waktu** — waktu publikasi, sesi efektif, lag, rolling window/event window.
+4. **Bukti** — sumber, URL, bahasa, kutipan persis, basis, tema, flags, model.
+5. **Kualitas** — denominator, kelas, gaps, kalibrasi, cakupan dan keterbatasan.
+
+Aturan visual:
+
+- confidence model bukan probabilitas harga; label `calibrated/uncalibrated` wajib;
+- demo/snapshot/live harus berbeda lewat teks, bukan warna saja;
+- hari tanpa berita berupa gap;
+- gunakan “berasosiasi dengan”, “diikuti oleh”, atau “lag N”, bukan bahasa kausal;
+- level harga hanya konteks; workbench asosiasi default ke return/perubahan yield;
+- rincian fitur dan acceptance mengikuti `Upgrade.md`.
+
 ## 9. Evaluasi Sistem
 
 | Aspek | Ukuran |
@@ -265,11 +287,12 @@ Wajib ikon + tanda + teks (`▲ +0.42`, `▼ −0.31`, `BUY/SELL/HOLD`), bukan w
 
 ## 10. Keterbatasan
 
-- Korelasi sentimen–harga umumnya lemah; bukan kausalitas.
-- Bias sumber dan gaya bahasa antarportal.
-- Terjemahan dapat mengubah nuansa istilah keuangan.
-- Impact graph adalah hipotesis kasar; tidak memodelkan ekspektasi pasar (berita yang sudah *priced-in*).
-- Riwayat berita API gratis pendek.
+- Korelasi/Granger adalah asosiasi atau precedence, bukan kausalitas struktural.
+- Bias sumber, periode, instrumen, dan gaya bahasa membatasi generalisasi.
+- Headline-only kehilangan konteks body; status cakupan teks harus terlihat.
+- Confidence mentah dapat overconfident; hasil perlu kalibrasi dan ECE.
+- Impact graph adalah hipotesis kasar dan tidak memodelkan berita yang sudah *priced-in*.
+- Riwayat berita API gratis pendek dan perubahan komposisi sumber dapat mengubah agregat.
 - Sistem ini alat analisis, **bukan rekomendasi investasi**.
 
 ## 11. Allocation Tilt

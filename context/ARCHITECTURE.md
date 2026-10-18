@@ -1,6 +1,6 @@
 # ARCHITECTURE — Financial News Sentiment & Market Association System
 
-> Status: Draft v0.8-p3 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`
+> Status: Draft v0.9-p3 · diperbarui 2026-10-18 · GUI FastAPI+Vanilla+ECharts · murni 3 (XAU/RATE_UST/SPX) · tanpa LLM/RAG/agent · Terkait: `PRD.md`, `DESIGN.md`, `SCHEMA.md`, `RULES.md`, `Upgrade.md`
 > Prinsip utama: **statistik dihitung oleh kode; model hanya membaca teks.**
 
 ## 1. Gambaran Umum
@@ -8,8 +8,8 @@
 ```
  ┌───────────────┐   ┌────────────────┐
  │ Berita        │   │ Data harga     │
- │ (ID scraper,  │   │ yfinance       │
- │ EN API/RSS)   │   │ (=F, ^, -USD, X) │
+ │ dataset lokal │   │ yfinance       │
+ │ + RSS EN      │   │ 3 ticker inti  │
  └──────┬────────┘   └───────┬────────┘
         ▼                    │
  ┌───────────────┐           │
@@ -52,7 +52,7 @@
 | Penentuan target | `TargetImpact` writer + validator (B5), kalibrasi terapan (M6-M7) | Rule + impact graph, bobot di config | Backend hitung, ML tuning |
 | Penyimpanan | 8 tabel SCHEMA (B9), idempotent hash URL+judul | PostgreSQL/SQLite, Parquet | Backend |
 | Analisis | Spearman lag, OLS+HAC, Granger, CAR, BH-FDR (B7) | pandas, statsmodels, scipy | Backend |
-| Penyajian | GUI Web (FastAPI REST JSON + Vanilla JS + ECharts offline), TUI Rich Bloomberg-style, dan CLI report snapshot HTML beku (B9) | FastAPI, Uvicorn, Vanilla HTML/CSS/JS, ECharts offline, Rich, Typer | Backend |
+| Penyajian | FastAPI REST JSON; GUI Vanilla+ECharts offline; TUI keyboard-driven; snapshot HTML terpisah | FastAPI, Uvicorn, Vanilla HTML/CSS/JS, ECharts lokal, Rich | Backend + Frontend |
 | Orkestrasi | cron → Prefect/Airflow, log source_health | cron | Backend |
 
 ## 3. Tahap Pipeline
@@ -70,7 +70,7 @@
 8. **Confidence** — dihitung kode deterministik, dikalibrasi.
 9. **Aggregate** — skor harian per target (hari tanpa berita = `NaN`).
 10. **Analyze** — statistik (lihat `DESIGN.md` §6) → `stat_results`.
-11. **Serve** — CLI `report` tulis JSON beku → embed ke satu `report.html` (nol server, nol build, buka offline).
+11. **Serve** — FastAPI menyajikan REST JSON; `frontend/GUI/index.html` mengambil API relatif lalu fallback ke localhost. `ReportExporter` menulis snapshot HTML/JSON terpisah ke `outputs/`.
 
 ## 4. Sumber Data & Source Registry
 
@@ -90,21 +90,17 @@ targets:
 # DICORET MVP: XAG (duplikat XAU), NDX/DJI (duplikat SPX), EUR/USD, emiten individual, uranium/lithium/nikel, SUN/SBSN/ORI/SBR + corporate/EM bonds.
 ```
 
-### Sumber berita (catatan penting)
+### Sumber berita aktif
 
-| Sumber | Dipakai untuk | Catatan |
+| Sumber | Dipakai untuk | Status |
 |---|---|---|
-| `news-watch` (PyPI) | Berita ID berbasis kata kunci & tanggal | Mendukung Bisnis Indonesia, CNBC Indonesia, Kontan (cek daftar terbaru) |
-| Scraper sendiri | Portal ID lain | Patuhi robots.txt/ToS |
-| Finnhub | Berita EN per perusahaan/pasar | Free tier terbatas; sebagian sentimen berbayar — cek batas terbaru |
-| Marketaux | Berita EN multi-bahasa + tag ticker | Kuota harian kecil — cek |
-| Alpha Vantage News | Berita + sentimen vendor | Kuota sangat kecil — cek |
-| RSS lembaga (Fed, BLS, EIA, Kitco, CoinDesk, dll.) | Makro & komoditas | URL feed bisa berubah — verifikasi |
-| GDELT | Makro/geopolitik, cakupan luas | Kualitas teks bervariasi |
-| `yfinance` `Ticker.news` | Tambahan saja | Hanya berita terbaru, tanpa riwayat → simpan harian sendiri |
-| `id_newspapers_2018` | Pretraining/eksperimen | Domain umum, 2018 saja |
+| `dataset/gold_sinha/` | Label human dan evaluasi `XAU` | Aktif, lokal |
+| `dataset/fomc/` | Label human dan evaluasi `RATE_UST`/`SPX` | Aktif, lokal |
+| RSS Fed/EIA/Kitco | Koleksi berita EN harian | Aktif setelah URL/ToS diverifikasi |
+| yfinance | Harga `GC=F`, `^TNX`, `^GSPC` | Aktif setelah ticker diuji |
+| Finnhub/Marketaux/Alpha Vantage | Tambahan berita | Opsional; kuota dan hak pakai wajib diverifikasi |
 
-**Karena riwayat API gratis pendek, kolektor harian wajib berjalan sedini mungkin.**
+Track ID, `news-watch`, dan scraper portal Indonesia tidak aktif. Karena riwayat API gratis pendek, kolektor harian tetap perlu berjalan sedini mungkin.
 
 ## 5. Orkestrasi
 
@@ -116,7 +112,7 @@ targets:
 .
 ├── context/                  # spesifikasi inti (PRD, ARCHITECTURE, DESIGN, RULES, SCHEMA)
 ├── dataset/                  # gold_sinha/ (10.570 human) + fomc/ (48 xlsx human); detail `dataset/README.md`
-├── research/                 # katalog riset & PDF 11 paper primer/pendukung
+├── research/                 # katalog riset & 15 PDF primer/pendukung
 ├── data/
 │   ├── source_registry.yaml
 │   ├── impact_graph.yaml
@@ -141,15 +137,14 @@ targets:
 │   │   ├── stats/            # Spearman, OLS HAC, Granger, CAR event study
 │   │   ├── store/            # SQLite + Parquet repository
 │   │   ├── report/           # JSON payload exporter & HTML report builder
-│   │   └── serve/            # FastAPI REST endpoints (/api/...) & static file mount
+│   │   └── serve/            # FastAPI REST endpoints (/api/...); GUI dilayani terpisah saat ini
 │   └── tests/                # unit tests pipeline deterministik
 ├── frontend/                 # Lapisan antarmuka pengguna
-│   ├── GUI/                  # Visualisasi FR-15 web statis (zero-server, offline ECharts)
-│   │   ├── src/css/          # styling tema Dark (#FF7517, #3E3939, #2C2727, #F6F4F4)
-│   │   ├── src/js/           # logika render ECharts offline
-│   │   └── templates/        # template HTML statis single-file
-│   └── TUI/                  # Terminal UI interaktif (Bloomberg-style, Rich/Textual)
-│       └── src/              # layout, keymaps, theme tokens (#FF7517, #3E3939, #2C2727, #F6F4F4)
+│   ├── GUI/                  # dashboard dinamis Vanilla+ECharts; fetch REST, fallback demo berlabel
+│   │   ├── index.html        # shell dashboard statis
+│   │   ├── src/css/          # token tema + font lokal
+│   │   └── src/js/           # ECharts offline + renderer/fetch native
+│   └── TUI/                  # tema Rich tersedia; layar interaktif masih roadmap
 └── outputs/                  # artefak beku report.html, log, plot
 ```
 
@@ -179,7 +174,16 @@ targets:
 - Hormati ToS/robots.txt; jika lisensi melarang, simpan metadata + skor + ringkasan.
 - Semua output memuat: **bukan nasihat investasi**.
 
-## 10. Modul Tambahan v0.3
+## 10. Kontrak Penyajian
+
+- FastAPI saat ini hanya menyajikan REST JSON; file GUI dilayani terpisah dan mendeteksi API relatif lalu `localhost:8000`.
+- Fallback demo di GUI wajib tetap berlabel dan tidak boleh bercampur dengan data API.
+- `ReportExporter` adalah jalur snapshot terpisah; tampilannya belum identik dengan dashboard aktif.
+- Metadata provenance, audit waktu/lag, evaluasi kalibrasi, dan kualitas data mengikuti roadmap `Upgrade.md`.
+- Response baru diutamakan sebagai kontrak ringkas (`/api/meta`, `/api/evaluation/{model}`), bukan endpoint per-widget.
+- Perubahan response tersimpan/Pydantic mengikuti versioning `SCHEMA.md`.
+
+## 11. Modul Tambahan v0.3
 
 ```
  TargetImpact (+news_horizon)

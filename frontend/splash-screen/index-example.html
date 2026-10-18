@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Sentiment Desk</title>
+
+  <!-- 1) Cegah kedipan: lewati splash bila mode reload = 'none' dan sesi sudah pernah tampil -->
+  <script>
+    window.SPLASH_CONFIG = { reloadMode: 'quick' };   // 'quick' | 'full' | 'skeleton' | 'none'
+    try {
+      if (sessionStorage.getItem('sd_splash_seen') === '1' && window.SPLASH_CONFIG.reloadMode === 'none')
+        document.documentElement.classList.add('splash-skip');
+    } catch (e) {}
+  </script>
+
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="splash.css">
+</head>
+<body>
+
+  <!-- 2) Markup splash: taruh tepat setelah <body> -->
+  <div id="splash" class="splash" role="status" aria-live="polite">
+    <div class="splash__title">Sentiment Desk</div>
+    <div class="splash__log" id="splash-log"></div>
+    <div class="splash__bar"><i></i></div>
+    <div class="splash__pct">0%</div>
+  </div>
+
+  <!-- 3) Aplikasimu -->
+  <main>
+    <div class="tape"><span><b>XAU</b> <span class="up">▲ 0.42</span></span></div>
+    <section class="panel">
+      <div class="lab">Sentimen harian per target</div>
+      <table><tr><th>Target</th><th>Skor</th></tr><tr><td>XAU</td><td class="up">▲ +0.42</td></tr></table>
+    </section>
+  </main>
+
+  <!-- 4) Skrip di akhir body. Bila ingin menunggu data: set waitForApp:true lalu panggil Splash.done() -->
+  <script src="splash.js"></script>
+  <script>
+    // contoh menunggu data:
+    // window.SPLASH_CONFIG.waitForApp = true  (set sebelum splash.js dimuat)
+    // fetch('/api/daily').then(r => r.json()).then(render).finally(() => Splash.done());
+  </script>
+</body>
+</html>
