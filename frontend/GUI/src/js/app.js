@@ -140,9 +140,9 @@
      Demo-001 sengaja terbit setelah cut-off 17:00 agar aturan "masuk sesi berikutnya" teruji di tampilan. */
   function demoImpacts(target) {
     return [
-      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber", published_at: "2026-10-11T20:30:00", effective_trading_date: "2026-10-12", session_close: "17:00", timezone: "America/New_York", language: "id" },
-      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber", published_at: "2026-10-11T09:00:00", effective_trading_date: "2026-10-11", session_close: "17:00", timezone: "America/New_York", language: "id" },
-      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber", published_at: null, effective_trading_date: null, session_close: "17:00", timezone: "America/New_York", language: "id" }
+      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber", published_at: "2026-10-11T20:30:00", effective_trading_date: "2026-10-12", session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: true, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.62, p_neu: 0.28, p_neg: 0.10, translation_used: false }] },
+      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber", published_at: "2026-10-11T09:00:00", effective_trading_date: "2026-10-11", session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: false, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.12, p_neu: 0.30, p_neg: 0.58, translation_used: false }] },
+      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber", published_at: null, effective_trading_date: null, session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: true, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.38, p_neu: 0.44, p_neg: 0.18, translation_used: false }] }
     ];
   }
 
@@ -299,6 +299,32 @@
     }
     return parts.length ? "<div class='news-meta audit-line'>" + parts.join("") + "</div>" : "";
   }
+  /* Evidence drawer (Upgrade.md UI-03): <details> native, keyboard bisa buka-tutup.
+     Probabilitas per model + badge headline-only + URL asli. Bagian kosong jujur
+     menyebut belum terekam, tidak pernah dipalsukan. */
+  function evidenceDrawer(it) {
+    var inner = [];
+    if (it.probs && it.probs.length) {
+      inner.push("<table class='data'><thead><tr><th>Model</th><th>p_pos</th><th>p_neu</th><th>p_neg</th></tr></thead><tbody>" +
+        it.probs.map(function (p) {
+          return "<tr><td>" + esc(p.model) + (p.translation_used ? " : hasil terjemahan" : "") + "</td><td>" +
+            esc(Number(p.p_pos).toFixed(2)) + "</td><td>" + esc(Number(p.p_neu).toFixed(2)) + "</td><td>" +
+            esc(Number(p.p_neg).toFixed(2)) + "</td></tr>";
+        }).join("") + "</tbody></table>");
+    } else {
+      inner.push("<p class='drawer-note'>Probabilitas kelas per model belum terekam di basis data.</p>");
+    }
+    if (it.headline_only === 1 || it.headline_only === true) {
+      inner.push("<span class='chip hold'>Hanya judul yang dianalisis</span>");
+    }
+    if (it.url) {
+      inner.push("<a class='drawer-link' href='" + esc(it.url) + "' target='_blank' rel='noopener noreferrer'>Sumber asli</a>");
+    } else {
+      inner.push("<p class='drawer-note'>URL sumber belum terekam.</p>");
+    }
+    return "<details class='evidence-drawer'><summary>Bukti dan model</summary><div class='drawer-body'>" +
+      inner.join("") + "</div></details>";
+  }
   function impactCard(it) {
     var quote = (it.evidence && it.evidence[0] && it.evidence[0].quote) ? it.evidence[0].quote : "";
     var themes = (it.themes || []).map(esc).join(", ") || "tanpa tema";
@@ -310,7 +336,7 @@
       "<div class='news-meta'><span>" + esc(it.source || "sumber API") + "</span><span>tema: " + themes + "</span><span>horizon: " + esc(it.news_horizon || "short") + "</span></div>" +
       (it.rationale ? "<p style='font-size:14px;color:var(--text-secondary);margin:6px 0'>" + esc(it.rationale) + "</p>" : "") +
       (quote ? "<blockquote class='quote'>" + esc(quote) + "</blockquote>" : "") +
-      timeAuditLine(it) +
+      timeAuditLine(it) + evidenceDrawer(it) +
       "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'>" +
       "<button class='btn small primary' data-persona='" + esc(it.article_id) + "'>Lihat Persona POV</button></div></article>";
   }

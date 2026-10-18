@@ -7,6 +7,7 @@ Dashboard web statis offline (zero-build, zero-server) untuk artefak presentasi 
 - **Fitur**: Dual-axis sentimen vs harga, tab 3 target inti (`XAU`, `RATE_UST`, `SPX`, dirender dinamis dari `/api/universe`), evidence table, statistik, kartu Allocation Tilt & Persona POV.
 - **Splash + provenance (Upgrade.md UI-01)**: `src/js/splash.js` menunggu data nyata (`Splash.done()` setelah `/api/meta` + `/api/universe`), kunjungan pertama splash penuh, reload cukup skeleton. `src/css/splash.css` memakai token `theme.css`, bukan `tokens.css` komponen (yang masih CDN). Data Provenance Bar menampilkan mode `live`/`demo`, versi universe/skema/model, cakupan artikel & hari berita.
 - **Audit waktu (Upgrade.md UI-02)**: tiap kartu dampak memuat baris audit `terbit vs sesi efektif vs cut-off` (join `articles` + `article_targets` + `asset_master` di `/api/impacts`), berita setelah cut-off bertanda "masuk sesi berikutnya". Panel statistik menampilkan periode uji dan lag yang diuji.
+- **Evidence drawer (Upgrade.md UI-03)**: tiap kartu punya `<details>` "Bukti dan model" berisi probabilitas tiga kelas per model (`p_pos/p_neu/p_neg` dari tabel `sentiments`), badge "Hanya judul yang dianalisis", dan tautan sumber asli. Bagian yang belum terekam di DB selalu disebut jujur, tidak pernah dipalsukan.
 - **Output**: File beku `outputs/report.html` (dapat dibuka langsung di browser).
 
 ## Tampilan Dashboard (`docs/tampilan-dashboard/`)
