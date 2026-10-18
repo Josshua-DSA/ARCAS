@@ -11,6 +11,14 @@
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
+<link rel="stylesheet" href="src/css/splash.css">
+<script>
+  window.SPLASH_CONFIG = { reloadMode: "skeleton", waitForApp: true };
+  try {
+    if (sessionStorage.getItem("arcas_splash_seen") === "1" && window.SPLASH_CONFIG.reloadMode === "none")
+      document.documentElement.classList.add("splash-skip");
+  } catch (e) {}
+</script>
 <style>
   /* Layout khusus halaman. Token warna dan font ikut theme.css + THEME.md v0.1.
      Alasan satu baris per keputusan (R-31): tercatat di komentar tiap blok. */
@@ -43,6 +51,14 @@
     border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;background:var(--bg-card);min-height:44px}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--hold);flex:none}
   .dot.ok{background:var(--up)} .dot.err{background:var(--down)} .dot.warn{background:var(--warn)}
+
+  /* Provenance bar: mono kecil, satu garis, terbaca di mobile lewat wrap (UI-01) */
+  .provenance{background:var(--bg-sunken);border-bottom:1px solid var(--border-subtle)}
+  .prov-row{display:flex;gap:6px 18px;flex-wrap:wrap;padding:7px 20px;font-family:var(--font-mono);
+    font-size:11px;letter-spacing:.03em;color:var(--text-secondary)}
+  .prov-item strong{color:var(--text-primary);font-weight:500}
+  .prov-item span{color:var(--accent-text)}
+  .prov-item.warn strong{color:var(--warn)}
 
   /* Navigasi jangkar: hanya ke section yang benar ada (R-24) */
   nav.sections{border-top:1px solid var(--border-subtle);background:var(--base)}
@@ -190,6 +206,14 @@
 </head>
 <body>
 
+<div id="splash" class="splash" role="status" aria-live="polite" hidden>
+  <div class="splash__title">ARCAS <b>:</b> Sentiment Desk</div>
+  <div class="splash__log" id="splash-log"></div>
+  <div class="splash__bar"><i></i></div>
+  <div class="splash__pct">0%</div>
+  <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
+</div>
+
 <div class="disclaimer-strip" role="note" aria-label="Peringatan risiko">
   <div class="wrap">
     <span><strong>Simulasi analitis.</strong> Bukan nasihat investasi. Angka dan stance persona adalah hasil kode deterministik, bukan ajakan transaksi.</span>
@@ -206,6 +230,19 @@
     <div class="status-badge" role="status" aria-live="polite">
       <span class="dot" id="statusDot" aria-hidden="true"></span>
       <span id="statusText">menghubungi API...</span>
+    </div>
+  </div>
+  <!-- Data Provenance Bar (Upgrade.md UI-01): identitas sumber, versi, dan kesegaran.
+       Mode data live/empty selalu terbaca teksnya, bukan cuma warna titik. -->
+  <div class="provenance" id="provenance" aria-label="Provenance data">
+    <div class="wrap prov-row">
+      <span class="prov-item"><strong id="provMode">mode : menunggu</strong></span>
+      <span class="prov-item">versi universe <span id="provUniverse">n/a</span></span>
+      <span class="prov-item">skema <span id="provSchema">n/a</span></span>
+      <span class="prov-item">model <span id="provModel">n/a</span></span>
+      <span class="prov-item">artikel <span id="provArticles">n/a</span></span>
+      <span class="prov-item">hari berita <span id="provNews">n/a</span></span>
+      <span class="prov-item">segar <span id="provFresh">n/a</span></span>
     </div>
   </div>
   <nav class="sections" aria-label="Bagian dasbor">
@@ -350,6 +387,7 @@
 </footer>
 
 <script src="src/js/echarts.min.js"></script>
+<script src="src/js/splash.js"></script>
 <script src="src/js/app.js"></script>
 </body>
 </html>

@@ -22,7 +22,7 @@
   var CLASS_LABEL = { bond: "Obligasi", mutual_fund: "Reksadana", stock: "Saham", etf: "ETF", btc: "BTC", gold: "Emas", cash: "Kas" };
   var PERSONA_LABEL = { retail: "Retail Investor", day_trader: "Day Trader", fund_manager: "Fund Manager", pension: "Long-term / Pension", risk_manager: "Risk Manager" };
 
-  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "" };
+  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "", meta: null };
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -73,6 +73,48 @@
     $("statusText").textContent = text;
     $("dataBadge").textContent = text;
     $("srcMeta").textContent = "Sumber: " + (state.apiOk ? (state.apiBase === "" ? "API relatif" : state.apiBase) : "ilustrasi lokal (API tidak terjangkau)");
+  }
+
+  /* Splash status nyata: teks hanya muncul untuk tahap yang benar-benar sedang dilakukan. */
+  function splashStatus(text) {
+    if (window.Splash && typeof window.Splash.status === "function") window.Splash.status(text);
+  }
+  function splashDone() {
+    if (window.Splash && typeof window.Splash.done === "function") window.Splash.done();
+  }
+
+  /* Data Provenance Bar: satu sumber kebenaran mode data, ditegaskan berlabel teks.
+     live = DB punya harga/berita; empty = API hidup tapi kosong; demo = fallback ilustrasi. */
+  function renderProvenance(meta) {
+    var box = $("provenance");
+    if (!meta) {
+      $("provMode").textContent = "demo : ilustrasi lokal (API tidak terjangkau)";
+      box.querySelector(".prov-item").classList.add("warn");
+      ["provUniverse", "provSchema", "provModel", "provArticles", "provNews", "provFresh"]
+        .forEach(function (id) { $(id).textContent = "ilustrasi"; });
+      return;
+    }
+    box.querySelector(".prov-item").classList.remove("warn");
+    $("provMode").textContent = "mode : " + meta.mode;
+    $("provUniverse").textContent = meta.universe_version || "n/a";
+    $("provSchema").textContent = meta.schema_version || "n/a";
+    $("provModel").textContent = (meta.model_version || "n/a") + (meta.calibrated ? " (terkalibrasi)" : " (belum kalibrasi)");
+    $("provArticles").textContent = String(meta.coverage.articles);
+    $("provNews").textContent = String(meta.coverage.days_with_news);
+    var fresh = meta.coverage.last_price_date || meta.coverage.last_news_date;
+    $("provFresh").textContent = fresh ? "harga " + fresh : "belum ada deret";
+  }
+  function loadMeta() {
+    splashStatus("MEMUAT METADATA");
+    return api("/api/meta").then(function (meta) {
+      state.meta = meta;
+      renderProvenance(meta);
+      return meta;
+    }).catch(function () {
+      state.meta = null;
+      renderProvenance(null);
+      return null;
+    });
   }
 
   /* Data ilustrasi jujur: hanya dipakai saat API mati, selalu berlabel. Alasan: R-38 tanpa angka fabrikasi. */
@@ -393,6 +435,7 @@
     });
   }
   function loadUniverse() {
+    splashStatus("MEMUAT UNIVERSE");
     return api("/api/universe").then(function (rows) {
       var active = (rows || []).filter(function (r) { return r.active === 1 || r.active === true; });
       if (!active.length) throw new Error("universe kosong");
@@ -437,8 +480,15 @@
     });
   }
 
-  detectBase().then(function () { setStatus(state.apiBase ? "ok" : "warn", state.apiBase ? "terhubung ke API" : "API tidak terjangkau : ilustrasi"); });
+  /* Boot: base dulu, lalu meta + universe paralel. Splash selesai hanya setelah
+     keduanya beres ATAU fallback dipilih : tidak ada log palsu (Upgrade.md 3.1-5). */
+  detectBase().then(function () {
+    setStatus(state.apiBase ? "ok" : "warn", state.apiBase ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
+    Promise.allSettled([loadMeta(), loadUniverse()])
+      .then(function () { splashStatus(state.meta ? "MODE " + state.meta.mode.toUpperCase() : "MODE DEMO"); })
+      .then(reload)
+      .then(splashDone);
+  });
   bindTabs();
   bindControls();
-  loadUniverse().then(reload);
 })();
