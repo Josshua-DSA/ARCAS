@@ -136,11 +136,13 @@
     }
     return out;
   }
+  /* Data ilustrasi jujur: hanya dipakai saat API mati, selalu berlabel. Alasan: R-38 tanpa angka fabrikasi.
+     Demo-001 sengaja terbit setelah cut-off 17:00 agar aturan "masuk sesi berikutnya" teruji di tampilan. */
   function demoImpacts(target) {
     return [
-      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber" },
-      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber" },
-      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber" }
+      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber", published_at: "2026-10-11T20:30:00", effective_trading_date: "2026-10-12", session_close: "17:00", timezone: "America/New_York", language: "id" },
+      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber", published_at: "2026-10-11T09:00:00", effective_trading_date: "2026-10-11", session_close: "17:00", timezone: "America/New_York", language: "id" },
+      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber", published_at: null, effective_trading_date: null, session_close: "17:00", timezone: "America/New_York", language: "id" }
     ];
   }
 
@@ -220,6 +222,23 @@
     var html = "<table class='data'><thead><tr><th>Uji</th><th>Est</th><th>p_adj</th><th>n</th></tr></thead><tbody>";
     order.forEach(function (t) { statGroup(rows, t).forEach(function (r) { html += statRow(r); }); });
     html += "</tbody></table>";
+    /* Periode dan lag yang diuji (Upgrade.md UI-02): angka statis punya denominasi yang terlihat. */
+    var starts = [], ends = [];
+    rows.forEach(function (r) {
+      if (r.period_start) starts.push(String(r.period_start));
+      if (r.period_end) ends.push(String(r.period_end));
+    });
+    if (starts.length && ends.length) {
+      var lagSeen = {}, lags = [];
+      rows.forEach(function (r) {
+        if (r.lag != null && !lagSeen[r.lag]) { lagSeen[r.lag] = true; lags.push(r.lag); }
+      });
+      lags.sort(function (a, b) { return a - b; });
+      starts.sort(); ends.sort();
+      html += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Periode uji: " +
+        esc(starts[0]) + " .. " + esc(ends[ends.length - 1]) + " : lag diuji L" + lags.join(", L") +
+        ". Asosiasi historis, bukan sebab.</p>";
+    }
     box.innerHTML = html;
   }
 
@@ -260,6 +279,26 @@
     if (d === "mixed") return "<span class='chip mix'>◆ Mixed</span>";
     return "<span class='chip hold'>● Netral</span>";
   }
+  /* Audit waktu (Upgrade.md UI-02): terbit vs sesi efektif, tanpa klaim sebab.
+     Jika salah satu waktu tidak terekam di DB, barisnya jujur bilang belum terekam. */
+  function timeAuditLine(it) {
+    var parts = [];
+    if (it.published_at) {
+      parts.push("<span>terbit " + esc(fmtDate(it.published_at)) + " " + esc(String(it.published_at).slice(11, 16)) + "</span>");
+    } else {
+      parts.push("<span>waktu terbit belum terekam</span>");
+    }
+    if (it.effective_trading_date && it.published_at) {
+      var nextSession = String(it.effective_trading_date) > String(it.published_at).slice(0, 10);
+      parts.push("<span>sesi efektif " + esc(it.effective_trading_date) + (nextSession ? " : masuk sesi berikutnya" : "") + "</span>");
+    } else if (it.effective_trading_date) {
+      parts.push("<span>sesi efektif " + esc(it.effective_trading_date) + "</span>");
+    }
+    if (it.session_close) {
+      parts.push("<span>cut-off " + esc(it.session_close) + " " + esc(it.timezone || "") + "</span>");
+    }
+    return parts.length ? "<div class='news-meta audit-line'>" + parts.join("") + "</div>" : "";
+  }
   function impactCard(it) {
     var quote = (it.evidence && it.evidence[0] && it.evidence[0].quote) ? it.evidence[0].quote : "";
     var themes = (it.themes || []).map(esc).join(", ") || "tanpa tema";
@@ -271,6 +310,7 @@
       "<div class='news-meta'><span>" + esc(it.source || "sumber API") + "</span><span>tema: " + themes + "</span><span>horizon: " + esc(it.news_horizon || "short") + "</span></div>" +
       (it.rationale ? "<p style='font-size:14px;color:var(--text-secondary);margin:6px 0'>" + esc(it.rationale) + "</p>" : "") +
       (quote ? "<blockquote class='quote'>" + esc(quote) + "</blockquote>" : "") +
+      timeAuditLine(it) +
       "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'>" +
       "<button class='btn small primary' data-persona='" + esc(it.article_id) + "'>Lihat Persona POV</button></div></article>";
   }
@@ -374,7 +414,11 @@
     });
 
     api("/api/stats/" + t).then(function (rows) { renderStats(rows); })
-      .catch(function () { renderStats([{ test: "spearman", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62 }, { test: "ols", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62 }, { test: "granger", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60 }, { test: "event_study", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18 }]); });
+      .catch(function () {
+        renderStats([{ test: "spearman", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }]);
+        /* Setelah renderStats, bukan sebelum: renderStats mengosongkan state di awal. */
+        showState("statState", "API statistik tidak terjangkau : tabel ini ilustrasi berlabel, bukan hasil uji nyata.");
+      });
 
     api("/api/allocation?profile_id=" + state.profile + "&article_id=current_market").then(function (d) { renderAllocation(d); })
       .catch(function () {
