@@ -124,7 +124,7 @@
       <h2>1. Ringkasan Proyek</h2>
       <p>
         ARCAS adalah sistem analitik kuantitatif deterministik yang membaca berita keuangan makro, menilai sentimen teks,
-        lalu menghubungkan dampak sentimen tersebut ke 11 aset utama dunia dan pasar Indonesia. Tujuannya bukan untuk
+        lalu menghubungkan dampak sentimen tersebut ke 3 target makro terkunci (XAU, RATE_UST, SPX). Tujuannya bukan untuk
         memprediksi harga secara langsung, melainkan untuk mengukur asosiasi statistik antara sentimen berita dan
         pergerakan pasar.
       </p>
@@ -171,7 +171,7 @@
       </p>
 
       <h3>3.3 Universe Aset Terkunci</h3>
-      <p>Proyek ini fokus pada 11 aset yang telah ditetapkan:</p>
+      <p>Proyek ini fokus pada 3 target makro yang telah terkunci (universe <code>2026-10-12-core3</code>):</p>
       <table>
         <thead>
           <tr>
@@ -182,18 +182,14 @@
         </thead>
         <tbody>
           <tr><td>XAU</td><td>Gold</td><td>Commodity</td></tr>
-          <tr><td>OIL</td><td>Crude Oil WTI</td><td>Commodity</td></tr>
-          <tr><td>CU</td><td>Copper</td><td>Commodity</td></tr>
-          <tr><td>NG</td><td>Natural Gas</td><td>Commodity</td></tr>
-          <tr><td>BTC</td><td>Bitcoin</td><td>Crypto</td></tr>
-          <tr><td>USDIDR</td><td>USD/IDR</td><td>FX</td></tr>
-          <tr><td>DXY</td><td>US Dollar Index</td><td>FX</td></tr>
           <tr><td>RATE_UST</td><td>US Treasury 10Y</td><td>Rate</td></tr>
-          <tr><td>VIX</td><td>Volatility Index</td><td>Volatility</td></tr>
-          <tr><td>IHSG</td><td>IDX Composite</td><td>Index</td></tr>
-          <tr><td>SPX</td><td>S&P 500</td><td>Index</td></tr>
+          <tr><td>SPX</td><td>S&amp;P 500</td><td>Index</td></tr>
         </tbody>
       </table>
+      <p>
+        <em>Catatan: 7 aset dicoret pada 2026-10-11, yaitu OIL, CU, NG, BTC, USDIDR, DXY, dan VIX,
+        bersama emiten individual dan komoditas minor, demi fokus makro murni 3.</em>
+      </p>
 
       <h2>4. Arsitektur Sistem</h2>
       <p>Proyek ini dibagi dalam 3 lapisan utama.</p>
@@ -312,7 +308,7 @@ ARCAS/
 
       <h2>8. Aturan Wajib Proyek</h2>
       <ul>
-        <li>Hanya 11 aset yang dipakai dalam universe</li>
+        <li>Hanya 3 target makro terkunci yang dipakai dalam universe (XAU, RATE_UST, SPX)</li>
         <li>Hari tanpa berita = NULL, bukan 0</li>
         <li>Anti-lookahead bias harus diperhatikan</li>
         <li>Allocation portfolio harus selalu total 100%</li>
