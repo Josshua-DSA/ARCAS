@@ -121,8 +121,10 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         for imp in impacts:
             d = imp.model_dump()
             a = audit_by_id.get(imp.article_id)
-            for key in ("published_at", "language", "effective_trading_date", "session_close", "timezone"):
+            for key in ("published_at", "language", "effective_trading_date", "session_close", "timezone",
+                        "title", "source", "url", "headline_only"):
                 d[key] = a[key] if a else None
+            d["probs"] = a["probs"] if a else []
             out.append(d)
         return out
 

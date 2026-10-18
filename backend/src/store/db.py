@@ -539,15 +539,17 @@ class Database:
             return res
 
     def query_impact_time_audit(self, asset_id: str, limit: int = 50) -> list[dict]:
-        """Joins impacts with article publish times and target session cut-off.
+        """Joins impacts with article metadata, session cut-off, and model probs.
 
-        Feeds UI-02 time auditing: a reader can trace each impact from its
-        published_at to the market session bucket used by the analysis.
+        Feeds UI-02 time auditing and UI-03 evidence provenance: a reader can
+        trace each impact from published_at to its market session bucket, and
+        from the score back to per-model class probabilities.
         """
         with self.get_connection() as conn:
             rows = conn.execute(
                 """
-                SELECT i.article_id, a.published_at, a.language,
+                SELECT i.article_id, a.published_at, a.language, a.title, a.source, a.url,
+                       CASE WHEN a.body IS NULL THEN 1 ELSE 0 END AS headline_only,
                        t.effective_trading_date, m.session_close, m.timezone
                 FROM impacts i
                 LEFT JOIN articles a
@@ -562,7 +564,24 @@ class Database:
                 """,
                 (asset_id, limit),
             ).fetchall()
-            return [dict(r) for r in rows]
+            out = [dict(r) for r in rows]
+            ids = [r["article_id"] for r in out]
+            probs: dict[str, list] = {}
+            if ids:
+                marks = ",".join("?" for _ in ids)
+                srows = conn.execute(
+                    f"""
+                    SELECT article_id, model, model_version, p_pos, p_neu, p_neg, translation_used
+                    FROM sentiments
+                    WHERE article_id IN ({marks});
+                    """,
+                    ids,
+                ).fetchall()
+                for s in srows:
+                    probs.setdefault(s["article_id"], []).append(dict(s))
+            for r in out:
+                r["probs"] = probs.get(r["article_id"], [])
+            return out
 
     def save_stat(self, stat: StatResult) -> None:
         """Stores econometric test result."""
