@@ -1,0 +1,59 @@
+/* tokens.css — Bloomberg 70% × Claude 30% (lihat GUI_THEME_70B.md) */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#0B0A09; --panel:#141210; --raised:#1D1A17;
+  --border:#2E2A26; --border-strong:#6E675E;
+  --text:#E8E4DC; --text-2:#A8A196; --text-muted:#9A9388;
+  --amber:#FFB000; --accent:#FF7517; --accent-hover:#FF8A3D; --on-accent:#0B0A09; --clay:#D97757;
+  --up:#2EE06D; --down:#FF5C5C; --hold:#A8A196; --warn:#F2C94C; --info:#6CB6FF;
+  --paper:#F6F4F4; --paper-text:#2C2727; --paper-text-2:#5E5757; --paper-accent-text:#C2410C;
+  --paper-up:#1A7F37; --paper-down:#CF222E;
+  --font-data:"JetBrains Mono",ui-monospace,monospace;
+  --font-ui:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --font-serif:"Newsreader",Georgia,serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--text);font:14px/1.45 var(--font-ui)}
+h1,h2,.news-title,.rationale{font-family:var(--font-serif);font-weight:350}
+.num,.ticker{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+
+/* permukaan */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:20px}
+.paper{background:var(--paper);color:var(--paper-text);border-radius:2px;padding:20px}
+.paper .lab{color:var(--paper-accent-text)}
+.tape{display:flex;gap:22px;padding:7px 20px;font:12px var(--font-data);background:var(--panel);
+  border-bottom:1px solid var(--border);color:var(--text-2);white-space:nowrap;overflow:hidden}
+.tape b{color:var(--amber);font-weight:500}
+
+/* tabel & label */
+.lab,th{font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase;color:var(--amber)}
+table{width:100%;border-collapse:collapse}
+.panel td,.panel th{padding:9px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--border)}
+.panel td{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.panel td:first-child{color:var(--amber)}
+.up{color:var(--up)} .dn{color:var(--down)} .hd{color:var(--text-2)}
+.paper .up{color:var(--paper-up)} .paper .dn{color:var(--paper-down)}
+
+/* tombol & fokus (teks gelap di atas oranye) */
+.btn-primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:2px;padding:10px 14px;
+  font:500 12px var(--font-data);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.btn-primary:hover{background:var(--accent-hover)}
+a{color:var(--info)} .paper a{color:var(--paper-accent-text)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+tr:hover td{background:var(--raised)}
+tr.is-selected td{background:rgba(255,176,0,.12)} tr.is-selected td:first-child{box-shadow:inset 3px 0 var(--amber)}
+
+/* chip stance (simulasi sudut pandang) */
+.chip{display:inline-block;padding:3px 8px;border-radius:3px;color:#fff;
+  font:500 11px var(--font-data);letter-spacing:.06em;text-transform:uppercase}
+.chip.buy{background:#1A7F37} .chip.sell{background:#CF222E} .chip.hold{background:#6B6464}
+
+/* skeleton: tambahkan class "is-loading" pada <html> */
+.is-loading .panel :is(td,th),.is-loading [data-skeleton]{color:transparent!important;
+  background:linear-gradient(90deg,#1D1A17 25%,#2E2A26 50%,#1D1A17 75%);background-size:200% 100%;animation:sk 1.1s linear infinite}
+.is-loading .paper :is(h3,p,.it){color:transparent!important;
+  background:linear-gradient(90deg,#E4E0E0 25%,#F6F4F4 50%,#E4E0E0 75%);background-size:200% 100%;animation:sk 1.1s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
