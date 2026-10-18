@@ -106,11 +106,25 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         target: str,
         limit: int = Query(default=50, le=200),
     ) -> list[dict]:
-        """Returns recent article impacts for a target."""
+        """Returns recent article impacts for a target, with time audit fields.
+
+        Additive keys (published_at, effective_trading_date, session_close,
+        timezone) come from a join, so a reader can trace each impact to its
+        market session bucket (Upgrade.md UI-02).
+        """
         if not db.is_valid_target(target):
             raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
         impacts = db.query_impacts(target, limit=limit)
-        return [imp.model_dump() for imp in impacts]
+        audit = db.query_impact_time_audit(target, limit=limit)
+        audit_by_id = {a["article_id"]: a for a in audit}
+        out: list[dict] = []
+        for imp in impacts:
+            d = imp.model_dump()
+            a = audit_by_id.get(imp.article_id)
+            for key in ("published_at", "language", "effective_trading_date", "session_close", "timezone"):
+                d[key] = a[key] if a else None
+            out.append(d)
+        return out
 
     @app.get("/api/stats/{target}")
     def get_stats(target: str) -> list[dict]:

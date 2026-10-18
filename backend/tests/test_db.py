@@ -38,6 +38,13 @@ def test_meta_summary_counts_and_versions(temp_db):
     assert meta["last_price_date"] is None
     assert meta["updated_at"] is None
 
+
+def test_impact_time_audit_on_empty_db(temp_db):
+    """Time audit join degrades to real empties, never fake timestamps."""
+    temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
+    audit = temp_db.query_impact_time_audit("XAU", limit=10)
+    assert audit == []
+
     universe = temp_db.get_active_universe()
     assert len(universe) == 3
     assert any(u["asset_id"] == "SPX" for u in universe)

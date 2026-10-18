@@ -538,6 +538,32 @@ class Database:
                 )
             return res
 
+    def query_impact_time_audit(self, asset_id: str, limit: int = 50) -> list[dict]:
+        """Joins impacts with article publish times and target session cut-off.
+
+        Feeds UI-02 time auditing: a reader can trace each impact from its
+        published_at to the market session bucket used by the analysis.
+        """
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT i.article_id, a.published_at, a.language,
+                       t.effective_trading_date, m.session_close, m.timezone
+                FROM impacts i
+                LEFT JOIN articles a
+                    ON a.article_id = i.article_id
+                LEFT JOIN article_targets t
+                    ON t.article_id = i.article_id AND t.asset_id = i.asset_id
+                JOIN asset_master m
+                    ON m.asset_id = i.asset_id
+                WHERE i.asset_id = ?
+                ORDER BY i.created_at DESC
+                LIMIT ?;
+                """,
+                (asset_id, limit),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def save_stat(self, stat: StatResult) -> None:
         """Stores econometric test result."""
         with self.get_connection() as conn:
