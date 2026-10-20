@@ -6,10 +6,100 @@
   /* Tab target dirender dari /api/universe, bukan dari konstanta lokal.
      TARGET_INFO hanya peta tampilan (warna, nama) dengan fallback generik. */
   var TARGET_INFO = {
-    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D" },
-    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF" },
-    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517" }
+    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg" },
+    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
+    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg" }
   };
+  /* Panel kualitas data (Upgrade.md UI-06) : MODE MOCKUP SEMENTARA.
+     Data hard-coded dan selalu berlabel : angka ilustrasi, bukan hasil hitung
+     API. Bentuk datanya sama dengan kontrak /api/quality yang dirancang, jadi
+     saat backend menyediakan endpoint, loadQuality() tinggal ditukar ke pemanggil
+     api() tanpa mengubah renderer. Backend tidak disentuh (disiplin frontend saja). */
+  function demoQuality() {
+    return {
+      universe_version: "2026-10-12-core3",
+      generated_at: new Date().toISOString(),
+      totals: { articles: 312, duplicates: 7, rejected: 14, impacts: 312 },
+      completeness: { headline: 308, body: 96, impacts_with_evidence: 291 },
+      by_source: [
+        { source: "Reuters", articles: 104 },
+        { source: "Bloomberg", articles: 82 },
+        { source: "Antara News", articles: 70 },
+        { source: "CNBC", articles: 42 },
+        { source: "Kontan", articles: 14 }
+      ],
+      per_target: [
+        { asset_id: "SPX", mapped_articles: 128, daily_days: 62, news_free_days: 9 },
+        { asset_id: "RATE_UST", mapped_articles: 97, daily_days: 62, news_free_days: 15 },
+        { asset_id: "XAU", mapped_articles: 87, daily_days: 62, news_free_days: 20 }
+      ],
+      direction_counts: { bullish: 214, bearish: 62, neutral: 36 },
+      warnings: [
+        "MOCKUP : seluruh angka pada panel ini ilustrasi, bukan hasil hitung API.",
+        "Kelas arah neutral langka: 36 dari 312 dampak (11,5%).",
+        "XAU: 20 dari 62 hari tanpa berita (32,3%) : hari kosong tetap gap, bukan nol.",
+        "Hanya 96 dari 312 artikel punya isi lengkap (body): mayoritas dianalisis headline saja."
+      ]
+    };
+  }
+  function num(v) { return v == null ? 0 : Number(v); }
+  function pct(part, total) {
+    if (!num(total)) return "";
+    return " : " + String(Math.round(num(part) / num(total) * 1000) / 10).replace(".", ",") + "%";
+  }
+  function renderQuality(q) {
+    var box = $("qualityTables");
+    if (!q) { box.innerHTML = ""; showState("qualityState", ""); return; }
+    showState("qualityState", "");
+    var t = q.totals || {}, c = q.completeness || {};
+    var h = "<div class='q-row'>" +
+      "<span class='chip hold'>artikel " + esc(num(t.articles)) + "</span>" +
+      "<span class='chip hold'>duplikat " + esc(num(t.duplicates)) + "</span>" +
+      "<span class='chip hold'>ditolak validator " + esc(num(t.rejected)) + "</span>" +
+      "<span class='chip hold'>dampak tersimpan " + esc(num(t.impacts)) + "</span>" +
+      "<span class='chip hold'>headline " + esc(num(c.headline)) + esc(pct(c.headline, t.articles)) + "</span>" +
+      "<span class='chip hold'>isi lengkap " + esc(num(c.body)) + esc(pct(c.body, t.articles)) + "</span>" +
+      "<span class='chip hold'>ada kutipan bukti " + esc(num(c.impacts_with_evidence)) + " dari " + esc(num(t.impacts)) + "</span>" +
+      "</div>";
+    var rows = q.per_target || [];
+    if (rows.length) {
+      h += "<table class='data'><thead><tr><th>Target</th><th>Artikel terpetakan</th><th>Hari berita</th><th>Hari tanpa berita</th></tr></thead><tbody>";
+      rows.forEach(function (r) {
+        h += "<tr><td>" + esc(r.asset_id) + "</td><td>" + esc(num(r.mapped_articles)) + "</td><td>" +
+          esc(num(r.daily_days) - num(r.news_free_days)) + "</td><td>" + esc(num(r.news_free_days)) + " (gap)</td></tr>";
+      });
+      h += "</tbody></table>";
+    }
+    var srcs = q.by_source || [];
+    if (srcs.length) {
+      h += "<table class='data'><thead><tr><th>Sumber</th><th>Artikel</th></tr></thead><tbody>";
+      srcs.forEach(function (s) {
+        h += "<tr><td>" + esc(s.source) + "</td><td>" + esc(num(s.articles)) + "</td></tr>";
+      });
+      h += "</tbody></table>";
+    }
+    var warns = q.warnings || [];
+    if (warns.length) {
+      h += "<div class='q-row'>" + warns.map(function (w) {
+        return "<span class='chip mix'>! " + esc(w) + "</span>";
+      }).join("") + "</div>";
+    }
+    h += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Versi universe " +
+      esc(q.universe_version || "-") + " : panel memakai angka hasil hitung API begitu endpoint kualitas tersedia. Bukan nasihat investasi.</p>";
+    box.innerHTML = h;
+  }
+  function loadQuality() {
+    /* Sementara : mockup berlabel. Endpoint /api/quality belum ada di backend. */
+    showState("qualityState", "");
+    renderQuality(demoQuality());
+  }
+
+  /* Elemen visual tombol target: ikon aset lokal bila ada, jika tidak swatch warna. */
+  function visualTarget(info) {
+    if (info && info.icon) return "<img class='ticon' src='" + esc(info.icon) + "' alt=''>";
+    return "<span class='swatch' style='background:" + esc(info.color) + "' aria-hidden='true'></span>";
+  }
+
   function metaFor(assetId, row) {
     if (TARGET_INFO[assetId]) return TARGET_INFO[assetId];
     return {
@@ -515,6 +605,7 @@
     showState("statState", "Memuat uji statistik...");
     showState("allocState", "Memuat simulasi alokasi...");
     showState("newsState", "Memuat dampak berita...");
+    loadQuality();
 
     api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end).then(function (payload) {
       state.apiOk = true; setStatus("ok", "terhubung ke API");
@@ -567,7 +658,7 @@
       var info = metaFor(id, row);
       var sel = i === 0 ? "true" : "false";
       return "<button class='target-tab' role='tab' data-target='" + esc(id) + "' aria-selected='" + sel + "'>" +
-        "<span class='swatch' style='background:" + esc(info.color) + "' aria-hidden='true'></span>" +
+        visualTarget(info) +
         "<span><span class='tick'>" + esc(id) + "</span>" +
         "<span class='meta'>" + esc(info.name) + " : " + esc(info.ticker) + " : " + esc(info.venue) + "</span></span></button>";
     }).join("");

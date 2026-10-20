@@ -77,6 +77,9 @@
   .target-tab .tick{font-family:var(--font-mono);font-weight:500;font-size:15px}
   .target-tab .meta{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);display:block;margin-top:2px}
   .target-tab .swatch{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.25)}
+  .target-tab .ticon{width:20px;height:20px;flex:none;display:block}
+  .q-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .q-row .chip{white-space:normal;text-align:left}
   .target-tab[aria-selected="true"]{background:var(--accent-subtle);border-left:4px solid var(--accent)}
   .target-tab:hover{border-color:var(--border-strong)}
 
@@ -280,15 +283,15 @@
 <div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
     <div class="wrap" id="targetTabs">
       <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <span class="swatch" style="background:#FFD33D" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/gold.svg" alt="">
         <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
       </button>
       <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <span class="swatch" style="background:#58A6FF" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
         <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
       </button>
       <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <span class="swatch" style="background:#FF7517" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/spx.svg" alt="">
         <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
       </button>
     </div>
@@ -347,6 +350,17 @@
         <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
           Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n_obs = jumlah observasi. Hari tanpa berita dibiarkan kosong (NaN), bukan nol. Bukan nasihat investasi.
         </p>
+      </div>
+    </section>
+
+    <section class="panel dark" id="kualitas" aria-labelledby="qualityTitle">
+      <div class="panel-head">
+        <h2 id="qualityTitle">Kualitas data</h2>
+        <span class="hint">denominator sebelum skor</span>
+      </div>
+      <div class="panel-body">
+        <div class="state" id="qualityState" hidden></div>
+        <div id="qualityTables"></div>
       </div>
     </section>
   </div>
