@@ -17,3 +17,7 @@ outputs/
 .venv/
 venv/
 .env
+
+# Code graph — commit the artefacts agents read, skip rebuild cache & snapshots
+graphify-out/cache/
+graphify-out/2*/
