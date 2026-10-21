@@ -1,6 +1,7 @@
 """Evaluation metrics for sentiment models: F1 macro, ECE, Cohen's Kappa."""
 
 from typing import Sequence
+
 import numpy as np
 
 try:
