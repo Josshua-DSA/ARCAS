@@ -2,12 +2,13 @@
 
 Eksplorasi baseline model (M1: TF-IDF + Logistic Regression).
 Eksperimen offline riset model terisolasi dari runtime backend.
-Jalankan dengan: /home/josjiez/my_env/ai_env/bin/python model/notebooks/01_baseline_exploration.py
+Jalankan dengan: /home/josjiez/my_env/ai_env/bin/python model/common/01_baseline_exploration.py
 """
 
 from typing import List, Optional, Tuple
-from model.evaluation.metrics import evaluate_predictions
-from model.src.baseline import BaselineTfidfSentiment
+
+from model.common.baseline import BaselineTfidfSentiment
+from model.common.metrics import evaluate_predictions
 
 
 def run_experiment(
