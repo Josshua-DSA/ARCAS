@@ -173,7 +173,7 @@ Tambahkan panel evaluasi, bukan gauge confidence tunggal:
 
 Temperature scaling harus dijelaskan sebagai koreksi confidence, bukan peningkatan akurasi.
 
-**Lokasi:** artefak `model/evaluation/`, endpoint evaluasi read-only, `frontend/GUI/research.html`, dan `src/js/pages/research.js`.
+**Lokasi:** artefak `model/*/evaluation/`, endpoint evaluasi read-only, `frontend/GUI/research.html`, dan `src/js/pages/research.js`.
 
 **Selesai bila:** confidence per berita tidak dapat disalahartikan sebagai probabilitas pasar naik.
 
