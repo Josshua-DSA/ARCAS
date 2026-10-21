@@ -1,0 +1,43 @@
+version: "2026-10-19-r5"
+# Tahap 2: skor dokumen = rata-rata z token; hanya dipakai bila ada cukup bukti kuat.
+z_min: 3.0      # |z| minimal satu token agar dihitung sebagai bukti
+min_votes: 2    # jumlah token bukti searah minimal
+fallback: baseline_tfidf
+
+# Tahap 1a: petunjuk sumber (substring, case-insensitive)
+sources:
+  finbert_emas:
+    - kitco
+    - gold.org
+    - world gold council
+    - wgc
+  fomc_roberta:
+    - federalreserve
+    - federal reserve
+    - fomc
+
+# Tahap 1b: kamus kata kunci. Dicocokkan sebagai kata utuh, bentuk jamak diterima.
+keywords:
+  finbert_emas:
+    - gold
+    - bullion
+    - xau
+    - emas
+    - logam mulia
+    - precious metal
+    - yellow metal
+  fomc_roberta:
+    - fed
+    - fomc
+    - federal reserve
+    - powell
+    - rate cut
+    - rate hike
+    - fed funds
+    - treasury yield
+    - cpi
+    - inflation
+    - payroll
+    - nonfarm
+    - hawkish
+    - dovish
