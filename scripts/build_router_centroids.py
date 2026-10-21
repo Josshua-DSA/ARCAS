@@ -5,7 +5,7 @@ Metode: log-odds ratio berprior Dirichlet informatif (Monroe, Colaresi & Quinn
 artefak kata langka — tanpa prior, kata yang tidak pernah muncul di satu korpus
 otomatis condong ke korpus lain.
 
-Output: model/weights/router_centroids.json
+Output: model/common/router_centroids.json
 Skor dokumen = rata-rata z token yang dikenal. z > 0 condong gold, z < 0 FOMC.
 
 Jalankan ulang bila dataset benchmark berubah, lalu naikkan `version` di
@@ -25,7 +25,7 @@ from backend.src.tagging.model_router import tokens  # noqa: E402  sumber tokeni
 ROOT = Path(__file__).resolve().parents[1]
 GOLD_PARQUET = ROOT / "dataset/gold_sinha/data/train-00000-of-00001.parquet"
 FOMC_XLSX = ROOT / "dataset/fomc/train/lab-manual-split-combine-train-5768.xlsx"
-OUT = ROOT / "model/weights/router_centroids.json"
+OUT = ROOT / "model/common/router_centroids.json"
 
 VERSION = "2026-10-19-r4"
 PRIOR = 5000.0  # alpha_0, ukuran prior; lebih besar = lebih konservatif
