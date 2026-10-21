@@ -1,7 +1,6 @@
 """M1 Baseline Model: TF-IDF + Logistic Regression."""
 
 from typing import Optional, Sequence
-import numpy as np
 
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
@@ -11,7 +10,7 @@ except ImportError:
     LogisticRegression = None  # type: ignore
 
 from backend.src.schema import ArticleSentiment, ModelProbs, Tone
-from model.src.protocol import BaseSentimentModel
+from model.common.protocol import BaseSentimentModel
 
 
 class BaselineTfidfSentiment(BaseSentimentModel):
