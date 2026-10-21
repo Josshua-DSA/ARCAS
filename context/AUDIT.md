@@ -1,7 +1,8 @@
 # AUDIT v2 — Database, Backend & ML
 
 > Status: audit kode vs `PRD.md` (FR-1..FR-23), `RULES.md`, `SCHEMA.md`
-> Tanggal: 2026-10-21 (v2) · Basis: `acb2171` + pekerjaan belum di-commit
+> Tanggal: 2026-10-21 (v3) · Basis: commit `e1f00f2` (fase 1 + kolektor berita)
+> Sejak v2: seluruh pekerjaan sudah di-commit (8 commit), mypy ditegakkan di CI.
 > Lingkup: **hanya** `backend/`, `model/`, `data/`, `scripts/`
 > Di luar lingkup: `frontend/` (milik tim GUI) · `model/fomc/` (sengaja kosong, jangan disentuh)
 
@@ -21,18 +22,37 @@ Fase 1 ("Sambungkan pipa") sudah dikerjakan dan diverifikasi. Ringkasnya:
 **Isi database sekarang** (`python -m backend.src.cli status`):
 
 ```
-✅ raw_articles 38   ✅ articles 38   ✅ article_targets 14
-✅ sentiments 38     ✅ impacts 14    ✅ daily_sentiment 6
+✅ raw_articles 67   ✅ articles 54   ✅ article_targets 20
+✅ sentiments 54     ✅ impacts 20    ✅ daily_sentiment 10
 ✅ prices 66         ✅ asset_master 3 ✅ asset_aliases 16
    stat_results 0    labels 0    alloc_profiles 0    alloc_suggestions 0    persona_views 0
 ```
 
-Test: **71 passed**, ruff bersih. Bug baru yang ditemukan & diperbaiki saat
-pengerjaan: `n_sources` di `DailyAggregator` hardcode `1` (XAU punya 7 artikel
-dari 3 sumber, dilaporkan 1 sumber).
+Kualitas: **84 passed**, ruff bersih, **mypy bersih (52 file, 0 error)**.
+Pipeline idempoten — dijalankan dua kali, jumlah baris tidak berubah.
+Integritas: 0 baris yatim (`sentiments`/`article_targets`/`impacts`),
+0 `n_sources=0`, 0 skor di luar `[-1,1]`.
+
+Bug baru yang ditemukan & diperbaiki saat pengerjaan:
+- `n_sources` di `DailyAggregator` hardcode `1` (XAU punya 7 artikel dari
+  3 sumber, dilaporkan 1 sumber).
+- `mypy` tidak pernah dijalankan meski diwajibkan RULES §4 — kini ada di
+  `requirements.txt`, `[tool.mypy]`, dan langkah CI.
+- `tagging/router.py`: `asset_id` di loop tema makro membayangi variabel loop
+  aset eksplisit (berpotensi salah aset pada beberapa tema sekaligus).
+- `pipeline/runner.py`: variabel `dt` di-shadow sehingga pengecekan `None`
+  tidak pernah berjalan.
+- `normalize/adapters.py`: `gold_tone()` dianotasi `str` padahal menerima
+  NaN/float dari parquet; pemeriksaan `isinstance` jadi tidak terjangkau.
+
+**Sumber berita berkuota:** Eulerpool terpasang (`news_api/eulerpool.py`) dengan
+penjaga kuota harian persisten (`news_api/quota.py`, pagar keras 100/hari,
+default 20). Satu request melayani XAU+RATE_UST+SPX sekaligus.
 
 **Sisa untuk fase berikutnya:** K-2 (3 tabel tanpa penulisan), K-3 (FinBERT),
 T-1..T-6, S-1..S-7 — lihat "Urutan Pengerjaan" di bawah.
+**Blocker statistik:** `daily_sentiment` hanya 10 hari — FR-11..FR-13 butuh
+lebih banyak titik berpasangan sebelum hasilnya bisa ditafsirkan.
 
 ---
 
