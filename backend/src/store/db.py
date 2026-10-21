@@ -7,7 +7,16 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Generator, Optional
 
-from backend.src.schema import DailySentiment, PriceRecord, StatResult, TargetImpact
+from backend.src.schema import (
+    Article,
+    ArticleSentiment,
+    DailySentiment,
+    PriceRecord,
+    RawArticle,
+    StatResult,
+    TargetImpact,
+    TargetTag,
+)
 
 DEFAULT_DB_PATH = Path("data/finews.db")
 
@@ -391,6 +400,399 @@ class Database:
     def init_tables(self) -> None:
         """Alias for init_schema."""
         self.init_schema()
+
+    # ==========================================================
+    # CRUD: raw_articles — berita mentah dari API/RSS
+    # ==========================================================
+
+    def save_raw_article(
+        self, raw: RawArticle, payload: dict | None = None
+    ) -> int:
+        """Stores a raw (unnormalized) article. Returns raw_id.
+
+        Deduplikasi memakai (source, url) bila URL tersedia, selain itu
+        (source, title). Baris identik tidak digandakan.
+        """
+        with self.get_connection() as conn:
+            if raw.url:
+                existing = conn.execute(
+                    "SELECT raw_id FROM raw_articles WHERE source = ? AND url = ? LIMIT 1;",
+                    (raw.source, raw.url),
+                ).fetchone()
+            else:
+                existing = conn.execute(
+                    "SELECT raw_id FROM raw_articles WHERE source = ? AND title = ? LIMIT 1;",
+                    (raw.source, raw.title),
+                ).fetchone()
+            if existing:
+                return int(existing["raw_id"])
+
+            cur = conn.execute(
+                """
+                INSERT INTO raw_articles (
+                    source, url, title, body, published_at, fetched_at,
+                    query_target, vendor_sentiment, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    raw.source,
+                    raw.url,
+                    raw.title,
+                    raw.body,
+                    raw.published_at.isoformat() if raw.published_at else None,
+                    raw.fetched_at.isoformat(),
+                    raw.query_target,
+                    raw.vendor_sentiment,
+                    json.dumps(payload) if payload else None,
+                ),
+            )
+            return int(cur.lastrowid or 0)
+
+    def save_raw_articles(
+        self, items: list[tuple[RawArticle, dict | None]]
+    ) -> int:
+        """Bulk insert. Returns jumlah baris baru."""
+        inserted = 0
+        with self.get_connection() as conn:
+            for raw, payload in items:
+                if raw.url:
+                    existing = conn.execute(
+                        "SELECT 1 FROM raw_articles WHERE source = ? AND url = ? LIMIT 1;",
+                        (raw.source, raw.url),
+                    ).fetchone()
+                else:
+                    existing = conn.execute(
+                        "SELECT 1 FROM raw_articles WHERE source = ? AND title = ? LIMIT 1;",
+                        (raw.source, raw.title),
+                    ).fetchone()
+                if existing:
+                    continue
+                conn.execute(
+                    """
+                    INSERT INTO raw_articles (
+                        source, url, title, body, published_at, fetched_at,
+                        query_target, vendor_sentiment, payload_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        raw.source,
+                        raw.url,
+                        raw.title,
+                        raw.body,
+                        raw.published_at.isoformat() if raw.published_at else None,
+                        raw.fetched_at.isoformat(),
+                        raw.query_target,
+                        raw.vendor_sentiment,
+                        json.dumps(payload) if payload else None,
+                    ),
+                )
+                inserted += 1
+        return inserted
+
+    def query_raw_articles(
+        self, source: str | None = None, limit: int = 100
+    ) -> list[dict]:
+        """Returns raw articles, terbaru dulu."""
+        query = "SELECT * FROM raw_articles"
+        params: list = []
+        if source:
+            query += " WHERE source LIKE ?"
+            params.append(f"{source}%")
+        query += " ORDER BY fetched_at DESC LIMIT ?;"
+        params.append(limit)
+        with self.get_connection() as conn:
+            return [dict(r) for r in conn.execute(query, params).fetchall()]
+
+    def count_raw_articles(self) -> int:
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) AS n FROM raw_articles;").fetchone()
+            return int(row["n"]) if row else 0
+
+    # ==========================================================
+    # CRUD: articles — berita ternormalisasi (punya article_id)
+    # ==========================================================
+
+    def save_article(self, article: Article) -> None:
+        """Stores a normalized article."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO articles (
+                    article_id, source, url, title, body, language,
+                    published_at, fetched_at, duplicate_of, market_relevant
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    article.article_id,
+                    article.source,
+                    article.url,
+                    article.title,
+                    article.body,
+                    article.language.value,
+                    article.published_at.isoformat() if article.published_at else None,
+                    article.fetched_at.isoformat(),
+                    article.duplicate_of,
+                    None if article.market_relevant is None else (1 if article.market_relevant else 0),
+                ),
+            )
+
+    def save_articles(self, articles: list[Article]) -> int:
+        """Bulk insert normalized articles. Returns jumlah baris ditulis."""
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO articles (
+                    article_id, source, url, title, body, language,
+                    published_at, fetched_at, duplicate_of, market_relevant
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                [
+                    (
+                        a.article_id,
+                        a.source,
+                        a.url,
+                        a.title,
+                        a.body,
+                        a.language.value,
+                        a.published_at.isoformat() if a.published_at else None,
+                        a.fetched_at.isoformat(),
+                        a.duplicate_of,
+                        None if a.market_relevant is None else (1 if a.market_relevant else 0),
+                    )
+                    for a in articles
+                ],
+            )
+        return len(articles)
+
+    def get_article(self, article_id: str) -> dict | None:
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM articles WHERE article_id = ?;", (article_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def article_exists(self, article_id: str) -> bool:
+        with self.get_connection() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM articles WHERE article_id = ? LIMIT 1;", (article_id,)
+                ).fetchone()
+                is not None
+            )
+
+    def query_articles(
+        self, limit: int = 100, since: date | None = None
+    ) -> list[dict]:
+        query = "SELECT * FROM articles"
+        params: list = []
+        if since:
+            query += " WHERE date(fetched_at) >= ?"
+            params.append(since.isoformat())
+        query += " ORDER BY fetched_at DESC LIMIT ?;"
+        params.append(limit)
+        with self.get_connection() as conn:
+            return [dict(r) for r in conn.execute(query, params).fetchall()]
+
+    def count_articles(self) -> int:
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) AS n FROM articles;").fetchone()
+            return int(row["n"]) if row else 0
+
+    # ==========================================================
+    # CRUD: article_targets — pemetaan berita ke target universe
+    # ==========================================================
+
+    def save_article_target(
+        self,
+        article_id: str,
+        tag: TargetTag,
+        effective_trading_date: date | None = None,
+    ) -> None:
+        """Stores one article→target mapping."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO article_targets (
+                    article_id, asset_id, basis, matched_text, routed_from,
+                    effective_trading_date
+                ) VALUES (?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    article_id,
+                    tag.asset_id,
+                    tag.basis.value,
+                    tag.matched_text,
+                    tag.routed_from,
+                    effective_trading_date.isoformat() if effective_trading_date else None,
+                ),
+            )
+
+    def save_article_targets(
+        self,
+        article_id: str,
+        tags: list[TargetTag],
+        effective_dates: dict[str, date] | None = None,
+    ) -> int:
+        """Bulk insert mappings untuk satu artikel. Returns jumlah baris."""
+        dates = effective_dates or {}
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO article_targets (
+                    article_id, asset_id, basis, matched_text, routed_from,
+                    effective_trading_date
+                ) VALUES (?, ?, ?, ?, ?, ?);
+                """,
+                [
+                    (
+                        article_id,
+                        t.asset_id,
+                        t.basis.value,
+                        t.matched_text,
+                        t.routed_from,
+                        dates[t.asset_id].isoformat() if t.asset_id in dates else None,
+                    )
+                    for t in tags
+                ],
+            )
+        return len(tags)
+
+    def query_article_targets(self, article_id: str) -> list[dict]:
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM article_targets WHERE article_id = ?;", (article_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def query_articles_by_target(
+        self, asset_id: str, limit: int = 50
+    ) -> list[dict]:
+        """Berita untuk satu target, join ke tabel articles."""
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT a.*, t.basis, t.matched_text, t.effective_trading_date
+                FROM article_targets t
+                JOIN articles a ON a.article_id = t.article_id
+                WHERE t.asset_id = ?
+                ORDER BY a.published_at DESC, a.fetched_at DESC
+                LIMIT ?;
+                """,
+                (asset_id, limit),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    # ==========================================================
+    # CRUD: sentiments — keluaran model per artikel
+    # ==========================================================
+
+    def save_sentiment(self, sentiment: ArticleSentiment) -> None:
+        """Stores all ModelProbs for an article (satu baris per model)."""
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO sentiments (
+                    article_id, model, model_version, p_pos, p_neu, p_neg,
+                    translation_used, translator_version, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                [
+                    (
+                        sentiment.article_id,
+                        p.model,
+                        p.model_version,
+                        p.p_pos,
+                        p.p_neu,
+                        p.p_neg,
+                        1 if sentiment.translation_used else 0,
+                        sentiment.translator_version,
+                        datetime.now().isoformat(),
+                    )
+                    for p in sentiment.probs
+                ],
+            )
+
+    def query_sentiments(self, article_id: str) -> list[dict]:
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM sentiments WHERE article_id = ?;", (article_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    # ==========================================================
+    # CRUD: labels — anotasi manusia (untuk Cohen's kappa)
+    # ==========================================================
+
+    def save_label(
+        self,
+        article_id: str,
+        asset_id: str,
+        annotator: str,
+        label: str,
+        labeled_at: datetime | None = None,
+    ) -> None:
+        """Stores one human annotation."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO labels (
+                    article_id, asset_id, annotator, label, labeled_at
+                ) VALUES (?, ?, ?, ?, ?);
+                """,
+                (
+                    article_id,
+                    asset_id,
+                    annotator,
+                    label,
+                    (labeled_at or datetime.now()).isoformat(),
+                ),
+            )
+
+    def save_labels(self, rows: list[dict]) -> int:
+        """Bulk insert labels. Each dict: article_id, asset_id, annotator, label."""
+        now = datetime.now().isoformat()
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO labels (
+                    article_id, asset_id, annotator, label, labeled_at
+                ) VALUES (?, ?, ?, ?, ?);
+                """,
+                [
+                    (
+                        r["article_id"],
+                        r["asset_id"],
+                        r["annotator"],
+                        r["label"],
+                        r.get("labeled_at", now),
+                    )
+                    for r in rows
+                ],
+            )
+        return len(rows)
+
+    def query_labels(
+        self, asset_id: str | None = None, annotator: str | None = None
+    ) -> list[dict]:
+        query = "SELECT * FROM labels"
+        clauses: list[str] = []
+        params: list = []
+        if asset_id:
+            clauses.append("asset_id = ?")
+            params.append(asset_id)
+        if annotator:
+            clauses.append("annotator = ?")
+            params.append(annotator)
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY labeled_at DESC;"
+        with self.get_connection() as conn:
+            return [dict(r) for r in conn.execute(query, params).fetchall()]
+
+    def count_labels(self) -> int:
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) AS n FROM labels;").fetchone()
+            return int(row["n"]) if row else 0
 
     def get_active_universe(self) -> list[dict]:
         """Returns all 3 active core universe assets."""
