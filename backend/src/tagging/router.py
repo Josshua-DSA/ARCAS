@@ -148,10 +148,10 @@ class TargetRouter:
         for theme in themes:
             theme_targets = self.impact_graph.get(theme, [])
             for entry in theme_targets:
-                asset_id = entry.get("target")
-                if not asset_id or asset_id not in LOCKED_UNIVERSE:
+                macro_asset = entry.get("target")
+                if not macro_asset or macro_asset not in LOCKED_UNIVERSE:
                     continue
-                if asset_id in tagged_assets:
+                if macro_asset in tagged_assets:
                     continue  # Explicit priority
 
                 sign = entry.get("sign", 1)
@@ -168,13 +168,13 @@ class TargetRouter:
                 impacts.append(
                     TargetImpact(
                         article_id=article.article_id,
-                        asset_id=asset_id,
+                        asset_id=macro_asset,
                         direction=direction,
                         score=max(-1.0, min(1.0, projected_score)),
                         confidence=min(0.85, 0.50 + weight * 0.35),  # Cap 0.85
                         basis=Basis.MACRO_FACTOR,
                         themes=[theme],
-                        causal_path=[theme, f"{asset_id}_{direction.value}"],
+                        causal_path=[theme, f"{macro_asset}_{direction.value}"],
                         evidence=[],
                         flags=[],
                         model_version=model_version,
