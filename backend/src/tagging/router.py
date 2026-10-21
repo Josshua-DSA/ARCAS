@@ -2,10 +2,15 @@
 
 import csv
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 import yaml
 
 from backend.src.schema import Article, Basis, Direction, EvidenceSpan, TargetImpact
+
+if TYPE_CHECKING:  # pragma: no cover - hanya untuk anotasi tipe
+    from backend.src.tagging.model_router import ModelRouter
+
 
 LOCKED_UNIVERSE = {
     "XAU", "RATE_UST", "SPX"
@@ -76,14 +81,28 @@ class TargetRouter:
         return active_themes
 
     def route_article(
-        self, article: Article, sentiment_score: float, model_version: str = "fusion-v1"
+        self,
+        article: Article,
+        sentiment_score: float,
+        model_version: str = "fusion-v1",
+        model_router: Optional["ModelRouter"] = None,
     ) -> list[TargetImpact]:
         """
         Routes an article to target impacts via explicit mentions and macro themes.
         Strict rule: caps confidence by basis and builds evidence for explicit tags.
+
+        Bila `model_router` diberikan, pilihan model spesialis dicatat di
+        `routed_from`/`route_score` supaya keputusan routing dapat diaudit.
         """
         impacts: list[TargetImpact] = []
         full_text = f"{article.title} {article.body or ''}".strip()
+
+        routed_from: Optional[str] = None
+        route_score: Optional[float] = None
+        if model_router is not None:
+            models, reason, score = model_router.route(full_text, article.source or "")
+            routed_from = f"{reason}:{'+'.join(models)}"
+            route_score = score
 
         # 1. Explicit matches
         explicit_matches = self.find_explicit_mentions(full_text)
@@ -119,6 +138,8 @@ class TargetRouter:
                     evidence=evidence,
                     flags=[],
                     model_version=model_version,
+                    routed_from=routed_from,
+                    route_score=route_score,
                 )
             )
 
@@ -157,6 +178,8 @@ class TargetRouter:
                         evidence=[],
                         flags=[],
                         model_version=model_version,
+                        routed_from=routed_from,
+                        route_score=route_score,
                     )
                 )
 
