@@ -54,6 +54,8 @@ class PipelineStats:
     target_tertulis: int = 0
     hari_agregat: int = 0
     tanpa_target: int = 0
+    #: T-6: jumlah artikel yang ditandai near-duplicate (tidak ikut agregasi).
+    artikel_duplikat: int = 0
     errors: list[str] = field(default_factory=list)
 
     def ringkas(self) -> str:
@@ -66,6 +68,7 @@ class PipelineStats:
             f"impact tertulis   : {self.impact_tertulis}\n"
             f"hari agregat      : {self.hari_agregat}\n"
             f"tanpa target      : {self.tanpa_target}\n"
+            f"near-duplicate    : {self.artikel_duplikat}\n"
             f"error             : {len(self.errors)}"
         )
 
@@ -118,6 +121,10 @@ class Pipeline:
         self.model_path = Path(model_path)
         self.model: Optional[BaselineTfidfSentiment] = None
         self.asset_master_path = Path(asset_master_path)
+        #: T-6: pasangan mirip yang perlu ditinjau manusia (tidak digabung).
+        self.last_duplicate_review: list[tuple[str, str, float]] = []
+        #: Peringatan non-fatal (mis. riwayat dedup tak terbaca).
+        self.last_warnings: list[str] = []
 
     # ------------------------------------------------------------------
     # Setup
@@ -174,9 +181,52 @@ class Pipeline:
             seen.add(article.article_id)
             articles.append(article)
 
+        # T-6 / FR-2: dedup exact saja tidak cukup. Berita wire yang sama
+        # sering muncul dari beberapa feed dengan suntingan kecil; tanpa
+        # langkah ini keduanya dihitung di `daily_sentiment`.
+        if articles:
+            articles, dup_stats = self._mark_near_duplicates(articles)
+            stats.artikel_duplikat += dup_stats["digabung"]
+
         if articles and not dry_run:
             stats.artikel_tertulis = self.db.save_articles(articles)
         return articles, stats
+
+    def _mark_near_duplicates(self, articles: list[Article]) -> tuple[list[Article], dict]:
+        """Tandai near-duplicate terhadap riwayat DB dan sesama batch.
+
+        Artikel duplikat tetap disimpan (dengan `duplicate_of` terisi) agar
+        jejaknya bisa diaudit, tetapi tidak ikut dihitung pada agregasi.
+        """
+        from backend.src.normalize.dedup import NearDuplicateDetector
+
+        history: dict[str, str] = {}
+        try:
+            with self.db.get_connection() as conn:
+                rows = conn.execute(
+                    "SELECT article_id, title, body FROM articles "
+                    "WHERE duplicate_of IS NULL ORDER BY published_at DESC LIMIT 500;"
+                ).fetchall()
+            history = {
+                r["article_id"]: f"{(r['title'] or '').lower()} "
+                f"{(r['title'] or '').lower()} {(r['body'] or '').lower()}"
+                for r in rows
+            }
+        except Exception as exc:  # noqa: BLE001 - dedup tidak boleh menggagalkan pipeline
+            history = {}
+            self.last_warnings.append(f"near-dup: riwayat tidak terbaca ({exc})")
+
+        detector = NearDuplicateDetector()
+        # Riwayat tidak boleh memuat artikel dari batch ini sendiri: kalau
+        # tidak, tiap artikel akan "mirip 100%" dengan dirinya sendiri dan
+        # `duplicate_of` menunjuk ke dirinya sendiri -- seluruh artikel
+        # dianggap duplikat dan agregasi menjadi kosong.
+        batch_ids = {a.article_id for a in articles}
+        history = {k: v for k, v in history.items() if k not in batch_ids}
+
+        result = detector.mark_duplicates(articles, history=history)
+        self.last_duplicate_review = list(detector.last_review)
+        return result, {"digabung": len(detector.last_matches)}
 
     # ------------------------------------------------------------------
     # Tahap 2: skor sentimen + routing target
@@ -193,6 +243,13 @@ class Pipeline:
 
         all_impacts: list[TargetImpact] = []
         for article in articles:
+            # T-6: salinan near-duplicate tidak ikut diskor/dihitung. Kalau
+            # ikut, satu berita yang tersindikasi ke tiga feed akan muncul
+            # tiga kali di `daily_sentiment` dan menggeser rata-rata.
+            if article.duplicate_of is not None:
+                stats.artikel_duplikat += 1
+                continue
+
             text = f"{article.title} {article.body or ''}".strip()
             if not text:
                 stats.artikel_dilewati += 1
