@@ -207,6 +207,24 @@ CREATE TABLE IF NOT EXISTS persona_views (
 CREATE INDEX IF NOT EXISTS idx_impacts_asset ON impacts(asset_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_daily_asset_date ON daily_sentiment(asset_id, date);
 CREATE INDEX IF NOT EXISTS idx_prices_asset_date ON prices(asset_id, date);
+
+-- T-3: riwayat kesehatan sumber. Satu baris per (sumber, pemeriksaan).
+-- `is_failure` sengaja disimpan sebagai kolom agar query alert tidak perlu
+-- mengulang logika "status apa saja yang dianggap gagal" di banyak tempat.
+CREATE TABLE IF NOT EXISTS source_health (
+  source TEXT NOT NULL,
+  checked_at TIMESTAMP NOT NULL,
+  status TEXT NOT NULL,
+  is_failure BOOLEAN NOT NULL DEFAULT 0,
+  usable BOOLEAN NOT NULL DEFAULT 0,
+  latency_ms REAL,
+  detail TEXT,
+  sample_size INTEGER NOT NULL DEFAULT 0,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_health_source
+  ON source_health(source, checked_at);
 """
 
 

@@ -81,25 +81,70 @@ def cmd_identify(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _record_health(db: Database, apis: list[dict], rss: list[dict]) -> list[dict]:
+    """Simpan hasil pemeriksaan ke `source_health` dan kembalikan daftar alert.
+
+    Dipisah dari pencetakan agar `health` dan `--json` memakai jalur
+    pencatatan yang sama persis.
+    """
+    for a in apis:
+        db.save_source_health(
+            source=f"api:{a['provider']}",
+            status=str(a["status"]),
+            detail=str(a.get("detail") or ""),
+            latency_ms=a.get("latency_ms"),
+            sample_size=int(a.get("sample_size") or 0),
+            usable=bool(a.get("usable")),
+        )
+    for r in rss:
+        db.save_source_health(
+            source=f"rss:{r['feed']}",
+            status=str(r["status"]),
+            detail=str(r.get("detail") or ""),
+            sample_size=int(r.get("items") or 0),
+            usable=str(r["status"]) == "ok",
+        )
+    return db.sources_needing_alert(threshold=3)
+
+
+def _print_alerts(alerts: list[dict]) -> None:
+    if not alerts:
+        return
+    print("\n=== ALERT: SUMBER GAGAL BERUNTUN ===")
+    for a in alerts:
+        print(
+            f"  ! {a['source']:<28} gagal {a['consecutive_failures']}x berturut-turut "
+            f"[{a['status']}] {(a['detail'] or '')[:40]}"
+        )
+
+
 def cmd_health(args: argparse.Namespace) -> int:
     registry = ApiRegistry()
+    apis = [r.as_dict() for r in registry.health(probe=True)]
+    rss = [
+        {
+            "feed": s.name,
+            "status": s.status.value,
+            "items": s.item_count,
+            "detail": s.detail,
+        }
+        for s in RSSCollector().health()
+    ]
+    db = Database(args.db)
+    db.init_schema()
+    alerts = _record_health(db, apis, rss)
+
     payload = {
         "generated_at": utcnow().isoformat(),
-        "apis": [r.as_dict() for r in registry.health(probe=True)],
-        "rss": [
-            {
-                "feed": s.name,
-                "status": s.status.value,
-                "items": s.item_count,
-                "detail": s.detail,
-            }
-            for s in RSSCollector().health()
-        ],
+        "apis": apis,
+        "rss": rss,
+        "alerts": alerts,
     }
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         _print_health(registry)
+        _print_alerts(alerts)
     return 0
 
 
@@ -208,6 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("health", help="Laporan kesehatan (API + RSS)")
     sp.add_argument("--json", action="store_true", help="keluaran JSON")
+    sp.add_argument("--db", default="data/finews.db", help="path database SQLite")
     sp.set_defaults(func=cmd_health)
 
     sp = sub.add_parser(
