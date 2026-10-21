@@ -29,7 +29,7 @@ from typing import Optional
 
 from backend.src.aggregate.daily import DailyAggregator
 from backend.src.normalize.cleaner import ArticleCleaner
-from backend.src.schema import Article, RawArticle, TargetImpact, TargetTag
+from backend.src.schema import Article, Lang, RawArticle, TargetImpact, TargetTag
 from backend.src.store.db import Database
 from backend.src.tagging.router import TargetRouter
 from model.common.baseline import BaselineTfidfSentiment
@@ -99,6 +99,40 @@ def _row_to_raw_article(row: dict) -> RawArticle:
         fetched_at=fetched,
         query_target=row.get("query_target"),
         vendor_sentiment=row.get("vendor_sentiment"),
+    )
+
+
+def _row_to_article(row: dict) -> Article:
+    """Mengubah baris tabel `articles` kembali menjadi `Article`.
+
+    Pasangan dari `_row_to_raw_article`, dipakai `Pipeline.load_articles()`
+    supaya tahap `score` benar-benar memakai hasil tahap `clean`.
+    """
+
+    def _parse_dt(value) -> Optional[datetime]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        try:
+            parsed = datetime.fromisoformat(str(value))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+    return Article(
+        article_id=row["article_id"],
+        source=row["source"],
+        url=row.get("url"),
+        title=row["title"],
+        body=row.get("body"),
+        language=Lang(row["language"]),
+        published_at=_parse_dt(row.get("published_at")),
+        fetched_at=_parse_dt(row.get("fetched_at")) or datetime.now(timezone.utc),
+        duplicate_of=row.get("duplicate_of"),
+        market_relevant=(
+            None if row.get("market_relevant") is None else bool(row["market_relevant"])
+        ),
     )
 
 
@@ -191,6 +225,23 @@ class Pipeline:
         if articles and not dry_run:
             stats.artikel_tertulis = self.db.save_articles(articles)
         return articles, stats
+
+    def load_articles(self, limit: int = 100) -> list[Article]:
+        """Baca kembali `Article` dari tabel `articles`.
+
+        S-4: `cmd_score` dulu memanggil `normalize_raw(dry_run=True)`, sehingga
+        tahap `score` mengolah ulang `raw_articles` dan bukan memakai hasil
+        `clean`. Akibatnya `clean` praktis opsional, dan menjalankan `score`
+        tanpa `clean` lebih dulu gagal dengan `FOREIGN KEY constraint failed`
+        dari SQLite -- pesan yang tidak memberi tahu apa yang harus dilakukan.
+        """
+        hasil: list[Article] = []
+        for row in self.db.query_articles(limit=limit):
+            try:
+                hasil.append(_row_to_article(row))
+            except Exception:  # noqa: BLE001 - satu baris rusak tidak menghentikan batch
+                continue
+        return hasil
 
     def _mark_near_duplicates(self, articles: list[Article]) -> tuple[list[Article], dict]:
         """Tandai near-duplicate terhadap riwayat DB dan sesama batch.

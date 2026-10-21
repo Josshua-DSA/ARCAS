@@ -157,10 +157,16 @@ def cmd_score(args: argparse.Namespace) -> int:
         print("=== DRY RUN — tidak ada yang ditulis ===\n")
     try:
         pipe = Pipeline(db_path=args.db, model_path=args.model)
-        articles, _ = pipe.normalize_raw(limit=args.limit, dry_run=True)
+        # S-4: dulu `normalize_raw(dry_run=True)`, sehingga tahap ini mengolah
+        # ulang raw_articles dan bukan memakai hasil `clean`. Sekarang benar-
+        # benar membaca tabel `articles`.
+        articles = pipe.load_articles(limit=args.limit)
         if not articles:
-            print("Tidak ada artikel untuk diskor. Jalankan `clean` dulu.")
-            return 0
+            print(
+                "Tidak ada artikel di tabel `articles`. Jalankan `clean` lebih dulu:\n"
+                f"  python -m backend.src.cli --db {args.db} clean"
+            )
+            return 1
         impacts, stats = pipe.score_and_route(articles, dry_run=args.dry_run)
     except PipelineError as exc:
         print(f"GAGAL: {exc}")
