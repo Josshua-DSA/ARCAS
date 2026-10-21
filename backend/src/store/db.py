@@ -9,7 +9,6 @@ from typing import Generator, Optional
 
 from backend.src.schema import DailySentiment, PriceRecord, StatResult, TargetImpact
 
-
 DEFAULT_DB_PATH = Path("data/finews.db")
 
 
@@ -76,6 +75,8 @@ CREATE TABLE IF NOT EXISTS impacts (
   evidence_json TEXT,
   flags_json TEXT,
   model_version TEXT NOT NULL,
+  routed_from TEXT,
+  route_score REAL,
   universe_version TEXT NOT NULL,
   schema_version TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
@@ -222,9 +223,21 @@ class Database:
             conn.close()
 
     def init_schema(self) -> None:
-        """Initializes tables and indexes."""
+        """Initializes tables and indexes, lalu migrasi kolom yang menyusul."""
         with self.get_connection() as conn:
             conn.executescript(DDL_SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """Menambah kolom baru pada DB lama. Idempoten dan aman diulang."""
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(impacts);").fetchall()}
+        for name, ddl in (
+            ("routed_from", "TEXT"),
+            ("route_score", "REAL"),
+        ):
+            if name not in cols:
+                conn.execute(f"ALTER TABLE impacts ADD COLUMN {name} {ddl};")
 
     def seed_asset_master(self, csv_path: Path | str = Path("data/universe/asset_master.csv")) -> int:
         """Seeds the 3 core locked assets from asset_master.csv."""
@@ -307,8 +320,9 @@ class Database:
                 INSERT OR REPLACE INTO impacts (
                     article_id, asset_id, direction, score, confidence, basis,
                     themes_json, causal_path_json, rationale, evidence_json, flags_json,
-                    model_version, universe_version, schema_version, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    model_version, routed_from, route_score, universe_version,
+                    schema_version, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
                     impact.article_id,
@@ -323,6 +337,8 @@ class Database:
                     json.dumps([e.model_dump() for e in impact.evidence]),
                     json.dumps(impact.flags),
                     impact.model_version,
+                    impact.routed_from,
+                    impact.route_score,
                     impact.universe_version,
                     impact.schema_version,
                     impact.created_at.isoformat(),
@@ -495,6 +511,8 @@ class Database:
                         evidence=evidence,
                         flags=flags,
                         model_version=r["model_version"],
+                        routed_from=r["routed_from"],
+                        route_score=r["route_score"],
                         universe_version=r["universe_version"],
                         schema_version=r["schema_version"],
                         created_at=datetime.fromisoformat(r["created_at"]),
