@@ -122,10 +122,10 @@ Track ID, `news-watch`, dan scraper portal Indonesia tidak aktif. Karena riwayat
 │   ├── universe/asset_master.csv (INTI 3 baris aktif, version 2026-10-12-core3)
 │   ├── labeled/              # arsip (manual 400-600 MATI; label dari dataset/gold_sinha + dataset/fomc)
 │   └── raw/ processed/       # Parquet time-series
-├── model/                    # ML Engineer track (M1–M7)
-│   ├── notebooks/            # EDA, pelatihan, ablation TF-IDF vs transformer, validasi temporal
-│   ├── weights/              # bobot model beku (.pkl, safetensors, ECE calibrator)
-│   └── evaluation/           # evaluasi F1 macro, ECE, bootstrap CI, McNemar
+├── model/                    # ML Engineer track (M1–M7), dibagi per domain
+│   ├── common/               # dipakai bersama: protocol, baseline, metrik, router weights
+│   ├── xau/                  # FinBERT-EMAS: src/ notebooks/ weights/ evaluation/
+│   └── fomc/                 # FOMC-RoBERTa: src/ notebooks/ weights/ evaluation/
 ├── backend/                  # Backend Engineer track (B1–B9)
 │   ├── src/
 │   │   ├── collect/          # scrapers RSS/API + yfinance 3 target (GC=F, ^TNX, ^GSPC)
