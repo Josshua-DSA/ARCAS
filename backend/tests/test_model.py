@@ -1,7 +1,7 @@
 """Tests for baseline ML model and evaluation metrics."""
 
-from model.common.metrics import evaluate_predictions
 from model.common.baseline import BaselineTfidfSentiment
+from model.common.metrics import evaluate_predictions
 
 
 def test_baseline_tfidf_predict():

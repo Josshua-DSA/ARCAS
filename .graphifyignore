@@ -1,0 +1,30 @@
+# Vendor / generated files — noise in the code graph.
+# Terminified bundles produce hundreds of meaningless one-letter nodes
+# (`n`, `c`, `Rw`, `E`) that bury the real architecture.
+frontend/GUI/src/js/echarts.min.js
+**/*.min.js
+**/*.min.css
+**/dist/**
+**/build/**
+**/node_modules/**
+
+# Build artifacts and caches
+graphify-out/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+venv/
+.venv/
+*.egg-info/
+
+# Data binaries — not source, already documented in dataset/README.md
+dataset/**/*.parquet
+dataset/**/*.xlsx
+dataset/**/*.csv
+*.db
+*.sqlite
+
+# Local-only credentials
+.env
+.env.*
