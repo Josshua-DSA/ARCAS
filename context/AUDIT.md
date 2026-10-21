@@ -253,14 +253,32 @@ tabel kosong dan mengembalikan `[]`. Tampak "berfungsi", sebenarnya tidak ada da
 
 # 🟠 TINGGI
 
-## T-1 · FR-11 — OLS Newey-West HAC & Granger belum ada
+## T-1 · FR-11 — OLS Newey-West HAC & Granger — ✅ SELESAI
 
-`StatEngine` hanya punya `benjamini_hochberg`, `compute_car_event_study`,
-`compute_spearman_lags`, `frame_from_daily_prices`. `statsmodels` tidak ada di
-`requirements.txt` **dan** tidak terinstall.
+`statsmodels>=0.14.0` masuk `requirements.txt`. `StatEngine` kini punya
+`compute_ols_hac()` dan `compute_granger()`, keduanya mengikuti kontrak
+`StatResult` dan mengoreksi p-value lintas-lag dengan Benjamini-Hochberg.
 
-`schema.py` menyiapkan `test: str  # pearson | spearman | ols | granger | event_study`
-— implementasi `ols` dan `granger` kosong.
+Keputusan desain yang perlu diingat:
+- **HAC dipakai, bukan galat OLS biasa.** Return pasar hampir selalu
+  heteroskedastik/autokorelasi; galat naif melaporkan p-value terlalu kecil.
+  Bandwidth memakai aturan Newey-West `floor(4*(n/100)^(2/9))`.
+- **Hari tanpa berita dibuang, bukan diisi 0.** Mengisi 0 menciptakan
+  "hari netral" palsu dan meredam koefisien.
+- **Ambang minimum dijaga** (`MIN_OBS_OLS=10`, `MIN_OBS_GRANGER=20`). Di
+  bawahnya fungsi mengembalikan list kosong, bukan hasil acak.
+- **Granger menguji arah sentimen→return**, bukan korelasi kontemporer.
+  Korelasi lag-0 yang kuat TIDAK akan menyatakan kausalitas — ini benar.
+
+Verifikasi: BH identik dengan `statsmodels.multipletests(method="fdr_bh")`.
+Simulasi 500 deret tanpa hubungan: false positive turun dari 35% (p mentah)
+menjadi **6,8%** setelah koreksi. 17 test baru di
+`backend/tests/test_stats_hac_granger.py`.
+
+**Masih terblokir data:** pada DB sekarang hanya ada 2–4 hari berpasangan per
+aset, sehingga guard menolak semuanya (0 baris). Implementasi siap, tetapi
+belum bisa menghasilkan angka sampai harga historis diisi (lihat blocker
+statistik di atas).
 
 ## T-2 · FR-14 — CLI baru mencakup `collect`
 
