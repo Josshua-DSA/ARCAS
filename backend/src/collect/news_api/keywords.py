@@ -1,7 +1,12 @@
-"""Kata kunci relevansi target — dipakai adapter untuk memfilter berita.
+"""Kata kunci relevansi target — dibaca dari `data/source_registry.yaml`.
 
-Bersumber dari `data/source_registry.yaml` (`targets.<ID>.keywords`) dan
-`macro.keywords`, diperluas untuk mencakup istilah pasar yang lazim.
+Registry adalah SATU-SATUNYA sumber kebenaran. Sebelumnya daftar di sini
+disalin manual dari YAML, dan keduanya sudah menyimpang (kode 15/22/17 kata,
+YAML 9/8/8) sementara docstring mengaku bersumber dari YAML. Dokumen yang
+berbohong lebih buruk daripada tidak ada dokumen: orang mengedit YAML lalu
+bingung kenapa tidak ada efeknya.
+
+Sekarang YAML dibaca saat impor. Menambah kata kunci cukup di YAML.
 
 Pencocokan memakai word-boundary regex, bukan substring. Tanpa ini kata kunci
 pendek seperti "war" akan cocok di "software", "award", "toward", "hardware"
@@ -12,34 +17,74 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+from pathlib import Path
 
-TARGET_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "XAU": (
-        "gold", "bullion", "safe haven", "safe-haven", "real yield",
-        "real yields", "emas", "xau", "precious metal", "precious metals",
-        "gold price", "gold prices", "gold futures", "comex", "spot gold",
-    ),
-    "RATE_UST": (
-        "treasury", "treasuries", "treasury yield", "treasury yields",
-        "bond yield", "bond yields", "yield curve", "10-year", "ten-year",
-        "two-year", "2-year", "fed funds", "fomc", "federal reserve",
-        "rate cut", "rate cuts", "rate hike", "rate hikes", "powell",
-        "monetary policy", "obligasi", "yield",
-    ),
-    "SPX": (
-        "s&p", "s&p 500", "sp500", "spx", "wall street", "equities",
-        "stock market", "stock markets", "stocks", "earnings", "nasdaq",
-        "dow jones", "risk appetite", "equity market", "index futures",
-        "blue chip", "blue chips",
-    ),
+import yaml
+
+DEFAULT_REGISTRY_PATH = Path("data/source_registry.yaml")
+
+# Cadangan bila registry tidak terbaca (mis. dijalankan dari cwd lain).
+# Sengaja MINIMAL, bukan salinan penuh: daftar panjang di sini akan kembali
+# menjadi sumber kebenaran kedua yang lambat laun menyimpang lagi. Tujuannya
+# hanya menjaga program tetap hidup, dan `registry_source` menandainya.
+_FALLBACK_TARGETS: dict[str, tuple[str, ...]] = {
+    "XAU": ("gold", "bullion", "xau"),
+    "RATE_UST": ("treasury", "yield", "fomc"),
+    "SPX": ("s&p 500", "spx", "stocks"),
 }
+_FALLBACK_MACRO: tuple[str, ...] = ("fed", "inflation", "war")
+
+
+def _load_registry(
+    path: Path | None = None,
+) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...], str]:
+    """Baca `targets.<ID>.keywords` dan `macro.keywords` dari registry.
+
+    Returns:
+        (kata kunci per target, kata kunci makro, keterangan sumber)
+    """
+    reg_path = path or DEFAULT_REGISTRY_PATH
+    if not reg_path.exists():
+        return dict(_FALLBACK_TARGETS), _FALLBACK_MACRO, f"fallback:{reg_path} tidak ada"
+
+    try:
+        data = yaml.safe_load(reg_path.read_text(encoding="utf-8")) or {}
+    except (yaml.YAMLError, OSError) as exc:
+        return dict(_FALLBACK_TARGETS), _FALLBACK_MACRO, f"fallback:gagal baca ({exc})"
+
+    raw_targets = data.get("targets") or {}
+    targets: dict[str, tuple[str, ...]] = {}
+    for target_id, spec in raw_targets.items():
+        if not isinstance(spec, dict):
+            continue
+        words = spec.get("keywords") or []
+        # Dedup sambil pertahankan urutan; YAML boleh berisi duplikat.
+        seen: dict[str, None] = {}
+        for w in words:
+            text = str(w).strip().lower()
+            if text:
+                seen.setdefault(text, None)
+        if seen:
+            targets[str(target_id)] = tuple(seen)
+
+    macro_raw = ((data.get("macro") or {}).get("keywords")) or []
+    macro_seen: dict[str, None] = {}
+    for w in macro_raw:
+        text = str(w).strip().lower()
+        if text:
+            macro_seen.setdefault(text, None)
+
+    if not targets:
+        return dict(_FALLBACK_TARGETS), _FALLBACK_MACRO, "fallback:targets kosong"
+
+    version = data.get("version", "tanpa-versi")
+    return targets, tuple(macro_seen), f"registry:{version}"
+
+
+TARGET_KEYWORDS, MACRO_KEYWORDS, REGISTRY_SOURCE = _load_registry()
 
 # Kata kunci makro: menambah skor, tetapi TIDAK cukup sendirian untuk
 # meloloskan berita — butuh minimal satu kata kunci target-spesifik.
-MACRO_KEYWORDS: tuple[str, ...] = (
-    "fed", "fomc", "inflation", "cpi", "pce", "jobs report", "payrolls",
-    "tariff", "tariffs", "rate cut", "rate hike", "war", "recession", "gdp",
-)
 
 
 @lru_cache(maxsize=256)

@@ -12,50 +12,66 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
+
+import yaml
 
 from backend.src.collect.news_api.base import ApiStatus, HealthReport, NewsItem
 from backend.src.collect.news_api.client import ApiError, NewsAPIClient
 from backend.src.collect.news_api.keywords import TARGET_KEYWORDS, matches_target, score_relevance
 
-# Feed yang sudah diverifikasi hidup (lihat AUDIT: kitco 404, yahoo rss 404).
-# CATATAN: investing `news_285` BUKAN komoditas (isinya saham/bitcoin).
-# Yang benar untuk emas: `commodities.rss` (analisis) dan `news_11.rss` (berita).
-FEEDS: dict[str, list[dict[str, str]]] = {
+REGISTRY_PATH = Path("data/source_registry.yaml")
+
+# Cadangan minimal bila registry tidak terbaca. Bukan salinan penuh — lihat
+# catatan di `news_api/keywords.py` soal kenapa daftar panjang di kode berbahaya.
+_FALLBACK_FEEDS: dict[str, list[dict[str, str]]] = {
     "XAU": [
         {
             "name": "investing_commodities_news",
             "url": "https://www.investing.com/rss/news_11.rss",
-        },
-        {
-            "name": "investing_commodities_analysis",
-            "url": "https://www.investing.com/rss/commodities.rss",
-        },
-        {
-            "name": "marketwatch_top",
-            "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-        },
-    ],
-    "RATE_UST": [
-        {
-            "name": "fed_press",
-            "url": "https://www.federalreserve.gov/feeds/press_all.xml",
-        },
-        {
-            "name": "investing_commodities_news",
-            "url": "https://www.investing.com/rss/news_11.rss",
-        },
-    ],
-    "SPX": [
-        {
-            "name": "marketwatch_top",
-            "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-        },
-        {
-            "name": "bbc_business",
-            "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
-        },
-    ],
+        }
+    ]
 }
+
+
+def _load_feeds(path: Path | None = None) -> dict[str, list[dict[str, str]]]:
+    """Baca `targets.<ID>.feeds` dari registry.
+
+    Hanya entri ber-`type: rss` yang dipakai; feed mati sudah dibuang dari
+    YAML sehingga tidak perlu disaring lagi di sini.
+    """
+    reg_path = path or REGISTRY_PATH
+    if not reg_path.exists():
+        return dict(_FALLBACK_FEEDS)
+    try:
+        data = yaml.safe_load(reg_path.read_text(encoding="utf-8")) or {}
+    except (yaml.YAMLError, OSError):
+        return dict(_FALLBACK_FEEDS)
+
+    feeds: dict[str, list[dict[str, str]]] = {}
+    for target_id, spec in (data.get("targets") or {}).items():
+        if not isinstance(spec, dict):
+            continue
+        rows: list[dict[str, str]] = []
+        for entry in spec.get("feeds") or []:
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get("type", "rss")).lower() != "rss":
+                continue
+            url = str(entry.get("url") or "").strip()
+            if not url:
+                continue
+            rows.append({"name": str(entry.get("name") or url), "url": url})
+        if rows:
+            feeds[str(target_id)] = rows
+
+    return feeds or dict(_FALLBACK_FEEDS)
+
+
+# Feed yang sudah diverifikasi hidup — sumbernya `data/source_registry.yaml`.
+# CATATAN: investing `news_285` BUKAN komoditas (isinya saham/bitcoin).
+# Yang benar untuk emas: `commodities.rss` (analisis) dan `news_11.rss` (berita).
+FEEDS: dict[str, list[dict[str, str]]] = _load_feeds()
 
 _NS = {
     "atom": "http://www.w3.org/2005/Atom",
