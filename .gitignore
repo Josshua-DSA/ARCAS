@@ -7,10 +7,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 .ipynb_checkpoints/
-model/weights/*.bin
-model/weights/*.safetensors
-model/weights/*.pt
-model/weights/*.onnx
+model/*/weights/*.bin
+model/*/weights/*.safetensors
+model/*/weights/*.pt
+model/*/weights/*.onnx
 outputs/
 *.db
 *.db-journal
