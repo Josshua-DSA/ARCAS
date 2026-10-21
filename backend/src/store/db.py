@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS impacts (
   rationale TEXT,
   evidence_json TEXT,
   flags_json TEXT,
+  news_horizon TEXT,
   model_version TEXT NOT NULL,
   routed_from TEXT,
   route_score REAL,
@@ -262,6 +263,9 @@ class Database:
         for name, ddl in (
             ("routed_from", "TEXT"),
             ("route_score", "REAL"),
+            # S-5: horizon berita harus tersimpan agar bisa dibaca kembali,
+            # bukan hanya hidup di memori selama satu pemanggilan.
+            ("news_horizon", "TEXT"),
         ):
             if name not in cols:
                 conn.execute(f"ALTER TABLE impacts ADD COLUMN {name} {ddl};")
@@ -347,9 +351,9 @@ class Database:
                 INSERT OR REPLACE INTO impacts (
                     article_id, asset_id, direction, score, confidence, basis,
                     themes_json, causal_path_json, rationale, evidence_json, flags_json,
-                    model_version, routed_from, route_score, universe_version,
+                    news_horizon, model_version, routed_from, route_score, universe_version,
                     schema_version, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
                     impact.article_id,
@@ -363,6 +367,9 @@ class Database:
                     impact.rationale,
                     json.dumps([e.model_dump() for e in impact.evidence]),
                     json.dumps(impact.flags),
+                    impact.news_horizon.value
+                    if hasattr(impact.news_horizon, "value")
+                    else str(impact.news_horizon),
                     impact.model_version,
                     impact.routed_from,
                     impact.route_score,
@@ -1204,7 +1211,8 @@ class Database:
         with self.get_connection() as conn:
             row = conn.execute(
                 """
-                SELECT article_id, asset_id, direction, score, confidence, basis
+                SELECT article_id, asset_id, direction, score, confidence, basis,
+                       news_horizon
                 FROM impacts WHERE article_id = ? AND asset_id = ?
                 ORDER BY confidence DESC LIMIT 1;
                 """,

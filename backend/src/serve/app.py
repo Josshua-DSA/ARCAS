@@ -225,7 +225,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         target: str = "SPX",
         score: Optional[float] = None,
         confidence: Optional[float] = None,
-        horizon: NewsHorizon = NewsHorizon.SHORT,
+        horizon: Optional[NewsHorizon] = None,
     ) -> list[dict]:
         """Stance 5 persona untuk satu dampak artikel.
 
@@ -234,6 +234,10 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         "analisis" yang sama persis. Kini bila tidak diberikan, nilainya
         diambil dari `impacts` artikel tersebut; bila artikel tidak punya
         dampak, jawabannya 404 -- bukan angka palsu.
+
+        S-5: `horizon` dulu selalu jatuh ke SHORT karena router tidak pernah
+        mengisinya, sehingga semua persona melihat berita berhorizon pendek.
+        Kini bila tidak diberikan, diambil dari `impacts.news_horizon`.
         """
         if score is None or confidence is None:
             row = db.get_impact_for_article(article_id, target)
@@ -248,6 +252,11 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 )
             score = row["score"] if score is None else score
             confidence = row["confidence"] if confidence is None else confidence
+            if horizon is None and row.get("news_horizon"):
+                horizon = NewsHorizon(row["news_horizon"])
+
+        if horizon is None:
+            horizon = NewsHorizon.SHORT
 
         views = persona_engine.evaluate_all(
             article_id=article_id,

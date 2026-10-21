@@ -17,6 +17,23 @@ routing:
   macro_confidence_weight_factor: 0.35
   macro_confidence_cap: 0.85
 
+  # S-5: horizon berita. Sebelumnya `TargetImpact.news_horizon` selalu jatuh
+  # ke nilai bawaan SHORT dan router tidak pernah mengisinya, sehingga FR-23
+  # hanya "terisi" secara teknis. Kini horizon ditentukan per jenis jalur:
+  #   explicit  -> aset disebut langsung, reaksinya paling cepat
+  #   macro     -> lewat tema, butuh waktu merambat
+  #   intraday  -> kejadian yang redanya dalam hari yang sama
+  horizon:
+    explicit: short        # 1-5 hari
+    macro: medium          # 1-4 minggu
+    intraday_keywords:     # memaksa intraday bila muncul di teks berita
+      - intraday
+      - hari ini
+      - sesi ini
+      - today's session
+      - at the open
+      - at the close
+
 # Tahap 1a: petunjuk sumber (substring, case-insensitive)
 sources:
   finbert_emas:

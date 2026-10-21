@@ -2,11 +2,18 @@
 
 import csv
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import yaml
 
-from backend.src.schema import Article, Basis, Direction, EvidenceSpan, TargetImpact
+from backend.src.schema import (
+    Article,
+    Basis,
+    Direction,
+    EvidenceSpan,
+    NewsHorizon,
+    TargetImpact,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - hanya untuk anotasi tipe
     from backend.src.tagging.model_router import ModelRouter
@@ -54,12 +61,47 @@ class TargetRouter:
             "macro_confidence_weight_factor": 0.35,
             "macro_confidence_cap": 0.85,
         }
+        # S-5: horizon per jenis jalur. Bawaan di sini mencerminkan isi YAML
+        # supaya perilaku tidak berubah bila file tidak ada.
+        self.horizon_policy: dict[str, Any] = {
+            "explicit": "short",
+            "macro": "medium",
+            "intraday_keywords": [],
+        }
         if self.config_path.exists():
             with open(self.config_path, mode="r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             section = data.get("routing") if isinstance(data, dict) else None
             if isinstance(section, dict):
+                horizon = section.pop("horizon", None)
                 self.routing.update(section)
+                if isinstance(horizon, dict):
+                    self.horizon_policy.update(horizon)
+
+    def resolve_horizon(self, text: str, basis: Basis) -> NewsHorizon:
+        """Horizon berita untuk satu dampak (S-5 / FR-23).
+
+        Sebelumnya `news_horizon` selalu jatuh ke nilai bawaan SHORT karena
+        router tidak pernah mengisinya — FR-23 hanya "terisi" secara teknis.
+
+        Aturan, semuanya dari `router_config.yaml`:
+        - kata kunci intraday muncul  -> INTRADAY (reda di hari yang sama)
+        - jalur eksplisit             -> `horizon.explicit` (bawaan short)
+        - jalur makro                 -> `horizon.macro` (bawaan medium)
+        """
+        lower = text.lower()
+        for kw in self.horizon_policy.get("intraday_keywords", []) or []:
+            if str(kw).lower() in lower:
+                return NewsHorizon.INTRADAY
+
+        key = "explicit" if basis is Basis.EXPLICIT else "macro"
+        raw = str(self.horizon_policy.get(key, "short")).lower()
+        try:
+            return NewsHorizon(raw)
+        except ValueError:
+            # Konfigurasi salah tidak boleh menjatuhkan pipeline; pakai short
+            # dan biarkan nilai mentahnya terlihat di log pemanggil.
+            return NewsHorizon.SHORT
 
     def find_explicit_mentions(self, text: str) -> list[tuple[str, str, int, int]]:
         """
@@ -154,6 +196,7 @@ class TargetRouter:
                     themes=[],
                     evidence=evidence,
                     flags=[],
+                    news_horizon=self.resolve_horizon(full_text, Basis.EXPLICIT),
                     model_version=model_version,
                     routed_from=routed_from,
                     route_score=route_score,
@@ -199,6 +242,7 @@ class TargetRouter:
                         causal_path=[theme, f"{macro_asset}_{direction.value}"],
                         evidence=[],
                         flags=[],
+                        news_horizon=self.resolve_horizon(full_text, Basis.MACRO_FACTOR),
                         model_version=model_version,
                         routed_from=routed_from,
                         route_score=route_score,
