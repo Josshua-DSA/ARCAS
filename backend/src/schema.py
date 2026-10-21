@@ -3,8 +3,8 @@
 from datetime import date, datetime
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, model_validator
 
+from pydantic import BaseModel, Field, model_validator
 
 # ==========================================
 # 1. ENUMS
@@ -152,6 +152,8 @@ class TargetImpact(BaseModel):
     flags: list[str] = []
     news_horizon: NewsHorizon = NewsHorizon.SHORT
     model_version: str = "fusion-v1"
+    routed_from: Optional[str] = None
+    route_score: Optional[float] = None
     universe_version: str = "2026-10-12-core3"
     schema_version: str = "0.5.0"
     created_at: datetime = Field(default_factory=datetime.utcnow)
