@@ -20,8 +20,8 @@
     "semantic_hash": ""
   },
   "backend/src/alloc/engine.py": {
-    "mtime": 1792558560.8727348,
-    "ast_hash": "aa083b52317fe1a35f02a633492e1808",
+    "mtime": 1792589129.6330545,
+    "ast_hash": "72da558b9a70b72795dec0e780e5e0fd",
     "semantic_hash": ""
   },
   "backend/src/collect/__init__.py": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "context/AUDIT.md": {
-    "mtime": 1792588597.513187,
-    "ast_hash": "b5273bb68c7cf6ef19b2a9eab4026e7e",
+    "mtime": 1792589248.8636348,
+    "ast_hash": "65c2adcfa7a659ad6bed902a37049ad6",
     "semantic_hash": ""
   },
   "docs/JALUR_DATA.md": {
@@ -747,6 +747,11 @@
   "scripts/patch-graphify-skill.py": {
     "mtime": 1792587978.0526922,
     "ast_hash": "bc8f8730d51361b2bfe86876396742ef",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_alloc_profiles_invariant.py": {
+    "mtime": 1792589105.299551,
+    "ast_hash": "435700a0dd3764634e01481b623ff648",
     "semantic_hash": ""
   }
 }

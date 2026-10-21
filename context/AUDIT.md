@@ -153,14 +153,38 @@ memetakan kolom ke `raw_articles`, plus validasi baris buruk (dilewati dengan
 alasan, bukan crash). Scraper ID (detik/kompas/antara) terpisah dan lebih
 besar — bisa ditunda tanpa memblokir FR lain.
 
-### 4. FR-20 · tabel `alloc_profiles` mati — **P1, kosmetik arsitektur**
+### 4. FR-20 · tabel `alloc_profiles` mati — **P1, DITUNDA (keputusan pemilik)**
 
 Bukti: tabel dibuat di skema, **nol CRUD**, **nol pembaca**. Fungsinya jalan
-lewat `alloc_profiles.yaml`.
+lewat `data/alloc_profiles.yaml`.
 
-**Yang harus dikerjakan:** pilih satu — (a) hapus tabelnya, atau (b) pindahkan
-profil dari YAML ke tabel + CRUD. Jangan biarkan keduanya ada tanpa keterangan;
-pembaca baru akan mengira tabel itu sumber kebenaran.
+**Koreksi atas rekomendasi AUDIT sebelumnya.** v3 menawarkan dua opsi
+"setara": (a) hapus tabel, atau (b) pindahkan profil ke tabel + CRUD. Opsi (b)
+**salah**. Profil alokasi adalah *konfigurasi* — 4 preset statis yang diubah
+lewat review kode dan git, tidak pernah lewat aplikasi, dan hanya dibaca satu
+konsumen (`AllocationEngine`). Menambah CRUD berarti membangun jalur tulis
+untuk pembaca yang tidak ada, sekaligus menciptakan sumber kebenaran kedua.
+Yang benar hanya: **hapus tabelnya** suatu saat, atau biarkan dengan keterangan.
+
+**Keputusan pemilik:** FR-20 **tidak dikerjakan**, termasuk penghapusan tabel
+(tidak menyentuh `SCHEMA.md`/DDL tanpa kebutuhan mendesak). Tabel dibiarkan
+apa adanya.
+
+**Yang dikerjakan sebagai gantinya — invarian #10 yang tidak ditegakkan.**
+`SCHEMA.md` invarian #10 berbunyi "Σ `base_pct` == 100.0 untuk setiap profil;
+validasi saat memuat `alloc_profiles.yaml`", tetapi `engine.py` tidak
+memvalidasi apa pun. Terukur: profil dengan Σ `base_pct` = 90 dimuat tanpa
+error, lalu `tilt_portfolio` menormalkan ulang bobotnya sehingga Σ `new_pct`
+tetap 100 — output tampak benar padahal proporsi yang dipakai bukan yang
+tertulis di YAML. Kegagalan sunyi, tanpa peringatan.
+
+Perbaikan (`backend/src/alloc/engine.py`): `_validate_profiles()` dipanggil saat
+memuat, menegakkan #10 (Σ `base_pct` == 100, toleransi 1e-6) dan #11
+(`min_pct ≤ base_pct ≤ max_pct`), plus field wajib dan profil tanpa kelas.
+Pelanggaran melempar `ProfileConfigError` dengan nama profilnya. Diuji oleh
+`test_alloc_profiles_invariant.py` (9 test, termasuk uji mutasi: mematikan
+validasi membuat 5 test gagal). `data/alloc_profiles.yaml` yang ada saat ini
+sudah memenuhi invarian, jadi tidak ada perubahan perilaku pada data nyata.
 
 ---
 
@@ -206,7 +230,8 @@ yang tidak terlihat oleh 190 test lain (`score` membaca `raw_articles`;
 **Langkah 1 — murah, nilai langsung (½ hari)**
 1. ~~FR-2: fixture + uji mutasi near-dup~~ ✅ selesai (`seeded_pipeline_db`).
 2. `yfinance_collector` dan `news_cli`: test parsing & alert.
-3. FR-20: putuskan hapus atau pindahkan ke tabel.
+3. ~~FR-20: putuskan hapus atau pindahkan ke tabel~~ → **ditunda oleh pemilik**;
+   tabel dibiarkan, invarian #10-nya yang diperbaiki (selesai).
 
 **Langkah 2 — FR-1 sisa (1 hari)**
 4. `cli ingest` CSV/JSON + validasi baris buruk.
