@@ -45,6 +45,22 @@ class TargetRouter:
                 data = yaml.safe_load(f) or {}
                 self.impact_graph = data.get("themes", {})
 
+        # T-5: ambang & kalibrasi dari YAML, bukan angka ajaib di kode.
+        self.config_path = Path("data/router_config.yaml")
+        self.routing: dict[str, float] = {
+            "direction_threshold": 0.1,
+            "explicit_confidence": 0.88,
+            "macro_confidence_base": 0.50,
+            "macro_confidence_weight_factor": 0.35,
+            "macro_confidence_cap": 0.85,
+        }
+        if self.config_path.exists():
+            with open(self.config_path, mode="r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            section = data.get("routing") if isinstance(data, dict) else None
+            if isinstance(section, dict):
+                self.routing.update(section)
+
     def find_explicit_mentions(self, text: str) -> list[tuple[str, str, int, int]]:
         """
         Finds direct alias matches in text.
@@ -111,9 +127,10 @@ class TargetRouter:
         for asset_id, matched_alias, start, end in explicit_matches:
             tagged_assets.add(asset_id)
             # Direction follows sentiment score for explicit mentions
-            if sentiment_score > 0.1:
+            threshold = self.routing["direction_threshold"]
+            if sentiment_score > threshold:
                 direction = Direction.BULLISH
-            elif sentiment_score < -0.1:
+            elif sentiment_score < -threshold:
                 direction = Direction.BEARISH
             else:
                 direction = Direction.NEUTRAL
@@ -132,7 +149,7 @@ class TargetRouter:
                     asset_id=asset_id,
                     direction=direction,
                     score=sentiment_score,
-                    confidence=0.88,  # Under explicit cap 1.00
+                    confidence=self.routing["explicit_confidence"],
                     basis=Basis.EXPLICIT,
                     themes=[],
                     evidence=evidence,
@@ -158,9 +175,10 @@ class TargetRouter:
                 weight = entry.get("weight", 0.5)
                 projected_score = sentiment_score * sign * weight
 
-                if projected_score > 0.1:
+                threshold = self.routing["direction_threshold"]
+                if projected_score > threshold:
                     direction = Direction.BULLISH
-                elif projected_score < -0.1:
+                elif projected_score < -threshold:
                     direction = Direction.BEARISH
                 else:
                     direction = Direction.NEUTRAL
@@ -171,7 +189,11 @@ class TargetRouter:
                         asset_id=macro_asset,
                         direction=direction,
                         score=max(-1.0, min(1.0, projected_score)),
-                        confidence=min(0.85, 0.50 + weight * 0.35),  # Cap 0.85
+                        confidence=min(
+                            self.routing["macro_confidence_cap"],
+                            self.routing["macro_confidence_base"]
+                            + weight * self.routing["macro_confidence_weight_factor"],
+                        ),
                         basis=Basis.MACRO_FACTOR,
                         themes=[theme],
                         causal_path=[theme, f"{macro_asset}_{direction.value}"],
