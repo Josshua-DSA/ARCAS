@@ -212,6 +212,9 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             profile_id=profile_id,
             class_scores=class_scores,
         )
+        # S-2: simpan agar hasil bisa diaudit ulang, bukan hanya dikembalikan.
+        db.save_alloc_suggestion(suggestion)
+
         payload = suggestion.model_dump()
         payload["data_sources"] = sources
         return payload
@@ -253,6 +256,8 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             confidence=confidence,
             news_horizon=horizon,
         )
+        # S-2: persist supaya reproducible & bisa diperiksa ulang.
+        db.save_persona_views(views)
         return [v.model_dump() for v in views]
 
     return app
