@@ -9,6 +9,7 @@ frontend/GUI/src/js/echarts.min.js
 **/node_modules/**
 
 # Build artifacts and caches
+.graphify/
 graphify-out/
 __pycache__/
 *.pyc

@@ -7,25 +7,39 @@
 
 ## 1. Mulai dari sini, bukan dari `ls -R`
 
-Repository ini punya **code graph** yang sudah dibangun (`graphify-out/`).
+Repository ini punya **code graph** yang sudah dibangun (`.graphify/`).
 Query jauh lebih murah daripada membaca puluhan file.
+
+> **Graf dibangun: `014cc33` · 2026-10-21 19:47 · 1423 node, 2954 edge, 94 komunitas.**
+> Kalau commit terakhir berbeda dari ini, grafnya **basi** — jalankan
+> `./scripts/graph.sh update .` lalu `./scripts/graph.sh cluster-only .`.
 
 ```bash
 # Ringkasan arsitektur + daftar komunitas
-cat graphify-out/GRAPH_REPORT.md
+cat .graphify/GRAPH_REPORT.md
 
 # Cari simbol dan lihat tetangganya (import, caller, method)
-graphify explain "ModelRouter"
-graphify explain "Database"
+./scripts/graph.sh explain "ModelRouter"
+./scripts/graph.sh explain "Database"
 
 # Jalur antar dua simbol
-graphify path "ModelRouter" "TargetImpact"
+./scripts/graph.sh path "ModelRouter" "TargetImpact"
 
 # Bangun ulang setelah kode berubah (gratis, tanpa API)
-graphify update .
+./scripts/graph.sh update .          # ekstraksi AST saja
+./scripts/graph.sh cluster-only .    # WAJIB setelahnya: regenerasi laporan + HTML
 ```
 
-Buka `graphify-out/graph.html` di browser kalau butuh visual interaktif.
+Buka `.graphify/graph.html` di browser kalau butuh visual interaktif.
+
+**Kenapa lewat `scripts/graph.sh`, bukan `graphify` langsung:** nama direktori
+keluaran diatur env var `GRAPHIFY_OUT` yang dibaca **sekali saat proses mulai**,
+dan tidak ada flag CLI untuk itu. Tanpa wrapper, `graphify update .` akan
+menulis ke `graphify-out/` lagi dan repo punya dua graf yang saling bertentangan.
+
+**Dua perintah, bukan satu.** `update` hanya mengekstraksi kode — `graph.html`
+dan `GRAPH_REPORT.md` **tidak** ikut diperbarui. Tanpa `cluster-only`, laporan
+tetap basi meski `graph.json` sudah segar.
 
 **Graph ini portabel** — tidak ada path absolut di dalamnya, jadi hasilnya sama
 di mesin Anda.
@@ -108,8 +122,8 @@ Ini bukan preferensi gaya — ini batasan arsitektur yang diuji.
 /home/josjiez/my_env/ai_env/bin/python model/common/01_baseline_exploration.py
 ```
 
-Baseline: **25–31 test lulus** tergantung cabang. Kalau jumlahnya turun,
-ada yang rusak.
+Baseline: **195 test lulus, 1 skipped** (per `013e20a`). Kalau jumlahnya turun,
+ada yang rusak. mypy wajib bersih: `./venv/bin/python -m mypy backend/src`.
 
 ---
 
@@ -129,20 +143,27 @@ Tambahkan `!` untuk breaking change (`refactor(model)!: ...`).
 
 ## 7. Kondisi repository saat ini
 
+> Diverifikasi `013e20a`. Rincian per FR: `context/AUDIT.md` (v4).
+
 Yang **sudah** ada:
-- Skema DB 14 tabel + migrasi idempoten
-- Router dua tahap (source hint → log-odds Monroe 2008), akurasi ~95–98%
+- Skema DB **17 tabel** + migrasi idempoten
+- Router dua tahap (source hint → log-odds Monroe 2008)
 - Audit trail routing tersimpan di tabel `impacts`
-- Baseline TF-IDF + LR, metrik F1/ECE/kappa
-- REST API, Allocation Tilt, Persona POV, StatEngine
+- Baseline TF-IDF + LR, akurasi 93,72% (F1 macro 0,83) pada 6.882 berita
+- REST API, Allocation Tilt, Persona POV, StatEngine (OLS HAC + Granger + BH-FDR)
+- **Pipeline end-to-end**: `raw_articles → articles → sentiments → impacts → daily_sentiment`
+- **Kolektor berita** API (Finnhub/Marketaux/AlphaVantage) + RSS
+- CLI 10 perintah: `seed prices pipeline status clean score aggregate stats export report`
+- Health source + alert (`source_health`)
+- Ekspor Parquet (`ParquetStore`)
 
 Yang **belum** ada (jangan diasumsikan ada):
-- Implementasi FinBERT (`model/xau/src/` masih kosong)
+- Implementasi FinBERT (`model/xau/src/` masih kosong, `transformers` belum terpasang)
 - Implementasi FOMC-RoBERTa (`model/fomc/src/` masih kosong)
-- Orchestrator pipeline end-to-end (collect → clean → route → score → save)
-- CRUD untuk 8 tabel (`articles`, `article_targets`, `sentiments`, dll.)
-- File database disk `data/finews.db` (belum pernah diinisialisasi)
-- Kolektor berita (RSS/scraper) — baru ada kolektor harga yfinance
+- Ingest CSV/JSON/manual (`cli ingest` tidak ada)
+- Scraper media Indonesia (detik/kompas/antara)
+- CRUD tabel `alloc_profiles` (tabel ada, tanpa pemakai — profil jalan lewat YAML)
+- `stat_results` masih kosong: data baru 2–4 hari berpasangan, ambang `MIN_OBS_OLS=10`
 
 ---
 
