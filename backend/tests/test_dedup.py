@@ -289,18 +289,48 @@ def test_pipeline_flags_duplicate_without_skipping(seeded_pipeline_db):
     assert oil.duplicate_of is None
 
 
-def test_duplicate_does_not_increase_daily_article_count(seeded_pipeline_db):
-    """AUDIT v3 §2: duplikat tidak menambah `n_articles` pada agregasi."""
+def test_duplicate_does_not_increase_daily_article_count(seeded_pipeline_db, monkeypatch):
+    """AUDIT v3 §2: duplikat tidak ikut diskor / menambah hitungan.
+
+    Memakai model tiruan supaya test tidak bergantung pada artefak
+    `model/common/baseline_tfidf.joblib`. Artefak itu sengaja tidak di-commit
+    (terikat versi sklearn), jadi di checkout bersih/CI test ini akan gagal
+    pada `load_model()` -- padahal yang diuji di sini adalah *pelewatan*
+    duplikat, bukan kualitas sentimen.
+    """
     from backend.src.pipeline.runner import Pipeline
+    from backend.src.schema import ArticleSentiment, ModelProbs, Tone
+
+    class _StubModel:
+        """Model sentimen minimal: selalu netral."""
+
+        def score_article(self, article_id: str, text: str) -> ArticleSentiment:
+            return ArticleSentiment(
+                article_id=article_id,
+                tone=Tone.NEUTRAL,
+                score=0.0,
+                probs=[
+                    ModelProbs(
+                        model="stub",
+                        p_pos=0.25,
+                        p_neu=0.5,
+                        p_neg=0.25,
+                        model_version="stub",
+                    )
+                ],
+            )
 
     pipe = Pipeline(db_path=seeded_pipeline_db)
+    monkeypatch.setattr(pipe, "load_model", lambda: _StubModel())
+
     articles, _ = pipe.normalize_raw(limit=100, dry_run=True)
     _, stats = pipe.score_and_route(articles, dry_run=True)
 
-    # Hanya artikel unik yang masuk tahap skor.
+    # Duplikat dilewati pada tahap skor; sisanya diproses.
     assert stats.artikel_duplikat == 1
     unik = [a for a in articles if not a.duplicate_of]
     assert len(unik) == len(articles) - 1
+    assert stats.errors == [], f"tidak boleh ada error skor: {stats.errors}"
 
 
 def test_detector_disabled_breaks_the_assertions(seeded_pipeline_db, monkeypatch):
