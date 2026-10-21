@@ -341,16 +341,20 @@ window.ARCAS = window.ARCAS || {};
         if (typeof A.renderPage === "function") A.renderPage();
       });
     });
+    /* href statis diset agar menu benar saat middle-click; saat klik biasa,
+       query dihitung ulang di satu waktu klik. Alasan: href yang dibangun saat
+       boot akan membawa state basi saat user pindah tab dulu. */
     document.querySelectorAll("a[data-page]").forEach(function (a) {
-      a.addEventListener("click", function () {
+      a.setAttribute("href", A.qhref(a.getAttribute("data-page")));
+      a.addEventListener("click", function (e) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; /* tab baru: href statis dipakai */
+        e.preventDefault();
+        location.href = A.qhref(a.getAttribute("data-page"));
         document.querySelectorAll("a[data-page]").forEach(function (x) { x.removeAttribute("aria-current"); });
         a.setAttribute("aria-current", "page");
       });
     });
     bindPersonaModal();
-    document.querySelectorAll("a[data-page]").forEach(function (a) {
-      a.setAttribute("href", A.qhref(a.getAttribute("data-page")));
-    });
     var pressed = document.querySelector(".range-btn[data-days='" + A.state.days + "']");
     if (pressed) { document.querySelectorAll(".range-btn").forEach(function (x) { x.setAttribute("aria-pressed", "false"); }); pressed.setAttribute("aria-pressed", "true"); }
     var profile = document.querySelector(".profile-btn[data-profile='" + A.state.profile + "']");
