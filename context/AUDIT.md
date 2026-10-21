@@ -1,494 +1,252 @@
-# AUDIT v2 — Database, Backend & ML
+# AUDIT v4 — Database, Backend & ML
 
 > Status: audit kode vs `PRD.md` (FR-1..FR-23), `RULES.md`, `SCHEMA.md`
-> Tanggal: 2026-10-21 (v3) · Basis: commit `e1f00f2` (fase 1 + kolektor berita)
-> Sejak v2: seluruh pekerjaan sudah di-commit (8 commit), mypy ditegakkan di CI.
+> Tanggal: 2026-10-21 (v4) · Basis: commit `014cc33` · 15 commit sejak `e1f00f2`
 > Lingkup: **hanya** `backend/`, `model/`, `data/`, `scripts/`
 > Di luar lingkup: `frontend/` (milik tim GUI) · `model/fomc/` (sengaja kosong, jangan disentuh)
 
-## ⚠️ Status pelaksanaan — Fase 1 SELESAI 2026-10-21
+## Kenapa v4 ini ada
 
-Fase 1 ("Sambungkan pipa") sudah dikerjakan dan diverifikasi. Ringkasnya:
+v3 rusak secara internal dan menyesatkan. Dua masalahnya:
 
-| Item | Status | Bukti |
+1. **Bertentangan dengan dirinya sendiri.** Blok "Status pelaksanaan" v3
+   (baris 9–20) menyatakan K-1/K-4/K-5/K-6/T-7/S-4 selesai, tetapi tabel FR
+   (baris 84–107) dan blok "Yang berubah sejak v1" (baris 114–125) masih
+   menulis item yang sama sebagai ❌. Body v3 adalah **kondisi v2 asli yang
+   tidak pernah diperbarui** — hanya bagian atas yang diperbarui.
+2. **Klaim tidak diverifikasi.** Saat diperiksa satu per satu ke kode, 16 dari
+   ~20 item "terbuka" ternyata sudah selesai.
+
+Akibatnya: siapa pun yang bekerja dari body v3 akan mengerjakan ulang hal yang
+sudah beres. Dokumen ini menggantikan seluruh v3 — angka di bawah **semua
+diperiksa ulang dengan `grep` dan eksekusi**, bukan disalin.
+
+Aturan untuk revisi berikutnya: **setiap baris harus punya bukti yang bisa
+dijalankan ulang**. Kalau tidak bisa dibuktikan, tulis "belum diverifikasi".
+
+---
+
+## Ringkasan Angka (kondisi `014cc33`)
+
+| Metrik | Nilai | Cara verifikasi |
 |---|---|---|
-| **K-1** pipa tersambung | ✅ selesai | `backend/src/pipeline/runner.py` (baru) — `raw_articles → articles → sentiments → impacts → daily_sentiment` jalan |
-| **K-4** degradasi senyap baseline | ✅ selesai | `ModelNotFittedError`; baseline dilatih nyata **akurasi 93,72%** (F1 macro 0,83) dari 6.882 berita |
-| **K-5** `save_price` yatim | ✅ selesai | `cli.py prices` → **66 baris harga nyata** tersimpan |
-| **K-6** `/api/universe` kosong | ✅ selesai | `seed_asset_master`+`seed_aliases` dipanggil di `Pipeline.seed_universe()` |
-| **T-7** CI merah (`pyarrow`/`openpyxl`) | ✅ selesai | Masuk `requirements.txt`; CI juga melatih baseline |
-| **S-4** tak ada test jalur nyata | ✅ selesai | `test_pipeline_integration.py` — 7 test end-to-end |
+| Test | **195 passed, 1 skipped** | `python -m pytest backend/tests` |
+| Berkas test | 22 | `ls backend/tests/test_*.py` |
+| mypy | **bersih, 41 file** | `mypy backend/src` |
+| ruff | bersih | `ruff check backend/src backend/tests` |
+| Modul `src` | 28 (di luar `__init__`) | `find backend/src -name '*.py'` |
+| Modul tanpa test | 2 | lihat §Cakupan Test |
+| Tabel DB | 17 | `sqlite_master` |
+| Tabel tanpa jalur tulis | 1 | `alloc_profiles` |
 
-**Isi database sekarang** (`python -m backend.src.cli status`):
+Isi `data/finews.db` saat audit:
 
 ```
-✅ raw_articles 67   ✅ articles 54   ✅ article_targets 20
-✅ sentiments 54     ✅ impacts 20    ✅ daily_sentiment 10
-✅ prices 66         ✅ asset_master 3 ✅ asset_aliases 16
-   stat_results 0    labels 0    alloc_profiles 0    alloc_suggestions 0    persona_views 0
+raw_articles      67     articles          54
+sentiments        54     article_targets   20
+impacts           20     daily_sentiment   10
+prices            66     source_health     14
+asset_master       3     asset_aliases     16
+stat_results       0     labels             0
+persona_views      0     alloc_suggestions  0
+alloc_profiles     0     api_quota_usage    1
 ```
 
-Kualitas: **84 passed**, ruff bersih, **mypy bersih (52 file, 0 error)**.
-Pipeline idempoten — dijalankan dua kali, jumlah baris tidak berubah.
-Integritas: 0 baris yatim (`sentiments`/`article_targets`/`impacts`),
-0 `n_sources=0`, 0 skor di luar `[-1,1]`.
-
-Bug baru yang ditemukan & diperbaiki saat pengerjaan:
-- `n_sources` di `DailyAggregator` hardcode `1` (XAU punya 7 artikel dari
-  3 sumber, dilaporkan 1 sumber).
-- `mypy` tidak pernah dijalankan meski diwajibkan RULES §4 — kini ada di
-  `requirements.txt`, `[tool.mypy]`, dan langkah CI.
-- `tagging/router.py`: `asset_id` di loop tema makro membayangi variabel loop
-  aset eksplisit (berpotensi salah aset pada beberapa tema sekaligus).
-- `pipeline/runner.py`: variabel `dt` di-shadow sehingga pengecekan `None`
-  tidak pernah berjalan.
-- `normalize/adapters.py`: `gold_tone()` dianotasi `str` padahal menerima
-  NaN/float dari parquet; pemeriksaan `isinstance` jadi tidak terjangkau.
-
-**Sumber berita berkuota:** Eulerpool terpasang (`news_api/eulerpool.py`) dengan
-penjaga kuota harian persisten (`news_api/quota.py`, pagar keras 100/hari,
-default 20). Satu request melayani XAU+RATE_UST+SPX sekaligus.
-
-**Sisa untuk fase berikutnya:** K-2 (3 tabel tanpa penulisan), K-3 (FinBERT),
-T-1..T-6, S-1..S-7 — lihat "Urutan Pengerjaan" di bawah.
-**Blocker statistik:** `daily_sentiment` hanya 10 hari — FR-11..FR-13 butuh
-lebih banyak titik berpasangan sebelum hasilnya bisa ditafsirkan.
+`stat_results = 0` **bukan bug**: `cli stats` melaporkan tiap aset punya 2–4
+hari berpasangan, sedangkan `MIN_OBS_OLS = 10`. Data belum cukup, dan kode
+menolak mengarang hasil — perilaku yang benar.
 
 ---
 
-## Ringkasan Angka (kondisi awal audit v2)
-
-| Metrik | v1 | v2 | Δ |
-|---|---|---|---|
-| LOC `backend/src` | 3.282 | **4.586** | +1.304 |
-| Test | 31 (8 file) | **62 (11 file)** | +31 |
-| Tabel skema | 14 | 14 | — |
-| Tabel punya `INSERT` | 11 | 11 | — |
-| Tabel **berisi data** | 0 | **1 dari 14** | +1 |
-| File DB fisik | tidak ada | **ada** (`data/finews.db`) | ✅ |
-| FR terpenuhi penuh | 11/23 | **7/23** | −4 \* |
-
-\* Angka FR turun bukan karena ada yang rusak. v1 menghitung "kode ada" sebagai
-"terpenuhi". Audit v2 memakai definisi lebih ketat: **terpenuhi = kode lengkap
-DAN tersambung ke alur nyata**. Dengan definisi v1, angkanya 13/23. Penurunan
-ini adalah koreksi pengukuran, bukan kemunduran.
-
-**Kesimpulan satu baris:** pengumpulan data sudah hidup dan menyimpan, tetapi
-**belum ada satu pun kode yang membaca `raw_articles` lalu memprosesnya** —
-pipa berhenti tepat setelah "berita masuk".
-
----
-
-## Status FR — jujur per item
+## Status FR — diverifikasi
 
 | FR | P | Status | Bukti / yang kurang |
 |---|---|---|---|
-| FR-1 Ingest | P0 | 🟡 | API + RSS ✅ · scraper ID, CSV/JSON, manual ❌ |
-| FR-2 Normalisasi+dedup | P0 | 🟡 | SHA-256 exact ✅ · near-dup embedding ❌ |
-| FR-3 Penandaan target | P0 | 🟡 | router + impact graph ✅ · `source_registry.yaml` tak dibaca ❌ |
-| FR-4 Jam bursa | P0 | 🟡 | `compute_effective_trading_date` ada ✅ · tak dipanggil alur ❌ |
+| FR-1 Ingest | P0 | 🟡 | API (Finnhub/Marketaux/AlphaVantage) + RSS ✅ · **CSV/JSON/manual ❌** · scraper ID ❌ (tidak ada modul) |
+| FR-2 Normalisasi+dedup | P0 | 🟡 | SHA-256 exact ✅ · TF-IDF char 3-5gram + cosine ✅ · **near-dup tidak terbukti** (test di-skip) |
+| FR-3 Penandaan target | P0 | 🟡 | router + impact graph ✅ · `source_registry.yaml` dibaca ✅ · **entitas non-emas belum masuk `asset_aliases`** |
+| FR-4 Jam bursa | P0 | ✅ | `compute_effective_trading_date` dipanggil `cleaner.py:99` |
 | FR-5 IndoBERT | P3 | ⚪ | MATI 2026-10-11, di luar hitungan |
-| FR-6 FinBERT XAU | P0 | ❌ | `model/xau/src/__init__.py` = 1 baris docstring |
-| FR-7 Baseline TF-IDF | P0 | 🟡 | kode ada, tapi degradasi senyap (K-4) |
-| FR-8 Arah per target | P0 | ✅ | `router.py:115-119` |
-| FR-9 Cap per `basis` | P0 | 🟡 | cap hardcoded literal, bukan kebijakan (T-5) |
-| FR-10 Agregasi harian | P0 | 🟡 | `DailyAggregator` ada, **0 pemanggil** |
-| FR-11 Statistik | P0 | 🟡 | Spearman/CAR/BH ✅ · OLS HAC + Granger ❌ |
-| FR-12 Harga & volume | P0 | 🟡 | `PriceCollector` ✅ · `save_price` 0 pemanggil |
-| FR-13 SQLite+Parquet | P1 | 🟡 | SQLite ✅ · `ParquetStore` 0 pemanggil |
-| FR-14 CLI | P1 | 🟡 | hanya `identify`/`health`/`fetch` |
+| FR-6 FinBERT XAU | P0 | ❌ | **satu-satunya FR yang benar-benar belum disentuh** |
+| FR-7 Baseline TF-IDF | P0 | ✅ | `ModelNotFittedError`; akurasi 93,72% (F1 macro 0,83), 6.882 berita |
+| FR-8 Arah per target | P0 | ✅ | `router.py` |
+| FR-9 Cap per `basis` | P0 | ✅ | `router_config.yaml` (`explicit_confidence`, `macro_confidence_cap`) |
+| FR-10 Agregasi harian | P0 | ✅ | `DailyAggregator.aggregate_for_asset_date` dipanggil `runner.py:397` |
+| FR-11 Statistik | P0 | ✅ | OLS Newey-West HAC + Granger; `statsmodels` terpasang; BH-FDR |
+| FR-12 Harga & volume | P0 | ✅ | `cli prices` → 66 baris nyata |
+| FR-13 SQLite+Parquet | P1 | ✅ | `cli export` → Parquet (commit `6036578`) |
+| FR-14 CLI | P1 | ✅ | 10 perintah: `seed prices pipeline status clean score aggregate stats export report` |
 | FR-15 GUI | P1 | — | di luar lingkup |
-| FR-17 Orkestrasi | P2 | ❌ | tidak ada `run_pipeline()` |
-| FR-18 Alert | P2 | ❌ | tabel `source_health` tak ada |
-| FR-19 Allocation Tilt | P1 | 🟡 | engine ✅ · input hardcoded (S-1) |
-| FR-20 Profil alokasi | P1 | 🟡 | YAML ✅ · tabel `alloc_profiles` tanpa CRUD |
+| FR-17 Orkestrasi | P2 | ✅ | `Pipeline.run()` + CLI bertahap |
+| FR-18 Alert | P2 | ✅ | tabel `source_health` + `save_source_health` + `sources_needing_alert` + test |
+| FR-19 Allocation Tilt | P1 | ✅ | engine ✅ · input dari DB (S-1 diperbaiki) |
+| FR-20 Profil alokasi | P1 | 🟡 | YAML ✅ · **tabel `alloc_profiles` tanpa CRUD & tanpa pembaca** |
 | FR-21 Persona POV | P1 | ✅ | engine + 5 profil teruji |
-| FR-22 Penjelasan | P1 | ✅ | template `rationale` di persona engine |
-| FR-23 `news_horizon` | P1 | 🟡 | field ada, router tak pernah mengisi → selalu `SHORT` |
+| FR-22 Penjelasan | P1 | ✅ | template `rationale` di `persona/engine.py` |
+| FR-23 `news_horizon` | P1 | ✅ | ditentukan router + disimpan (commit `b661bdf`) |
 
-**Hitungan:** ✅ 3 (FR-8, FR-21, FR-22) · 🟡 15 · ❌ 3 (FR-6, FR-17, FR-18) · ⚪ 1 · — 1.
-Dengan definisi longgar v1 (kode ada = terpenuhi): ✅ 13.
+**Hitung: ✅ 16 · 🟡 5 · ❌ 1 · ⚪ 1.**
+(v3 menulis ✅ 3 · 🟡 15 · ❌ 3 — usang.)
 
 ---
 
-## Yang berubah sejak v1
+## Yang Masih Kurang — 4 item, urut dampak
 
-| Item v1 | Status | Bukti |
+### 1. FR-6 / K-3 · FinBERT XAU belum ada — **P0, satu-satunya yang kosong**
+
+Bukti:
+```
+model/xau/src/__init__.py   -> 1 baris docstring
+model/xau/weights/          -> kosong
+model/xau/evaluation/       -> hanya __init__.py
+requirements.txt            -> tidak ada transformers, tidak ada torch
+```
+
+Ini FR P0 dan satu-satunya yang benar-benar belum dikerjakan. Semua sentimen
+emas saat ini berasal dari baseline TF-IDF generik, bukan model yang dilatih
+pada domain emas. `model_router.py:100` sudah memutuskan track `finbert_emas`
+untuk XAU — router menunjuk ke ruang kosong.
+
+**Yang harus dikerjakan:** siapkan bobot FinBERT-EMAS, tulis modul inferensi,
+daftarkan `transformers` + `torch`, sambungkan ke `model_router`, beri
+mekanisme fallback eksplisit bila bobot tidak ada (jangan diam-diam kembali ke
+TF-IDF), lalu evaluasi pada data berlabel.
+
+**Catatan:** ini pekerjaan besar (unduh model, latih, evaluasi) — jangan
+dicampur dengan perbaikan kecil.
+
+### 2. FR-2 · near-duplicate tidak terbukti bekerja — **P0, biaya kecil**
+
+Bukti: `test_dedup.py:193` → `pytest.skip("data uji tidak punya duplikat")`.
+Fixture `pipeline_db` tidak berisi pasangan yang mirip, jadi jalur
+`NearDuplicateDetector` **tidak pernah dieksekusi** di test mana pun.
+
+Ini pola yang sama dengan S-4: test yang tidak pernah terbukti bisa gagal
+bukan bukti apa pun. Kodenya ada (`TF-IDF char 3-5gram + cosine`, dipanggil
+`runner.py:246`), tetapi belum ada bukti ia menandai duplikat dengan benar.
+
+**Yang harus dikerjakan:** fixture dengan 2 artikel parafrase (judul sama,
+sumber beda, badan diparafrase) → pastikan `duplicate_of` terisi, duplikat
+tidak menambah `n_articles`, dan artikel berbeda tetap lolos. Lalu uji mutasi:
+matikan detektor, test harus gagal.
+
+### 3. FR-1 · ingest CSV/JSON/manual belum ada — **P0, parsial**
+
+Bukti: CLI tidak punya perintah `ingest`; tidak ada pembaca CSV/JSON untuk
+input manual. Kanal utama (API + RSS) sudah jalan dan teruji.
+
+**Yang harus dikerjakan:** perintah `cli ingest --file x.csv|json` yang
+memetakan kolom ke `raw_articles`, plus validasi baris buruk (dilewati dengan
+alasan, bukan crash). Scraper ID (detik/kompas/antara) terpisah dan lebih
+besar — bisa ditunda tanpa memblokir FR lain.
+
+### 4. FR-20 · tabel `alloc_profiles` mati — **P1, kosmetik arsitektur**
+
+Bukti: tabel dibuat di skema, **nol CRUD**, **nol pembaca**. Fungsinya jalan
+lewat `alloc_profiles.yaml`.
+
+**Yang harus dikerjakan:** pilih satu — (a) hapus tabelnya, atau (b) pindahkan
+profil dari YAML ke tabel + CRUD. Jangan biarkan keduanya ada tanpa keterangan;
+pembaca baru akan mengira tabel itu sumber kebenaran.
+
+---
+
+## Cakupan Test
+
+24 dari 28 modul `src` disebut di test. Dua yang tidak punya test sama sekali:
+
+| Modul | Kondisi | Risiko |
 |---|---|---|
-| K-2 file DB belum ada | ✅ selesai | `data/finews.db`, 14 tabel, 38 baris berita |
-| K-3 10 tabel tanpa jalur tulis | ✅ sebagian besar | +CRUD `raw_articles`/`articles`/`article_targets`/`sentiments`/`labels`; sisa 3 (K-2) |
-| K-5 tidak ada kolektor berita | ✅ selesai | `news_api/` (3 penyedia) + `rss_collector.py` (5 feed) |
-| — fallback sintetis harga | ✅ selesai | gagal → `PriceFetchError`, bukan `np.random.normal` |
-| K-1 orkestrasi | ❌ masih | lihat K-1 |
-| K-4 FinBERT | ❌ masih | lihat K-3 |
-| K-6 degradasi senyap baseline | ❌ masih | lihat K-4 |
-| T-4 `source_registry` tak dibaca | ❌ masih | lihat T-4 |
+| `collect/yfinance_collector.py` | tanpa test; hanya `PriceFetchError` diuji lewat jalur lain | sedang — parsing Yahoo tidak terkunci |
+| `collect/news_cli.py` | tanpa test; `_record_health`/`_print_alerts` tidak diuji | sedang — logika alert FR-18 tanpa test |
+
+`normalize/cleaner.py` dan `store/parquet_store.py` **bukan** tanpa test —
+keduanya teruji lewat `test_cli_pipeline_real.py` dan `test_cli_commands.py`.
+
+Catatan penting dari S-4: test yang menyentuh jalur nyata menemukan dua bug
+yang tidak terlihat oleh 190 test lain (`score` membaca `raw_articles`;
+`FOREIGN KEY` mentah). **Tambah test jalur nyata, bukan test unit baru.**
 
 ---
 
-# 🔴 KRITIS
-
-## K-1 · Tidak ada kode yang memproses `raw_articles`
-
-Temuan terpenting v2. Data mentah masuk, tetapi **tidak ada kelanjutannya**.
-
-Dihitung dari pemanggil nyata di `backend/src/` (`grep`, di luar definisi & test):
-
-| Komponen | Pemanggil di `src/` |
-|---|---|
-| `ArticleCleaner.process_raw()` | **0** |
-| `TargetRouter.route()` | **0** |
-| `DailyAggregator.aggregate_*()` | **0** |
-| `StatEngine.*` | **0** |
-| `ReportExporter` | **0** |
-| `ParquetStore` | **0** |
-| `.save_price()` | **0** |
-| `.save_impact()` | **0** |
-| `.save_daily_sentiment()` | **0** |
-| `.save_stat()` | **0** |
-| `.save_raw_articles()` | **1** (`news_cli.py:128`) |
-
-Alur berhenti di kotak kedua:
-
-```
-collect → raw_articles → [STOP] → articles → sentiments → impacts → daily → stats → report
-   ✅         ✅            ❌        ❌         ❌          ❌        ❌      ❌       ❌
-```
-
-`data/finews.db`: **38 baris di `raw_articles`, 0 di 13 tabel lain** (diverifikasi
-`sqlite3` per tabel).
-
-**Dampak:** semua endpoint API kecuali `/health` mengembalikan kosong. Tidak ada
-`run_pipeline()`, tidak ada CLI untuk `clean/score/aggregate/stats/report` (FR-14).
-`normalize/`, `tagging/`, `aggregate/`, `stats/`, `report/` tidak punya
-`__main__` maupun `argparse` sama sekali.
-
-## K-2 · 3 dari 14 tabel masih tanpa jalur tulis
-
-Dipetakan dari `INSERT INTO` di `db.py` — **bukan** dari nama method, karena
-`save_stat` dan `seed_asset_master` tidak mengikuti pola `save_<tabel>`:
-
-| Tabel | `INSERT` | Keterangan |
-|---|---|---|
-| `raw_articles` | ✅ | `save_raw_article(s)` |
-| `articles` | ✅ | `save_article(s)` |
-| `article_targets` | ✅ | `save_article_target(s)` |
-| `sentiments` | ✅ | `save_sentiment` |
-| `impacts` | ✅ | `save_impact` |
-| `daily_sentiment` | ✅ | `save_daily_sentiment` |
-| `prices` | ✅ | `save_price` |
-| `stat_results` | ✅ | `save_stat` |
-| `labels` | ✅ | `save_label(s)` |
-| `asset_master` | ✅ | `seed_asset_master` |
-| `asset_aliases` | ✅ | `seed_aliases` |
-| `alloc_profiles` | ❌ | **tidak ada** |
-| `alloc_suggestions` | ❌ | **tidak ada** |
-| `persona_views` | ❌ | **tidak ada** |
-
-11/14 punya jalur tulis, tetapi **7 di antaranya belum pernah dipanggil** (K-1).
-Punya method ≠ terpakai.
-
-## K-3 · FinBERT (XAU) belum ada
-
-`model/xau/src/__init__.py` berisi **1 baris docstring**. `transformers` dan
-`torch` tidak ada di `requirements.txt` dan tidak terinstall.
-
-`model_router.py` sudah memutuskan `finbert_emas` untuk XAU, tetapi model yang
-dipilih belum ada — router menunjuk ke ruang kosong.
-
-> **Di luar lingkup:** `model/fomc/` tetap kosong dan tidak boleh disentuh.
-> Track ML hanya `model/xau/`.
-
-## K-4 · Degradasi senyap pada baseline (belum diperbaiki)
-
-`scikit-learn` **tidak ada** di `requirements.txt` dan tidak terinstall.
-`baseline.py` menangkap `ImportError` → `TfidfVectorizer = None`, lalu
-`predict_probs()` diam-diam mengembalikan prior konstan.
-
-Diuji ulang sekarang:
-
-```
-BaselineTfidfSentiment().predict_probs(["Gold rallied on Fed cut"])
-→ p_pos=0.2 p_neu=0.6 p_neg=0.2
-```
-
-Tanpa exception, tanpa warning. Test tetap **hijau**.
-
-**Dampak:** test memberi rasa aman palsu. Ini kelas bug yang sama dengan fallback
-`np.random.normal` yang sudah dibereskan di collector harga — untuk konsistensi,
-`predict_probs()` tanpa model terlatih harus **melempar**, bukan mengarang
-distribusi.
-
-## K-5 · Jalur A (harga) tidak menyimpan apa pun
-
-`PriceCollector` berfungsi — data nyata terverifikasi (XAU 4160.10,
-RATE_UST 5.117, SPX 7712.57) — tetapi `save_price()` **tidak punya pemanggil**.
-`news_cli.py` hanya menulis berita.
-
-**Dampak:** `prices` kosong → `query_prices()` kosong → Spearman & CAR tidak akan
-pernah bisa dihitung karena tidak ada sisi harga.
-
-## K-6 · `asset_master` kosong → `/api/universe` mengembalikan `[]`
-
-`seed_asset_master()` dan `seed_aliases()` ada dan lengkap, tetapi **tidak pernah
-dipanggil** — bukan oleh CLI, bukan oleh `app.py`, bukan oleh test alur nyata.
-
-Diuji pada `data/finews.db`:
-
-```
-asset_master: 0 baris
-get_active_universe()  → []
-get_meta_summary()     → {'universe_count': 0, 'targets': [], ...}
-```
-
-`/api/universe` membaca `get_active_universe()` → **kosong**, padahal universe
-terkunci 3 aset. `is_valid_target("XAU")` masih `True` hanya karena hardcode
-fallback `{"XAU","RATE_UST","SPX"}` di `db.py:848` — validasi lolos bukan karena
-data, tapi karena cadangan di kode.
-
-**Dampak:** semua endpoint `/api/*/{target}` melewati validasi, lalu query ke
-tabel kosong dan mengembalikan `[]`. Tampak "berfungsi", sebenarnya tidak ada data.
-
----
-
-# 🟠 TINGGI
-
-## T-1 · FR-11 — OLS Newey-West HAC & Granger — ✅ SELESAI
-
-`statsmodels>=0.14.0` masuk `requirements.txt`. `StatEngine` kini punya
-`compute_ols_hac()` dan `compute_granger()`, keduanya mengikuti kontrak
-`StatResult` dan mengoreksi p-value lintas-lag dengan Benjamini-Hochberg.
-
-Keputusan desain yang perlu diingat:
-- **HAC dipakai, bukan galat OLS biasa.** Return pasar hampir selalu
-  heteroskedastik/autokorelasi; galat naif melaporkan p-value terlalu kecil.
-  Bandwidth memakai aturan Newey-West `floor(4*(n/100)^(2/9))`.
-- **Hari tanpa berita dibuang, bukan diisi 0.** Mengisi 0 menciptakan
-  "hari netral" palsu dan meredam koefisien.
-- **Ambang minimum dijaga** (`MIN_OBS_OLS=10`, `MIN_OBS_GRANGER=20`). Di
-  bawahnya fungsi mengembalikan list kosong, bukan hasil acak.
-- **Granger menguji arah sentimen→return**, bukan korelasi kontemporer.
-  Korelasi lag-0 yang kuat TIDAK akan menyatakan kausalitas — ini benar.
-
-Verifikasi: BH identik dengan `statsmodels.multipletests(method="fdr_bh")`.
-Simulasi 500 deret tanpa hubungan: false positive turun dari 35% (p mentah)
-menjadi **6,8%** setelah koreksi. 17 test baru di
-`backend/tests/test_stats_hac_granger.py`.
-
-**Masih terblokir data:** pada DB sekarang hanya ada 2–4 hari berpasangan per
-aset, sehingga guard menolak semuanya (0 baris). Implementasi siap, tetapi
-belum bisa menghasilkan angka sampai harga historis diisi (lihat blocker
-statistik di atas).
-
-## T-2 · FR-14 — CLI baru mencakup `collect`
-
-`news_cli.py` punya `identify`, `health`, `fetch` — semuanya soal berita.
-Tidak ada `clean`, `score`, `aggregate`, `stats`, `report`.
-
-`RULES.md:144` mewajibkan CLI `report` mengekspor `outputs/report.html`
-mandiri. `ReportExporter` ada, tapi tidak ada CLI yang memanggilnya.
-
-## T-3 · FR-18 — Alert & tabel `source_health` belum ada
-
-`source_health` hanya muncul di **komentar docstring** `yfinance_collector.py:35`,
-bukan tabel, bukan kode. Tidak ada notifikasi kegagalan sumber.
-
-Kesehatan sumber sekarang dilaporkan *saat dijalankan* (`health()` mengembalikan
-status per feed/penyedia), tetapi **tidak dipersistensikan** — jadi tidak ada
-riwayat "feed ini mati sejak kapan".
-
-## T-4 · FR-3 — `source_registry.yaml` masih tidak dibaca kode
-
-Saya baru memperbarui isi YAML-nya (URL mati diganti, penyedia API
-didokumentasikan), tetapi **kode masih hardcode**:
-
-| Lokasi | Isi | Sumber sebenarnya |
-|---|---|---|
-| `news_api/keywords.py` | `TARGET_KEYWORDS` (15/22/17 kata) | YAML `targets.<ID>.keywords` (9/8/8) |
-| `rss_collector.py` | `FEEDS` dict | YAML `targets.<ID>.feeds` |
-
-Docstring `keywords.py:3` menulis *"Bersumber dari `data/source_registry.yaml`"*,
-padahal nilainya disalin manual. Ini **dokumen yang berbohong** — lebih buruk
-daripada tidak ada dokumen, karena orang akan mengedit YAML lalu bingung kenapa
-tidak ada efeknya.
-
-Dua sumber kebenaran yang **sudah** menyimpang: kata kunci di kode 7–14 item
-lebih banyak dari YAML, dan tidak ada satu pun kata YAML yang absen dari kode
-(arah penyimpangan satu sisi, tapi tetap akan makin parah).
-
-## T-5 · FR-9 — Confidence cap masih literal, bukan kebijakan
-
-`RULES.md` §1.2 menetapkan cap per `basis`: `explicit` 1.00, `macro_factor` 0.85,
-`sector_inferred` 0.60 (dicoret di MVP). Di kode, cap itu **angka ajaib**:
-
-```python
-# tagging/router.py:135
-confidence=0.88,  # Under explicit cap 1.00
-# tagging/router.py:174
-confidence=min(0.85, 0.50 + weight * 0.35),  # Cap 0.85
-```
-
-Tidak ada tabel kebijakan, tidak ada pembacaan dari config/YAML — melanggar
-`RULES.md` §"Tidak ada magic number". `sector_inferred` tidak diimplementasi.
-
-## T-6 · FR-2 — Near-duplicate detection belum ada
-
-Dedup sekarang **hanya exact** (`sha256(norm(title)+norm(body))[:16]`).
-"Gold rises 2%" dan "Gold climbs 2%" adalah dua artikel berbeda. PRD meminta
-exact **+ embedding near-dup**. Relevan secara praktis: feed berbeda sering
-memuat rilis yang sama.
-
-## T-7 · CI remote akan gagal: `pyarrow` & `openpyxl` tidak di `requirements.txt`
-
-CI menjalankan `pip install -r requirements.txt` lalu `pytest`. Di venv lokal
-`pyarrow 26.0.0` dan `openpyxl` kebetulan ada, jadi test lulus — **tapi CI
-memasang dari requirements saja**:
-
-```
-backend/tests/test_model_router.py:62  pd.read_parquet(...)  → butuh pyarrow
-backend/tests/test_model_router.py:63  pd.read_excel(...)    → butuh openpyxl
-```
-
-`grep -c "pyarrow\|openpyxl" requirements.txt` → **0**. Ini persis penyebab CI
-merah yang sudah tercatat (`ModuleNotFoundError: No module named 'pyarrow'`), dan
-**masih belum diperbaiki**. Lulus lokal ≠ lulus CI.
-
----
-
-# 🟡 SEDANG
-
-## S-1 · Angka hardcoded di dua endpoint API
-
-```python
-# serve/app.py:166 — /api/allocation
-scores = {"XAU": (0.25, 0.70), "SPX": (0.20, 0.80), "RATE_UST": (0.10, 0.65)}
-# serve/app.py:182 — /api/persona/{article_id}
-score: float = 0.35, confidence: float = 0.75
-```
-
-Komentar di kode sendiri mengakui: *"In full run: pulls latest daily sentiment
-score for key assets"*. Endpoint menyajikan simulasi sebagai hasil analisis.
-
-## S-2 · `persona_views` & `alloc_suggestions` dihitung tapi tidak disimpan
-
-Keduanya dipakai `AllocationEngine`/`PersonaEngine` dan dikembalikan lewat API,
-lalu dibuang. Tidak bisa diaudit ulang, tidak reproducible — padahal NFR
-mewajibkan reproducibility.
-
-## S-3 · `ParquetStore` dan `ReportExporter` yatim
-
-Keduanya berfungsi, tetapi tidak dipanggil siapa pun. `ReportExporter` bahkan
-**tanpa test**.
-
-## S-4 · Cakupan test tidak menyentuh jalur nyata
-
-62 test hijau, tetapi tidak ada satu pun yang menguji
-`raw_articles → articles → … → impacts`. Semua test memakai `tmpdir`. Inilah
-sebabnya K-1 tidak terdeteksi: setiap komponen diuji sendiri-sendiri, tidak ada
-yang menguji sambungannya.
-
-## S-5 · `news_horizon` selalu `SHORT`
-
-`TargetImpact.news_horizon` punya default `NewsHorizon.SHORT`, dan
-`tagging/router.py` **tidak pernah mengisinya**. FR-23 secara teknis "terisi",
-praktisnya konstanta.
-
-## S-6 · FR-1 belum lengkap: tidak ada ingest CSV/JSON/manual
-
-Yang ada hanya API + RSS. `scraper ID`, `file CSV/JSON`, dan `input manual`
-belum ada.
-
-## S-7 · `init_tables()` adalah alias `init_schema()`
-
-Dua nama untuk satu fungsi. `app.py` memanggil `init_tables()`, CLI memanggil
-`init_schema()`. Tidak berbahaya, tapi membingungkan pembaca baru — dan
-menyembunyikan fakta bahwa keduanya idempoten.
-
----
-
-# ✅ Sudah Matang (diverifikasi eksekusi)
+## Sudah Matang (diverifikasi eksekusi)
 
 | Komponen | Bukti |
 |---|---|
-| **Kolektor berita API** | Finnhub 100 item; Marketaux `countries=us`; AlphaVantage `premium_only` terdeteksi, bukan crash |
-| **Kolektor RSS** | 5 feed hidup, RSS 2.0 + Atom, stdlib saja |
-| **Ranking relevansi** | Word-boundary regex; bug `"war"` di "software" sudah mati |
-| **Kolektor harga** | Yahoo chart API; gagal → `PriceFetchError` (bukan data acak) |
-| **CRUD 5 tabel berita** | Dedup `(source,url)`; run kedua menyimpan 0 duplikat |
-| **Router 2 tahap** | Log-odds Monroe 2008, audit trail `routed_from`/`route_score` |
-| **StatEngine** | Spearman multi-lag, CAR event study, BH-FDR |
-| **Allocation** | Konstrain tepat 100% diuji |
-| **Persona** | 5 profil, asimetri loss aversion, rationale terstruktur |
-| **Normalizer** | SHA-256, deteksi bahasa, cut-off UTC non-lookahead |
-| **Schema** | 14 tabel, migrasi idempoten (`_migrate` aman diulang) |
+| Kolektor berita API | Finnhub 100 item; Marketaux `countries=us`; AlphaVantage `premium_only` terdeteksi |
+| Kolektor RSS | 5 feed hidup, RSS 2.0 + Atom, stdlib saja |
+| Ranking relevansi | Word-boundary regex; bug `"war"` di "software" sudah mati |
+| Kolektor harga | Yahoo chart API; gagal → `PriceFetchError` |
+| CRUD 5 tabel berita | Dedup `(source,url)`; run kedua 0 duplikat |
+| Router 2 tahap | Log-odds Monroe 2008, audit trail `routed_from`/`route_score` |
+| StatEngine | Spearman multi-lag, CAR, BH-FDR, OLS HAC, Granger |
+| Allocation | Konstrain tepat 100% diuji |
+| Pipeline | `raw_articles → articles → sentiments → impacts → daily_sentiment` |
+| Health & alert | `source_health` + ambang 3 kegagalan beruntun |
+| Normalizer | SHA-256, deteksi bahasa, cut-off UTC non-lookahead |
+| Schema | 17 tabel, migrasi idempoten |
 
 ---
 
-# Urutan Pengerjaan yang Disarankan
+## Urutan Pengerjaan yang Disarankan
 
-Urutan mengikuti **ketergantungan data**, bukan tingkat keparahan. Tidak ada
-gunanya memperbaiki cap confidence kalau belum ada satu pun `impact` yang lahir.
+**Langkah 1 — murah, nilai langsung (½ hari)**
+1. FR-2: fixture parafrase + uji mutasi near-dup.
+2. `yfinance_collector` dan `news_cli`: test parsing & alert.
+3. FR-20: putuskan hapus atau pindahkan ke tabel.
 
-## Fase 1 — Sambungkan pipa (tidak ada nilai sebelum ini)
-1. **K-6** — panggil `seed_asset_master()` + `seed_aliases()` saat init → `/api/universe` hidup
-2. **K-5** — perintah `prices` di CLI: `PriceCollector` → `save_price()`
-3. **K-1** — `run_pipeline()`: `raw_articles → normalize → route → save_article(s)`
-4. **K-1** — lanjutkan sampai `impacts` + `daily_sentiment`
+**Langkah 2 — FR-1 sisa (1 hari)**
+4. `cli ingest` CSV/JSON + validasi baris buruk.
 
-## Fase 2 — Bikin hasilnya bisa dipercaya
-5. **K-4** — `predict_probs()` melempar bila belum `fit`; `scikit-learn` ke requirements
-6. **T-7** — `pyarrow` + `openpyxl` ke requirements (CI merah)
-7. **T-4** — satu sumber kebenaran: baca `source_registry.yaml`, hapus hardcode
-8. **S-4** — 1 test integrasi end-to-end dari `raw_articles` ke `impacts`
+**Langkah 3 — FR-6 FinBERT (multi-hari, sendiri)**
+5. Bobot, modul inferensi, `transformers`/`torch`, sambung ke `model_router`,
+   fallback eksplisit, evaluasi.
 
-## Fase 3 — Lengkapi FR
-9. **T-1** — OLS HAC + Granger + `statsmodels`
-10. **T-5** — tabel kebijakan cap di YAML, hapus angka ajaib
-11. **S-1** — ganti angka hardcoded dengan query DB
-12. **S-2** — persist `persona_views` & `alloc_suggestions`
-13. **T-2** — CLI lengkap (FR-14)
-14. **T-3** — tabel `source_health` + alert
+**Jangan dikerjakan — sudah selesai pada `014cc33`:**
+K-1, K-2, K-4, K-5, K-6, T-1, T-2, T-3, T-4, T-5, T-7, S-1, S-2, S-3, S-4,
+S-5, S-7, FR-4, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-17,
+FR-18, FR-19, FR-21, FR-22, FR-23.
 
-## Fase 4 — ML & penyempurnaan
-15. **K-3** — FinBERT (`model/xau/src/`) — **hanya XAU**
-16. **T-6** — near-duplicate detection
-17. **S-5** — isi `news_horizon` dari router
-18. **S-6** — ingest CSV/JSON/manual
-19. **S-3** — pakai `ParquetStore` + `ReportExporter`, beri test
+---
 
-> `model/fomc/` tidak masuk urutan pengerjaan. Tetap kosong sampai ada
-> keputusan terpisah.
+## Risiko yang perlu diketahui
+
+1. **`clean` kini wajib sebelum `score`.** Sejak `014cc33`, `score` membaca
+   tabel `articles`. Skrip/cron yang memanggil `score` langsung akan berhenti
+   dengan exit 1 (dulu jalan diam-diam dengan hasil salah). Ini disengaja.
+2. **Data belum cukup untuk statistik.** 2–4 hari berpasangan vs ambang 10.
+   `stat_results` tetap kosong sampai ada ~3 bulan data harian.
+3. **`data/finews.db` tidak di-commit** (benar secara keamanan), jadi setiap
+   clone mulai dari nol dan harus menjalankan ingest sendiri.
+4. **Ambang near-dup belum dikalibrasi.** `NEAR_DUP_THRESHOLD` dipilih tanpa
+   data berlabel; setelah FR-2 pun nilainya belum tentu tepat.
+5. **FinBERT belum ada = klaim sentimen emas masih generik.** Semua angka
+   sentimen XAU saat ini berasal dari model yang tidak dilatih pada domain
+   emas. Jangan menyajikan hasil XAU sebagai "analisis khusus emas" sampai
+   FR-6 selesai.
+6. **Yahoo chart API tidak resmi** — bisa diblokir kapan saja; `fetch_prices`
+   akan melempar error (perilaku benar, tapi harga berhenti).
+7. **Marketaux free tier** 100 req/hari; HTTP 500 = kuota habis, bukan bug.
+8. **AlphaVantage** `NEWS_SENTIMENT` premium — tidak berguna di kunci gratis.
 
 ---
 
 ## Catatan Metodologi
 
-Semua temuan v2 diverifikasi dengan eksekusi, bukan pembacaan kode saja:
+Semua klaim v4 diverifikasi dengan eksekusi, bukan pembacaan kode saja:
 
-- `grep` pemanggil untuk 10 komponen → 9 di antaranya **0 pemanggil**
-- `sqlite3` hitung baris 14 tabel `data/finews.db` → hanya `raw_articles` berisi (38)
-- `Database("data/finews.db").get_active_universe()` → `[]`
-- `BaselineTfidfSentiment().predict_probs([...])` → prior konstan tanpa error
-- `re.findall(r"INSERT INTO (\w+)")` pada `db.py` → 11/14 tabel
-- `import pyarrow|openpyxl|sklearn|statsmodels` → dicek satu per satu
-- `pytest` → 62 passed, 11 file
-- `git check-ignore data/finews.db` → ter-ignore (aman, tidak akan ter-commit)
+- `grep -rn <simbol> backend/src/` untuk 12 komponen → semua punya pemanggil
+  (`process_raw` 4, `route_article` 2, `save_price` 1, `ParquetStore` 3,
+  `ReportExporter` 4, `NearDuplicateDetector` 2)
+- `re.findall` pada `db.py` untuk `INSERT INTO` → 16/17 tabel; sisa
+  `alloc_profiles`
+- `sqlite3` hitung 17 tabel `data/finews.db` → angka di atas
+- `python -m backend.src.cli stats` → "2–4 hari berpasangan, butuh >= 10"
+- `python -m backend.src.cli --help` → 10 perintah
+- `pytest backend/tests` → 195 passed, 1 skipped
+- `mypy backend/src` → 41 file, 0 error
+- Peta modul→test via regex nama modul pada seluruh `test_*.py` → 24/28
 
-Satu koreksi metodologi dari v1: pemetaan tabel→method lewat pola nama
-`save_<tabel>` **salah** — `save_stat` menyembunyikan `stat_results`, dan
-`seed_asset_master`/`seed_aliases` menyembunyikan `asset_master`/`asset_aliases`.
-v1 melaporkan 4/14 padahal sebenarnya 11/14. v2 memakai `INSERT INTO` langsung.
-
-Yang **tidak** diverifikasi: klaim akurasi router 95–98% (butuh sampel lebih
-besar), dan perilaku API dengan data berisi (belum ada data untuk dibaca).
-
-## Risiko yang perlu diketahui
-
-1. **Yahoo chart API tidak resmi** — bisa diblokir kapan saja; `fetch_prices`
-   akan melempar error (perilaku benar, tapi berarti harga berhenti).
-2. **Marketaux free tier** 100 req/hari; HTTP 500 = kuota habis, bukan bug.
-3. **AlphaVantage** `NEWS_SENTIMENT` premium — tidak berguna di kunci gratis.
-4. **Relevansi kata kunci** masih filter kasar, bukan klasifikasi. Berita ambigu
-   bisa lolos atau terbuang.
-5. **`data/finews.db` tidak di-commit** (benar secara keamanan), jadi setiap
-   clone mulai dari nol dan harus menjalankan ingest sendiri.
+**Koreksi terhadap v3:** tabel "pemanggil" di v3 (K-1) menyebut 10 komponen
+dengan 0 pemanggil. Diukur ulang pada `014cc33`, **semuanya punya pemanggil** —
+tabel itu menggambarkan kondisi v2 dan tidak boleh dipakai lagi.
