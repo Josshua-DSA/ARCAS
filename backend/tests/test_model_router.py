@@ -7,7 +7,7 @@ import pytest
 
 from backend.src.tagging.model_router import ModelRouter
 
-WEIGHTS = Path("model/weights/router_centroids.json")
+WEIGHTS = Path("model/common/router_centroids.json")
 requires_weights = pytest.mark.skipif(
     not WEIGHTS.exists(), reason="jalankan scripts/build_router_centroids.py dulu"
 )

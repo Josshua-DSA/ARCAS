@@ -10,7 +10,7 @@ except ImportError:
     LogisticRegression = None  # type: ignore
 
 from backend.src.schema import ArticleSentiment, ModelProbs, Tone
-from model.src.protocol import BaseSentimentModel
+from model.common.protocol import BaseSentimentModel
 
 
 class BaselineTfidfSentiment(BaseSentimentModel):

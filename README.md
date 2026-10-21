@@ -116,7 +116,7 @@ pytest
 Jalankan eksperimen baseline TF-IDF + Logistic Regression pada modul riset:
 
 ```bash
-python model/notebooks/01_baseline_exploration.py
+python model/common/01_baseline_exploration.py
 ```
 
 ### 4. Menjalankan Server API Backend

@@ -23,7 +23,7 @@ from typing import Optional
 import yaml
 
 DEFAULT_CONFIG = Path("data/router_config.yaml")
-DEFAULT_WEIGHTS = Path("model/weights/router_centroids.json")
+DEFAULT_WEIGHTS = Path("model/common/router_centroids.json")
 
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9'&.-]*")
 
