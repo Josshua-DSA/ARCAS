@@ -3,20 +3,14 @@
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.src.alloc.engine import AllocationEngine
-from backend.src.aggregate.daily import DailyAggregator
 from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
-    AllocationSuggestion,
-    DailySentiment,
     NewsHorizon,
-    PersonaView,
-    PriceRecord,
-    StatResult,
-    TargetImpact,
 )
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
@@ -47,6 +41,37 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     @app.get("/health")
     def health_check() -> dict:
         return {"status": "ok", "version": "0.5.0", "universe_count": 3}
+
+    @app.get("/api/meta")
+    def get_meta() -> dict:
+        """Returns provenance metadata: mode, versions, freshness, coverage.
+
+        Feeds the GUI Data Provenance Bar and the splash boot screen, so
+        ilustrasi is never mistaken for real data (Upgrade.md UI-01).
+        """
+        facts = db.get_meta_summary()
+        has_data = bool(facts["targets"]) and (facts["last_price_date"] or facts["last_news_date"])
+        return {
+            "status": "ok",
+            "mode": "live" if has_data else "empty",
+            "api_version": "0.5.0",
+            "schema_version": facts["schema_version"],
+            "universe_version": facts["universe_version"],
+            "model_version": facts["model_version"],
+            "params_version": facts["params_version"],
+            "calibrated": False,
+            "universe_count": facts["universe_count"],
+            "targets": facts["targets"],
+            "coverage": {
+                "articles": facts["articles"],
+                "sources": facts["sources"],
+                "days_with_news": facts["days_with_news"],
+                "last_price_date": facts["last_price_date"],
+                "last_news_date": facts["last_news_date"],
+                "last_impact_at": facts["last_impact_at"],
+            },
+            "updated_at": facts["updated_at"],
+        }
 
     @app.get("/api/universe")
     def get_universe() -> list[dict]:
@@ -82,19 +107,52 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         target: str,
         limit: int = Query(default=50, le=200),
     ) -> list[dict]:
-        """Returns recent article impacts for a target."""
+        """Returns recent article impacts for a target, with time audit fields.
+
+        Additive keys (published_at, effective_trading_date, session_close,
+        timezone) come from a join, so a reader can trace each impact to its
+        market session bucket (Upgrade.md UI-02).
+        """
         if not db.is_valid_target(target):
             raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
         impacts = db.query_impacts(target, limit=limit)
-        return [imp.model_dump() for imp in impacts]
+        audit = db.query_impact_time_audit(target, limit=limit)
+        audit_by_id = {a["article_id"]: a for a in audit}
+        out: list[dict] = []
+        for imp in impacts:
+            d = imp.model_dump()
+            a = audit_by_id.get(imp.article_id)
+            for key in ("published_at", "language", "effective_trading_date", "session_close", "timezone",
+                        "title", "source", "url", "headline_only"):
+                d[key] = a[key] if a else None
+            d["probs"] = a["probs"] if a else []
+            out.append(d)
+        return out
 
     @app.get("/api/stats/{target}")
-    def get_stats(target: str) -> list[dict]:
-        """Returns statistical econometric results for target."""
+    def get_stats(
+        target: str,
+        max_lag: Optional[int] = Query(default=None, ge=0, le=10),
+    ) -> list[dict]:
+        """Returns statistical econometric results for target.
+
+        Default returns the stored run results. With max_lag set, Spearman is
+        recomputed live across lags 0..max_lag on the daily close and
+        sentiment series (association workbench, Upgrade.md UI-05). Response
+        shape stays StatResult; direction and size of the association can
+        change per lag, which the stored rows alone cannot show.
+        """
         if not db.is_valid_target(target):
             raise HTTPException(status_code=404, detail=f"Target {target} not in 3 core locked universe.")
-        stats = db.query_stats(target)
-        return [st.model_dump() for st in stats]
+        if max_lag is None:
+            return [st.model_dump() for st in db.query_stats(target)]
+        # Table dates are ISO strings; a wide sentinel range reads the full history.
+        broad_start, broad_end = date(2000, 1, 1), date(2100, 1, 1)
+        daily = db.query_daily_sentiment(target, broad_start, broad_end)
+        prices = db.query_prices(target, broad_start, broad_end)
+        frame = StatEngine.frame_from_daily_prices(daily, prices)
+        results = StatEngine.compute_spearman_lags(frame, target, max_lag=max_lag)
+        return [r.model_dump() for r in results]
 
     @app.get("/api/allocation")
     def get_allocation_tilt(

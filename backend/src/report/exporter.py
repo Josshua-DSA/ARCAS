@@ -1,7 +1,7 @@
 """Generates static HTML and JSON analytical reports into outputs/."""
 
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
