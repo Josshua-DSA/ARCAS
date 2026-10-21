@@ -25,6 +25,26 @@ def test_db_seeding(temp_db):
     inserted = temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
     assert inserted == 3
 
+
+def test_meta_summary_counts_and_versions(temp_db):
+    """get_meta_summary returns real counts and version stamps for /api/meta."""
+    temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
+    meta = temp_db.get_meta_summary()
+    assert meta["universe_count"] == 3
+    assert meta["targets"] == ["RATE_UST", "SPX", "XAU"]
+    assert meta["universe_version"] == "2026-10-12-core3"
+    # Empty DB: counts are real zeros, never fabricated numbers.
+    assert meta["articles"] == 0
+    assert meta["last_price_date"] is None
+    assert meta["updated_at"] is None
+
+
+def test_impact_time_audit_on_empty_db(temp_db):
+    """Time audit join degrades to real empties, never fake timestamps."""
+    temp_db.seed_asset_master(Path("data/universe/asset_master.csv"))
+    audit = temp_db.query_impact_time_audit("XAU", limit=10)
+    assert audit == []
+
     universe = temp_db.get_active_universe()
     assert len(universe) == 3
     assert any(u["asset_id"] == "SPX" for u in universe)

@@ -20,6 +20,28 @@ class StatEngine:
     """Executes deterministic econometric tests between sentiment and market metrics."""
 
     @staticmethod
+    def frame_from_daily_prices(daily: list[Any], prices: list[Any]) -> pd.DataFrame:
+        """Assembles the engine input frame from daily sentiment and price records.
+
+        Inputs are DailySentiment / PriceRecord sequences. Output keeps the
+        engine's expected columns: date, close, score_mean merged on date.
+        A news-free day keeps score NaN (daily sentiment of news-free days is
+        NaN, not 0).
+        """
+        if not daily or not prices:
+            return pd.DataFrame()
+        price_df = pd.DataFrame([p.model_dump() for p in prices])
+        daily_df = pd.DataFrame([d.model_dump() for d in daily])
+        merged = price_df[["date", "close"]].merge(
+            daily_df[["date", "score_mean"]],
+            on="date",
+            how="left",
+        )
+        merged["close"] = pd.to_numeric(merged["close"], errors="coerce")
+        merged["score_mean"] = pd.to_numeric(merged["score_mean"], errors="coerce")
+        return merged[["date", "close", "score_mean"]]
+
+    @staticmethod
     def benjamini_hochberg(p_values: list[float], alpha: float = 0.05) -> list[float]:
         """Calculates adjusted p-values using the Benjamini-Hochberg FDR procedure."""
         n = len(p_values)

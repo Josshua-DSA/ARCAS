@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Aset lokal ARCAS : ikon SPX stilisasi (grafik naik), token #FF7517.
+       Catatan: bukan logo resmi S&P Dorsey (markah dagang), hanya ikon generik. -->
+  <g fill="#FF7517" opacity="0.45">
+    <rect x="4.5" y="14" width="3" height="6.5" rx="0.8"/>
+    <rect x="10.5" y="10.5" width="3" height="10" rx="0.8"/>
+    <rect x="16.5" y="7" width="3" height="13.5" rx="0.8"/>
+  </g>
+  <path d="M3 17.5 L8.6 12.2 L13.4 14.2 L20.2 4.9" fill="none" stroke="#FF7517" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16.6 4.6 h3.9 v3.9" fill="none" stroke="#FF7517" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

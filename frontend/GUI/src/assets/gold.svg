@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Aset lokal ARCAS : lingkar emas bertumpuk, warna token XAU #FFD33D -->
+  <g stroke="#8A5A00" stroke-width="1.1" stroke-linejoin="round">
+    <path d="M8.6 4.5h6.8l1.5 2.9H7.1z" fill="#FFD33D"/>
+    <path d="M8.6 4.5h3.4v2.9H7.1z" fill="#EBBE1F"/>
+    <path d="M7.1 7.4h9.8l1.6 3H5.5z" fill="#FFD33D"/>
+    <path d="M7.1 7.4h4.9v3H5.5z" fill="#EBBE1F"/>
+    <path d="M5.5 10.4h12.9l1.7 3.2H3.8z" fill="#FFD33D"/>
+    <path d="M5.5 10.4h6.4v3.2H3.8z" fill="#EBBE1F"/>
+    <path d="M3.8 13.6h16.3l1.7 3.2H2.1z" fill="#FFD33D"/>
+    <path d="M3.8 13.6h8.1v3.2H2.1z" fill="#EBBE1F"/>
+  </g>
+</svg>

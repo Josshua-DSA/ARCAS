@@ -383,6 +383,43 @@ class Database:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def get_meta_summary(self) -> dict:
+        """Returns real provenance facts for GET /api/meta.
+
+        Everything comes from a table count or version column, so the GUI
+        provenance bar can show fresh vs stale data without guessing.
+        """
+        with self.get_connection() as conn:
+            universe = conn.execute(
+                "SELECT asset_id, valid_from FROM asset_master WHERE active = 1 ORDER BY asset_id ASC;"
+            ).fetchall()
+            universe_versions = sorted({r["valid_from"] for r in universe if r["valid_from"]})
+
+            def scalar(sql: str) -> object:
+                return conn.execute(sql).fetchone()[0]
+
+            last_price = scalar("SELECT MAX(date) FROM prices;")
+            last_sentiment = scalar("SELECT MAX(date) FROM daily_sentiment;")
+            last_impact = scalar("SELECT MAX(created_at) FROM impacts;")
+            stamp = max(
+                [str(last_price or ""), str(last_sentiment or ""), str(last_impact or "")] or [""]
+            )
+            return {
+                "universe_count": len(universe),
+                "targets": [r["asset_id"] for r in universe],
+                "universe_version": universe_versions[0] if len(universe_versions) == 1 else (universe_versions[0] if universe_versions else None),
+                "articles": scalar("SELECT COUNT(*) FROM articles;"),
+                "sources": scalar("SELECT COUNT(DISTINCT source) FROM articles;"),
+                "days_with_news": scalar("SELECT COUNT(DISTINCT date) FROM daily_sentiment WHERE has_news = 1;"),
+                "last_price_date": str(last_price) if last_price else None,
+                "last_news_date": str(last_sentiment) if last_sentiment else None,
+                "last_impact_at": str(last_impact) if last_impact else None,
+                "updated_at": stamp or None,
+                "params_version": scalar("SELECT MAX(params_version) FROM persona_views;"),
+                "model_version": scalar("SELECT MAX(model_version) FROM impacts;"),
+                "schema_version": scalar("SELECT MAX(schema_version) FROM impacts;"),
+            }
+
     def is_valid_target(self, target: str) -> bool:
         """Checks if a target belongs to the 3 core locked universe."""
         with self.get_connection() as conn:
@@ -500,6 +537,51 @@ class Database:
                     )
                 )
             return res
+
+    def query_impact_time_audit(self, asset_id: str, limit: int = 50) -> list[dict]:
+        """Joins impacts with article metadata, session cut-off, and model probs.
+
+        Feeds UI-02 time auditing and UI-03 evidence provenance: a reader can
+        trace each impact from published_at to its market session bucket, and
+        from the score back to per-model class probabilities.
+        """
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT i.article_id, a.published_at, a.language, a.title, a.source, a.url,
+                       CASE WHEN a.body IS NULL THEN 1 ELSE 0 END AS headline_only,
+                       t.effective_trading_date, m.session_close, m.timezone
+                FROM impacts i
+                LEFT JOIN articles a
+                    ON a.article_id = i.article_id
+                LEFT JOIN article_targets t
+                    ON t.article_id = i.article_id AND t.asset_id = i.asset_id
+                JOIN asset_master m
+                    ON m.asset_id = i.asset_id
+                WHERE i.asset_id = ?
+                ORDER BY i.created_at DESC
+                LIMIT ?;
+                """,
+                (asset_id, limit),
+            ).fetchall()
+            out = [dict(r) for r in rows]
+            ids = [r["article_id"] for r in out]
+            probs: dict[str, list] = {}
+            if ids:
+                marks = ",".join("?" for _ in ids)
+                srows = conn.execute(
+                    f"""
+                    SELECT article_id, model, model_version, p_pos, p_neu, p_neg, translation_used
+                    FROM sentiments
+                    WHERE article_id IN ({marks});
+                    """,
+                    ids,
+                ).fetchall()
+                for s in srows:
+                    probs.setdefault(s["article_id"], []).append(dict(s))
+            for r in out:
+                r["probs"] = probs.get(r["article_id"], [])
+            return out
 
     def save_stat(self, stat: StatResult) -> None:
         """Stores econometric test result."""
