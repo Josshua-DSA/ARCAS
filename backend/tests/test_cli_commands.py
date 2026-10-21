@@ -12,7 +12,7 @@ import pytest
 
 from backend.src.cli import build_parser, main
 from backend.src.report.exporter import ReportExporter
-from backend.src.schema import StatResult
+from backend.src.schema import DailySentiment, StatResult
 from backend.src.store.db import Database
 
 
@@ -160,3 +160,105 @@ def test_stats_reports_insufficient_pairs_without_crashing(db, tmp_path, capsys)
 def test_status_runs(db, capsys):
     code = main(["--db", str(db.db_path), "status"])
     assert code == 0
+
+
+# ==========================================================
+# S-3: ParquetStore bukan lagi kode mati
+# ==========================================================
+
+
+def test_export_command_writes_parquet(db, tmp_path, capsys):
+    """`export` harus benar-benar memanggil ParquetStore dan menghasilkan file.
+
+    S-3: `ParquetStore` berfungsi tetapi nol pemanggil. Test ini mengunci
+    bahwa ia kini terpasang di jalur nyata, bukan hanya tersedia.
+    """
+    pytest.importorskip("pyarrow")
+    import pandas as pd
+
+    db.seed_asset_master()
+    db.save_daily_sentiment(
+        DailySentiment(
+            asset_id="XAU",
+            date=date(2026, 10, 1),
+            score_mean=0.3,
+            score_weighted=0.3,
+            n_articles=2,
+            n_sources=1,
+            has_news=True,
+        )
+    )
+
+    out = tmp_path / "pq"
+    code = main(["--db", str(db.db_path), "export", "--out", str(out)])
+    assert code == 0
+
+    file = out / "daily_sentiment.parquet"
+    assert file.exists(), "ParquetStore tidak menulis apa pun"
+    df = pd.read_parquet(file)
+    assert len(df) == 1
+    assert df.iloc[0]["asset_id"] == "XAU"
+
+
+def test_export_round_trips_values(db, tmp_path):
+    """Nilai harus selamat melewati Parquet, bukan hanya filenya ada."""
+    pytest.importorskip("pyarrow")
+    import pandas as pd
+
+    db.seed_asset_master()
+    db.save_daily_sentiment(
+        DailySentiment(
+            asset_id="SPX",
+            date=date(2026, 10, 2),
+            score_mean=-0.42,
+            score_weighted=-0.40,
+            n_articles=7,
+            n_sources=3,
+            has_news=True,
+        )
+    )
+    out = tmp_path / "pq"
+    main(["--db", str(db.db_path), "export", "--out", str(out)])
+
+    df = pd.read_parquet(out / "daily_sentiment.parquet")
+    assert df.iloc[0]["score_mean"] == pytest.approx(-0.42)
+    assert df.iloc[0]["n_articles"] == 7
+
+
+def test_export_on_empty_db_does_not_crash(db, tmp_path, capsys):
+    """DB kosong: lewati tabel kosong, jangan menulis file palsu."""
+    pytest.importorskip("pyarrow")
+    out = tmp_path / "pq"
+    code = main(["--db", str(db.db_path), "export", "--out", str(out)])
+    assert code == 0
+    assert not (out / "daily_sentiment.parquet").exists()
+
+
+def test_export_includes_news_horizon(db, tmp_path):
+    """S-5 + S-3: horizon yang baru disimpan ikut terekspor."""
+    pytest.importorskip("pyarrow")
+    import pandas as pd
+
+    from backend.src.schema import Basis, Direction, EvidenceSpan, NewsHorizon, TargetImpact
+
+    db.seed_asset_master()
+    db.save_impact(
+        TargetImpact(
+            article_id="e1",
+            asset_id="XAU",
+            direction=Direction.BULLISH,
+            score=0.5,
+            confidence=0.8,
+            basis=Basis.EXPLICIT,
+            themes=[],
+            evidence=[EvidenceSpan(quote="Gold climbs", start=0, end=12)],
+            news_horizon=NewsHorizon.MEDIUM,
+            model_version="fusion-v1",
+        )
+    )
+    out = tmp_path / "pq"
+    main(["--db", str(db.db_path), "export", "--out", str(out)])
+
+    df = pd.read_parquet(out / "impacts.parquet")
+    assert "news_horizon" in df.columns
+    assert df.iloc[0]["news_horizon"] == "medium"

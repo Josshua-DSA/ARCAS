@@ -254,6 +254,58 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    """Ekspor dataset olahan ke Parquet (FR-13: SQLite + Parquet).
+
+    S-3: `ParquetStore` sudah berfungsi sejak awal tetapi tidak dipanggil
+    siapa pun — kode mati. Perintah ini menjadikannya jalur nyata: SQLite tetap
+    sumber kebenaran operasional, Parquet untuk dump massal dan dataset latih.
+    """
+    import pandas as pd
+
+    from backend.src.store.parquet_store import ParquetStore
+
+    db = Database(args.db)
+    db.init_schema()
+    store = ParquetStore(base_dir=args.out)
+
+    dengan_conn = db.get_connection()
+    with dengan_conn as conn:
+        frames: dict[str, pd.DataFrame] = {}
+        for nama, query in (
+            (
+                "daily_sentiment",
+                "SELECT * FROM daily_sentiment ORDER BY asset_id, date;",
+            ),
+            ("prices", "SELECT * FROM prices ORDER BY asset_id, date;"),
+            (
+                "impacts",
+                "SELECT article_id, asset_id, direction, score, confidence, basis,"
+                " news_horizon, model_version, created_at FROM impacts"
+                " ORDER BY article_id, asset_id;",
+            ),
+        ):
+            try:
+                frames[nama] = pd.read_sql_query(query, conn)
+            except Exception as exc:  # noqa: BLE001 - tabel bisa belum ada
+                print(f"  lewati {nama}: {exc}")
+                continue
+
+    if not frames:
+        print("Tidak ada tabel yang bisa diekspor.")
+        return 1
+
+    for nama, df in frames.items():
+        if df.empty:
+            print(f"  {nama:<16} kosong, dilewati")
+            continue
+        path = store.write_dataset(nama, df)
+        print(f"  {nama:<16} {len(df):>6} baris -> {path}")
+
+    print(f"\nSelesai. Direktori: {args.out}")
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     """Ekspor outputs/report.html mandiri (RULES.md:144)."""
     from backend.src.report.exporter import ReportExporter
@@ -334,6 +386,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--show", type=int, default=3, help="tampilkan N hasil per aset")
     sp.add_argument("--dry-run", action="store_true")
     sp.set_defaults(func=cmd_stats)
+
+    sp = sub.add_parser("export", help="ekspor dataset olahan ke Parquet")
+    sp.add_argument("--out", default="data/processed", help="direktori keluaran")
+    sp.set_defaults(func=cmd_export)
 
     sp = sub.add_parser("report", help="ekspor outputs/report.html")
     sp.add_argument("--out", default="outputs", help="direktori keluaran")
