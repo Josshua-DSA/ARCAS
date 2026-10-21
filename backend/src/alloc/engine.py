@@ -2,13 +2,13 @@
 
 import math
 from pathlib import Path
-from typing import Optional
+
 import yaml
 
 from backend.src.schema import (
-    AllocClass,
     AllocationLine,
     AllocationSuggestion,
+    AllocClass,
     ClassScore,
 )
 

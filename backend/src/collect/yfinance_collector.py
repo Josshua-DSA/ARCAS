@@ -3,11 +3,10 @@
 import csv
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional
+
 import numpy as np
 
 from backend.src.schema import PriceRecord
-
 
 CORE_ASSETS = ("XAU", "RATE_UST", "SPX")
 

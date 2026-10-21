@@ -11,6 +11,14 @@
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
+<link rel="stylesheet" href="src/css/splash.css">
+<script>
+  window.SPLASH_CONFIG = { reloadMode: "skeleton", waitForApp: true };
+  try {
+    if (sessionStorage.getItem("arcas_splash_seen") === "1" && window.SPLASH_CONFIG.reloadMode === "none")
+      document.documentElement.classList.add("splash-skip");
+  } catch (e) {}
+</script>
 <style>
   /* Layout khusus halaman. Token warna dan font ikut theme.css + THEME.md v0.1.
      Alasan satu baris per keputusan (R-31): tercatat di komentar tiap blok. */
@@ -44,6 +52,14 @@
   .dot{width:10px;height:10px;border-radius:50%;background:var(--hold);flex:none}
   .dot.ok{background:var(--up)} .dot.err{background:var(--down)} .dot.warn{background:var(--warn)}
 
+  /* Provenance bar: mono kecil, satu garis, terbaca di mobile lewat wrap (UI-01) */
+  .provenance{background:var(--bg-sunken);border-bottom:1px solid var(--border-subtle)}
+  .prov-row{display:flex;gap:6px 18px;flex-wrap:wrap;padding:7px 20px;font-family:var(--font-mono);
+    font-size:11px;letter-spacing:.03em;color:var(--text-secondary)}
+  .prov-item strong{color:var(--text-primary);font-weight:500}
+  .prov-item span{color:var(--accent-text)}
+  .prov-item.warn strong{color:var(--warn)}
+
   /* Navigasi jangkar: hanya ke section yang benar ada (R-24) */
   nav.sections{border-top:1px solid var(--border-subtle);background:var(--base)}
   nav.sections .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 20px}
@@ -61,6 +77,9 @@
   .target-tab .tick{font-family:var(--font-mono);font-weight:500;font-size:15px}
   .target-tab .meta{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);display:block;margin-top:2px}
   .target-tab .swatch{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.25)}
+  .target-tab .ticon{width:20px;height:20px;flex:none;display:block}
+  .q-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .q-row .chip{white-space:normal;text-align:left}
   .target-tab[aria-selected="true"]{background:var(--accent-subtle);border-left:4px solid var(--accent)}
   .target-tab:hover{border-color:var(--border-strong)}
 
@@ -129,6 +148,28 @@
   .news-meta{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .quote{font-family:var(--font-serif);font-size:16px;line-height:1.55;border-left:3px solid var(--accent);
     background:var(--accent-subtle);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0;color:var(--text-primary)}
+  .audit-line{border-top:1px dashed var(--border-subtle);padding-top:8px;margin-top:10px;color:var(--text-muted)}
+  /* Meja kerja asosiasi (UI-05): kontrol lag+metrik. Tujuan: ukuran/arah hubungan
+     terlihat berubah menurut lag, bukan satu angka tunggal yang mengesankan pasti. */
+  .wb-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+  .wb-controls select{background:var(--surface-dark);color:var(--on-dark-primary);
+    border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:12px;
+    padding:6px 8px;min-height:44px}
+  .wb-controls select:focus{outline:2px solid var(--accent-text);outline-offset:1px}
+  .wb-bar{display:inline-block;height:7px;border-radius:3px;vertical-align:middle;margin-right:6px}
+  .wb-bar.pos{background:#56D364}.wb-bar.neg{background:#FF7B72}.wb-bar.flat{background:#5A5454}
+  #wbTables{margin-top:10px}
+  /* Evidence drawer: summary native keyboard-accessible, marca +/- sebagai tanda open/closed */
+  .evidence-drawer{margin-top:10px}
+  .evidence-drawer summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);font-size:12px;color:var(--accent-text);min-height:44px}
+  .evidence-drawer summary::-webkit-details-marker{display:none}
+  .evidence-drawer summary::after{content:"+";font-weight:500;color:var(--accent-text)}
+  .evidence-drawer[open] summary::after{content:"−"}
+  .evidence-drawer summary:hover{color:var(--text-primary)}
+  .drawer-body{padding:10px 0 4px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+  .drawer-note{font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary);margin:0}
+  .drawer-body table.data{min-width:300px}
   .chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;
     letter-spacing:.06em;text-transform:uppercase;color:#fff;border-radius:6px;padding:4px 10px;min-height:28px}
   .chip.buy{background:var(--buy)} .chip.sell{background:var(--sell)} .chip.hold{background:var(--hold)}
@@ -190,6 +231,14 @@
 </head>
 <body>
 
+<div id="splash" class="splash" role="status" aria-live="polite" hidden>
+  <div class="splash__title">ARCAS <b>:</b> Sentiment Desk</div>
+  <div class="splash__log" id="splash-log"></div>
+  <div class="splash__bar"><i></i></div>
+  <div class="splash__pct">0%</div>
+  <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
+</div>
+
 <div class="disclaimer-strip" role="note" aria-label="Peringatan risiko">
   <div class="wrap">
     <span><strong>Simulasi analitis.</strong> Bukan nasihat investasi. Angka dan stance persona adalah hasil kode deterministik, bukan ajakan transaksi.</span>
@@ -208,6 +257,19 @@
       <span id="statusText">menghubungi API...</span>
     </div>
   </div>
+  <!-- Data Provenance Bar (Upgrade.md UI-01): identitas sumber, versi, dan kesegaran.
+       Mode data live/empty selalu terbaca teksnya, bukan cuma warna titik. -->
+  <div class="provenance" id="provenance" aria-label="Provenance data">
+    <div class="wrap prov-row">
+      <span class="prov-item"><strong id="provMode">mode : menunggu</strong></span>
+      <span class="prov-item">versi universe <span id="provUniverse">n/a</span></span>
+      <span class="prov-item">skema <span id="provSchema">n/a</span></span>
+      <span class="prov-item">model <span id="provModel">n/a</span></span>
+      <span class="prov-item">artikel <span id="provArticles">n/a</span></span>
+      <span class="prov-item">hari berita <span id="provNews">n/a</span></span>
+      <span class="prov-item">segar <span id="provFresh">n/a</span></span>
+    </div>
+  </div>
   <nav class="sections" aria-label="Bagian dasbor">
     <div class="wrap">
       <a href="#grafik" aria-current="page">Grafik</a>
@@ -221,15 +283,15 @@
 <div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
     <div class="wrap" id="targetTabs">
       <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <span class="swatch" style="background:#FFD33D" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/gold.svg" alt="">
         <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
       </button>
       <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <span class="swatch" style="background:#58A6FF" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
         <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
       </button>
       <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <span class="swatch" style="background:#FF7517" aria-hidden="true"></span>
+        <img class="ticon" src="src/assets/spx.svg" alt="">
         <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
       </button>
     </div>
@@ -277,9 +339,28 @@
       <div class="panel-body">
         <div class="state" id="statState" hidden></div>
         <div id="statTables"></div>
+        <div class="wb-controls" id="wbControls">
+          <label style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">Metrik pasar
+            <select id="wbMetric" aria-label="Filter metrik pasar"></select>
+          </label>
+          <button class="btn small" id="wbRun" type="button" title="Hitung ulang Spearman untuk lag 0 sampai 5 dari data harian lewat API">Hitung Spearman L0..L5</button>
+          <div class="state" id="wbState" hidden></div>
+        </div>
+        <div id="wbTables"></div>
         <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n_obs = jumlah observasi. Bukan nasihat investasi.
+          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n_obs = jumlah observasi. Hari tanpa berita dibiarkan kosong (NaN), bukan nol. Bukan nasihat investasi.
         </p>
+      </div>
+    </section>
+
+    <section class="panel dark" id="kualitas" aria-labelledby="qualityTitle">
+      <div class="panel-head">
+        <h2 id="qualityTitle">Kualitas data</h2>
+        <span class="hint">denominator sebelum skor</span>
+      </div>
+      <div class="panel-body">
+        <div class="state" id="qualityState" hidden></div>
+        <div id="qualityTables"></div>
       </div>
     </section>
   </div>
@@ -350,6 +431,7 @@
 </footer>
 
 <script src="src/js/echarts.min.js"></script>
+<script src="src/js/splash.js"></script>
 <script src="src/js/app.js"></script>
 </body>
 </html>

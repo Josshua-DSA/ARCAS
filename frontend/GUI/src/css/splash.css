@@ -1,0 +1,26 @@
+/* splash.css : adaptasi frontend/splash-screen/splash.css.
+   Semua warna/font memakai token lokal theme.css (GUI versi terang), bukan
+   tokens.css milik komponen yang masih CDN + tema gelap. */
+.splash{position:fixed;inset:0;z-index:9999;background:var(--base);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;transition:opacity .35s ease;
+  padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0)}
+.splash[hidden]{display:none}
+.splash.is-hiding{opacity:0;pointer-events:none}
+.splash__title{font-family:var(--font-serif);font-weight:300;font-size:34px;color:var(--text-primary)}
+.splash__title b{color:var(--accent-text);font-weight:300}
+.splash__log{min-height:84px;width:min(380px,86vw);font-family:var(--font-mono);font-size:12px;
+  line-height:1.7;letter-spacing:.06em;color:var(--text-secondary)}
+.splash--quick .splash__log{display:none}
+.splash__bar{width:min(260px,70vw);height:2px;background:var(--border-subtle);overflow:hidden}
+.splash__bar i{display:block;height:100%;width:0;background:var(--accent)}
+.splash__pct{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+.splash__note{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted);
+  text-transform:uppercase;margin-top:6px}
+/* garis progres tipis (mode skeleton) */
+.splash-topbar{position:fixed;top:0;left:0;height:2px;width:0;background:var(--accent);z-index:9999}
+/* skeleton shimmer saat reload (varian terang, bukan versi gelap tokens.css) */
+.is-loading .panel :is(td,th),.is-loading [data-skeleton]{color:transparent!important;
+  background:linear-gradient(90deg,var(--bg-sunken) 25%,var(--bg-card) 50%,var(--bg-sunken) 75%);
+  background-size:200% 100%;animation:arcas-sk 1.1s linear infinite}
+@keyframes arcas-sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.is-loading *{animation:none!important;transition:none!important}}

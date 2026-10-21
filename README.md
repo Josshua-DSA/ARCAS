@@ -2,6 +2,7 @@
 
 Sistem analitis kuantitatif deterministik untuk sentimen berita keuangan makro EN (Track B), memetakan dampaknya ke **3 Target Tersupervisi Terkunci (`XAU`, `RATE_UST`, `SPX`)**, dan mengukur asosiasi statistik pasar serta simulasi alokasi portofolio multi-persona secara obyektif tanpa model generatif/halusinasi.
 
+
 ---
 
 ## 📌 Ringkasan Proyek
@@ -36,11 +37,11 @@ Sistem analitis kuantitatif deterministik untuk sentimen berita keuangan makro E
 
 ## 🎯 Murni 3 Supervised (`XAU` / `RATE_UST` / `SPX`)
 
-| Asset ID | Kelas Aset | Track | Nama Aset | Ticker Harga | Bursa | Zona Waktu | Sesi Tutup |
-|---|---|---|---|---|---|---|---|
-| `XAU` | Commodity | B | Gold Spot / Futures | `GC=F` | CME | America/New_York | 17:00 |
-| `RATE_UST` | Rate | B | US 10-Year Treasury Yield | `^TNX` | CBOE | America/New_York | 15:00 |
-| `SPX` | Index | B | S&P 500 Index | `^GSPC` | SNP | America/New_York | 16:00 |
+| Asset ID     | Kelas Aset | Track | Nama Aset                 | Ticker Harga | Bursa | Zona Waktu       | Sesi Tutup |
+| ------------ | ---------- | ----- | ------------------------- | ------------ | ----- | ---------------- | ---------- |
+| `XAU`      | Commodity  | B     | Gold Spot / Futures       | `GC=F`     | CME   | America/New_York | 17:00      |
+| `RATE_UST` | Rate       | B     | US 10-Year Treasury Yield | `^TNX`     | CBOE  | America/New_York | 15:00      |
+| `SPX`      | Index      | B     | S&P 500 Index             | `^GSPC`    | SNP   | America/New_York | 16:00      |
 
 Dicoret 2026-10-11: `OIL`, `CU`, `NG`, `BTC`, `USDIDR`, `DXY`, `VIX`, plus `IHSG`; histori DB dipertahankan.
 
@@ -95,28 +96,37 @@ FInews/
 ## 🚀 Panduan Memulai (Quickstart)
 
 ### 1. Prasyarat & Instalasi
+
 Gunakan Python 3.11+. Pasang dependensi:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 2. Menjalankan Unit Test
+
 Seluruh kontrak data Pydantic, operasi basis data SQLite, aturan konstrain 100% alokasi, dan baseline ML diuji otomatis:
+
 ```bash
 pytest
 ```
 
 ### 3. Eksplorasi Baseline Model (ML Offline)
+
 Jalankan eksperimen baseline TF-IDF + Logistic Regression pada modul riset:
+
 ```bash
 python model/common/01_baseline_exploration.py
 ```
 
 ### 4. Menjalankan Server API Backend
+
 Inisialisasi server REST API FastAPI:
+
 ```bash
 uvicorn backend.src.serve.app:create_app --factory --host 0.0.0.0 --port 8000 --reload
 ```
+
 Buka dokumentasi Swagger interaktif di `http://localhost:8000/docs`.
 
 ---

@@ -6,10 +6,100 @@
   /* Tab target dirender dari /api/universe, bukan dari konstanta lokal.
      TARGET_INFO hanya peta tampilan (warna, nama) dengan fallback generik. */
   var TARGET_INFO = {
-    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D" },
-    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF" },
-    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517" }
+    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg" },
+    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
+    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg" }
   };
+  /* Panel kualitas data (Upgrade.md UI-06) : MODE MOCKUP SEMENTARA.
+     Data hard-coded dan selalu berlabel : angka ilustrasi, bukan hasil hitung
+     API. Bentuk datanya sama dengan kontrak /api/quality yang dirancang, jadi
+     saat backend menyediakan endpoint, loadQuality() tinggal ditukar ke pemanggil
+     api() tanpa mengubah renderer. Backend tidak disentuh (disiplin frontend saja). */
+  function demoQuality() {
+    return {
+      universe_version: "2026-10-12-core3",
+      generated_at: new Date().toISOString(),
+      totals: { articles: 312, duplicates: 7, rejected: 14, impacts: 312 },
+      completeness: { headline: 308, body: 96, impacts_with_evidence: 291 },
+      by_source: [
+        { source: "Reuters", articles: 104 },
+        { source: "Bloomberg", articles: 82 },
+        { source: "Antara News", articles: 70 },
+        { source: "CNBC", articles: 42 },
+        { source: "Kontan", articles: 14 }
+      ],
+      per_target: [
+        { asset_id: "SPX", mapped_articles: 128, daily_days: 62, news_free_days: 9 },
+        { asset_id: "RATE_UST", mapped_articles: 97, daily_days: 62, news_free_days: 15 },
+        { asset_id: "XAU", mapped_articles: 87, daily_days: 62, news_free_days: 20 }
+      ],
+      direction_counts: { bullish: 214, bearish: 62, neutral: 36 },
+      warnings: [
+        "MOCKUP : seluruh angka pada panel ini ilustrasi, bukan hasil hitung API.",
+        "Kelas arah neutral langka: 36 dari 312 dampak (11,5%).",
+        "XAU: 20 dari 62 hari tanpa berita (32,3%) : hari kosong tetap gap, bukan nol.",
+        "Hanya 96 dari 312 artikel punya isi lengkap (body): mayoritas dianalisis headline saja."
+      ]
+    };
+  }
+  function num(v) { return v == null ? 0 : Number(v); }
+  function pct(part, total) {
+    if (!num(total)) return "";
+    return " : " + String(Math.round(num(part) / num(total) * 1000) / 10).replace(".", ",") + "%";
+  }
+  function renderQuality(q) {
+    var box = $("qualityTables");
+    if (!q) { box.innerHTML = ""; showState("qualityState", ""); return; }
+    showState("qualityState", "");
+    var t = q.totals || {}, c = q.completeness || {};
+    var h = "<div class='q-row'>" +
+      "<span class='chip hold'>artikel " + esc(num(t.articles)) + "</span>" +
+      "<span class='chip hold'>duplikat " + esc(num(t.duplicates)) + "</span>" +
+      "<span class='chip hold'>ditolak validator " + esc(num(t.rejected)) + "</span>" +
+      "<span class='chip hold'>dampak tersimpan " + esc(num(t.impacts)) + "</span>" +
+      "<span class='chip hold'>headline " + esc(num(c.headline)) + esc(pct(c.headline, t.articles)) + "</span>" +
+      "<span class='chip hold'>isi lengkap " + esc(num(c.body)) + esc(pct(c.body, t.articles)) + "</span>" +
+      "<span class='chip hold'>ada kutipan bukti " + esc(num(c.impacts_with_evidence)) + " dari " + esc(num(t.impacts)) + "</span>" +
+      "</div>";
+    var rows = q.per_target || [];
+    if (rows.length) {
+      h += "<table class='data'><thead><tr><th>Target</th><th>Artikel terpetakan</th><th>Hari berita</th><th>Hari tanpa berita</th></tr></thead><tbody>";
+      rows.forEach(function (r) {
+        h += "<tr><td>" + esc(r.asset_id) + "</td><td>" + esc(num(r.mapped_articles)) + "</td><td>" +
+          esc(num(r.daily_days) - num(r.news_free_days)) + "</td><td>" + esc(num(r.news_free_days)) + " (gap)</td></tr>";
+      });
+      h += "</tbody></table>";
+    }
+    var srcs = q.by_source || [];
+    if (srcs.length) {
+      h += "<table class='data'><thead><tr><th>Sumber</th><th>Artikel</th></tr></thead><tbody>";
+      srcs.forEach(function (s) {
+        h += "<tr><td>" + esc(s.source) + "</td><td>" + esc(num(s.articles)) + "</td></tr>";
+      });
+      h += "</tbody></table>";
+    }
+    var warns = q.warnings || [];
+    if (warns.length) {
+      h += "<div class='q-row'>" + warns.map(function (w) {
+        return "<span class='chip mix'>! " + esc(w) + "</span>";
+      }).join("") + "</div>";
+    }
+    h += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Versi universe " +
+      esc(q.universe_version || "-") + " : panel memakai angka hasil hitung API begitu endpoint kualitas tersedia. Bukan nasihat investasi.</p>";
+    box.innerHTML = h;
+  }
+  function loadQuality() {
+    /* Sementara : mockup berlabel. Endpoint /api/quality belum ada di backend. */
+    showState("qualityState", "");
+    renderQuality(demoQuality());
+  }
+
+  /* Elemen visual tombol target: ikon aset lokal bila ada, jika tidak swatch warna. */
+  function visualTarget(info) {
+    if (info && info.icon) return "<img class='ticon' src='" + esc(info.icon) + "' alt=''>";
+    return "<span class='swatch' style='background:" + esc(info.color) + "' aria-hidden='true'></span>";
+  }
+
   function metaFor(assetId, row) {
     if (TARGET_INFO[assetId]) return TARGET_INFO[assetId];
     return {
@@ -22,7 +112,7 @@
   var CLASS_LABEL = { bond: "Obligasi", mutual_fund: "Reksadana", stock: "Saham", etf: "ETF", btc: "BTC", gold: "Emas", cash: "Kas" };
   var PERSONA_LABEL = { retail: "Retail Investor", day_trader: "Day Trader", fund_manager: "Fund Manager", pension: "Long-term / Pension", risk_manager: "Risk Manager" };
 
-  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "" };
+  var state = { target: "XAU", days: 90, profile: "moderate", impacts: [], apiOk: false, apiBase: "", meta: null, lastStats: [] };
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -75,6 +165,48 @@
     $("srcMeta").textContent = "Sumber: " + (state.apiOk ? (state.apiBase === "" ? "API relatif" : state.apiBase) : "ilustrasi lokal (API tidak terjangkau)");
   }
 
+  /* Splash status nyata: teks hanya muncul untuk tahap yang benar-benar sedang dilakukan. */
+  function splashStatus(text) {
+    if (window.Splash && typeof window.Splash.status === "function") window.Splash.status(text);
+  }
+  function splashDone() {
+    if (window.Splash && typeof window.Splash.done === "function") window.Splash.done();
+  }
+
+  /* Data Provenance Bar: satu sumber kebenaran mode data, ditegaskan berlabel teks.
+     live = DB punya harga/berita; empty = API hidup tapi kosong; demo = fallback ilustrasi. */
+  function renderProvenance(meta) {
+    var box = $("provenance");
+    if (!meta) {
+      $("provMode").textContent = "demo : ilustrasi lokal (API tidak terjangkau)";
+      box.querySelector(".prov-item").classList.add("warn");
+      ["provUniverse", "provSchema", "provModel", "provArticles", "provNews", "provFresh"]
+        .forEach(function (id) { $(id).textContent = "ilustrasi"; });
+      return;
+    }
+    box.querySelector(".prov-item").classList.remove("warn");
+    $("provMode").textContent = "mode : " + meta.mode;
+    $("provUniverse").textContent = meta.universe_version || "n/a";
+    $("provSchema").textContent = meta.schema_version || "n/a";
+    $("provModel").textContent = (meta.model_version || "n/a") + (meta.calibrated ? " (terkalibrasi)" : " (belum kalibrasi)");
+    $("provArticles").textContent = String(meta.coverage.articles);
+    $("provNews").textContent = String(meta.coverage.days_with_news);
+    var fresh = meta.coverage.last_price_date || meta.coverage.last_news_date;
+    $("provFresh").textContent = fresh ? "harga " + fresh : "belum ada deret";
+  }
+  function loadMeta() {
+    splashStatus("MEMUAT METADATA");
+    return api("/api/meta").then(function (meta) {
+      state.meta = meta;
+      renderProvenance(meta);
+      return meta;
+    }).catch(function () {
+      state.meta = null;
+      renderProvenance(null);
+      return null;
+    });
+  }
+
   /* Data ilustrasi jujur: hanya dipakai saat API mati, selalu berlabel. Alasan: R-38 tanpa angka fabrikasi. */
   function demoSeries(target) {
     var out = { sentiments: [], prices: [] };
@@ -94,11 +226,13 @@
     }
     return out;
   }
+  /* Data ilustrasi jujur: hanya dipakai saat API mati, selalu berlabel. Alasan: R-38 tanpa angka fabrikasi.
+     Demo-001 sengaja terbit setelah cut-off 17:00 agar aturan "masuk sesi berikutnya" teruji di tampilan. */
   function demoImpacts(target) {
     return [
-      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber" },
-      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber" },
-      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber" }
+      { article_id: "demo-001", asset_id: target, direction: "bullish", score: 0.42, confidence: 0.81, basis: "explicit", themes: ["rates_down"], rationale: "Nada dovish menopang aset berisiko dan menekan yield.", evidence: [{ quote: "Bank sentral memberi sinyal pemangkasan suku bunga pada kuartal berikutnya.", start: 0, end: 20 }], flags: [], news_horizon: "medium", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Sinyal dovish menopang sentimen " + target, source: "Contoh sumber", published_at: "2026-10-11T20:30:00", effective_trading_date: "2026-10-12", session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: true, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.62, p_neu: 0.28, p_neg: 0.10, translation_used: false }] },
+      { article_id: "demo-002", asset_id: target, direction: "bearish", score: -0.31, confidence: 0.66, basis: "macro_factor", themes: ["risk_off"], rationale: "Gelombang risk-off menekan skor harian lewat graf makro.", evidence: [], flags: [], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Risk-off global menekan selera risiko", source: "Contoh sumber", published_at: "2026-10-11T09:00:00", effective_trading_date: "2026-10-11", session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: false, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.12, p_neu: 0.30, p_neg: 0.58, translation_used: false }] },
+      { article_id: "demo-003", asset_id: target, direction: "neutral", score: 0.03, confidence: 0.38, basis: "macro_factor", themes: [], rationale: "Bukti lemah, tidak mengubah stance.", evidence: [], flags: ["weak_evidence"], news_horizon: "short", model_version: "demo", universe_version: "demo", schema_version: "0.5.0", created_at: new Date().toISOString(), title: "Pasar menunggu data inflasi berikutnya", source: "Contoh sumber", published_at: null, effective_trading_date: null, session_close: "17:00", timezone: "America/New_York", language: "id", headline_only: true, url: null, probs: [{ model: "demo-fusion", model_version: "demo-v1", p_pos: 0.38, p_neu: 0.44, p_neg: 0.18, translation_used: false }] }
     ];
   }
 
@@ -178,9 +312,111 @@
     var html = "<table class='data'><thead><tr><th>Uji</th><th>Est</th><th>p_adj</th><th>n</th></tr></thead><tbody>";
     order.forEach(function (t) { statGroup(rows, t).forEach(function (r) { html += statRow(r); }); });
     html += "</tbody></table>";
+    /* Periode dan lag yang diuji (Upgrade.md UI-02): angka statis punya denominasi yang terlihat. */
+    var starts = [], ends = [];
+    rows.forEach(function (r) {
+      if (r.period_start) starts.push(String(r.period_start));
+      if (r.period_end) ends.push(String(r.period_end));
+    });
+    if (starts.length && ends.length) {
+      var lagSeen = {}, lags = [];
+      rows.forEach(function (r) {
+        if (r.lag != null && !lagSeen[r.lag]) { lagSeen[r.lag] = true; lags.push(r.lag); }
+      });
+      lags.sort(function (a, b) { return a - b; });
+      starts.sort(); ends.sort();
+      html += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Periode uji: " +
+        esc(starts[0]) + " .. " + esc(ends[ends.length - 1]) + " : lag diuji L" + lags.join(", L") +
+        ". Asosiasi historis, bukan sebab.</p>";
+    }
     box.innerHTML = html;
+    state.lastStats = rows.slice();
+    updateWorkbenchControls(rows);
   }
 
+  /* Meja kerja asosiasi (Upgrade.md UI-05): kontrol minimum metrik + lag.
+     Tujuan yang diuji spec: pembaca melihat arah/ukuran hubungan berubah menurut
+     lag tanpa membuka database. Rolling window tidak dipalsukan: engine belum
+     punya fitur itu, jadi kontrolnya tidak ada di UI. */
+  function metricLabel(m) {
+    return { "return": "perubahan harga (return)", abnormal_return: "abnormal return (CAR)", volatility: "volatilitas", volume_change: "perubahan volume" }[m] || m;
+  }
+  function renderWorkbench(rows, note) {
+    var box = $("wbTables");
+    if (!rows || !rows.length) {
+      box.innerHTML = "";
+      showState("wbState", note || "Belum ada hasil untuk metrik ini. Engine saat ini menghitung return dan abnormal return.");
+      return;
+    }
+    showState("wbState", note || "");
+    var sorted = rows.slice().sort(function (a, b) {
+      return (a.lag == null ? -1 : a.lag) - (b.lag == null ? -1 : b.lag);
+    });
+    var maxAbs = 0.001;
+    rows.forEach(function (r) { maxAbs = Math.max(maxAbs, Math.abs(Number(r.estimate)) || 0); });
+    var html = "<table class='data'><thead><tr><th>Uji</th><th>Lag</th><th>Est</th><th>95% CI</th><th>p_adj</th><th>n</th></tr></thead><tbody>";
+    sorted.forEach(function (r) {
+      var est = Number(r.estimate);
+      var cls = est > 0 ? "pos" : est < 0 ? "neg" : "flat";
+      var w = Math.round(Math.abs(est) / maxAbs * 80);
+      var ci = (r.ci_low != null && r.ci_high != null) ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]" : "-";
+      var sig = r.p_adjusted != null && Number(r.p_adjusted) < 0.05;
+      var win = "";
+      try {
+        var p = JSON.parse(r.params_json || "{}");
+        if (p.window_pre != null && p.window_post != null) win = "jendela " + p.window_pre + " sebelum .. " + p.window_post + " sesudah";
+      } catch (e) { /* params_json bukan JSON: biarkan kosong, jangan mengarang. */ }
+      html += "<tr><td>" + esc(testLabel(r.test) + (win ? " : " + win : "")) + "</td>" +
+        "<td>" + (r.lag == null ? "-" : "L" + esc(r.lag)) + "</td>" +
+        "<td class='" + cls + "'><span class='wb-bar " + cls + "' style='width:" + w + "px'></span>" + fmt(est, 3) + (sig ? "<span class='sig'>sig</span>" : "") + "</td>" +
+        "<td>" + ci + "</td>" +
+        "<td>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "-") + "</td>" +
+        "<td>" + esc(r.n_obs) + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    var starts = [], ends = [];
+    sorted.forEach(function (r) {
+      if (r.period_start) starts.push(String(r.period_start));
+      if (r.period_end) ends.push(String(r.period_end));
+    });
+    if (starts.length && ends.length) {
+      starts.sort(); ends.sort();
+      html += "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)'>Periode: " +
+        esc(starts[0]) + " .. " + esc(ends[ends.length - 1]) +
+        (state.meta && state.meta.coverage ? " : hari berita (universe) " + esc(state.meta.coverage.days_with_news) : "") +
+        ". Lag lebih panjang makan observasi lebih sedikit; bandingkan est per lag, bukan pilih yang paling menarik.</p>";
+    }
+    box.innerHTML = html;
+  }
+  function updateWorkbenchControls(rows) {
+    var sel = $("wbMetric");
+    var metrics = [];
+    rows.forEach(function (r) {
+      if (r.market_metric != null && metrics.indexOf(r.market_metric) === -1) metrics.push(r.market_metric);
+    });
+    metrics.sort();
+    var current = sel.value;
+    var previous = (metrics.indexOf(current) !== -1) ? current : "return";
+    sel.innerHTML = "";
+    metrics.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m;
+      o.textContent = metricLabel(m);
+      sel.appendChild(o);
+    });
+    sel.value = (metrics.indexOf(previous) !== -1) ? previous : (metrics[0] || "");
+    renderWorkbench(rows.filter(function (r) { return r.market_metric === sel.value; }), "");
+  }
+  function runWorkbench() {
+    var t = state.target;
+    showState("wbState", "Menghitung ulang Spearman L0..L5 dari data harian : " + t + " ...");
+    api("/api/stats/" + t + "?max_lag=5").then(function (rows) {
+      renderWorkbench(rows, "");
+    }).catch(function () {
+      var byMetric = (state.lastStats || []).filter(function (r) { return r.market_metric === $("wbMetric").value; });
+      renderWorkbench(byMetric, "Perhitungan ulang tidak terjangkau : tabel berisi data tersimpan/ilustrasi berlabel, bukan hasil hitung baru.");
+    });
+  }
   /* Alokasi: bar baseline vs baru + validasi total persis 100. Alasan: konstrain domain paling mudah dilanggar diam-diam. */
   function renderAllocation(data) {
     var bars = $("allocBars");
@@ -218,6 +454,52 @@
     if (d === "mixed") return "<span class='chip mix'>◆ Mixed</span>";
     return "<span class='chip hold'>● Netral</span>";
   }
+  /* Audit waktu (Upgrade.md UI-02): terbit vs sesi efektif, tanpa klaim sebab.
+     Jika salah satu waktu tidak terekam di DB, barisnya jujur bilang belum terekam. */
+  function timeAuditLine(it) {
+    var parts = [];
+    if (it.published_at) {
+      parts.push("<span>terbit " + esc(fmtDate(it.published_at)) + " " + esc(String(it.published_at).slice(11, 16)) + "</span>");
+    } else {
+      parts.push("<span>waktu terbit belum terekam</span>");
+    }
+    if (it.effective_trading_date && it.published_at) {
+      var nextSession = String(it.effective_trading_date) > String(it.published_at).slice(0, 10);
+      parts.push("<span>sesi efektif " + esc(it.effective_trading_date) + (nextSession ? " : masuk sesi berikutnya" : "") + "</span>");
+    } else if (it.effective_trading_date) {
+      parts.push("<span>sesi efektif " + esc(it.effective_trading_date) + "</span>");
+    }
+    if (it.session_close) {
+      parts.push("<span>cut-off " + esc(it.session_close) + " " + esc(it.timezone || "") + "</span>");
+    }
+    return parts.length ? "<div class='news-meta audit-line'>" + parts.join("") + "</div>" : "";
+  }
+  /* Evidence drawer (Upgrade.md UI-03): <details> native, keyboard bisa buka-tutup.
+     Probabilitas per model + badge headline-only + URL asli. Bagian kosong jujur
+     menyebut belum terekam, tidak pernah dipalsukan. */
+  function evidenceDrawer(it) {
+    var inner = [];
+    if (it.probs && it.probs.length) {
+      inner.push("<table class='data'><thead><tr><th>Model</th><th>p_pos</th><th>p_neu</th><th>p_neg</th></tr></thead><tbody>" +
+        it.probs.map(function (p) {
+          return "<tr><td>" + esc(p.model) + (p.translation_used ? " : hasil terjemahan" : "") + "</td><td>" +
+            esc(Number(p.p_pos).toFixed(2)) + "</td><td>" + esc(Number(p.p_neu).toFixed(2)) + "</td><td>" +
+            esc(Number(p.p_neg).toFixed(2)) + "</td></tr>";
+        }).join("") + "</tbody></table>");
+    } else {
+      inner.push("<p class='drawer-note'>Probabilitas kelas per model belum terekam di basis data.</p>");
+    }
+    if (it.headline_only === 1 || it.headline_only === true) {
+      inner.push("<span class='chip hold'>Hanya judul yang dianalisis</span>");
+    }
+    if (it.url) {
+      inner.push("<a class='drawer-link' href='" + esc(it.url) + "' target='_blank' rel='noopener noreferrer'>Sumber asli</a>");
+    } else {
+      inner.push("<p class='drawer-note'>URL sumber belum terekam.</p>");
+    }
+    return "<details class='evidence-drawer'><summary>Bukti dan model</summary><div class='drawer-body'>" +
+      inner.join("") + "</div></details>";
+  }
   function impactCard(it) {
     var quote = (it.evidence && it.evidence[0] && it.evidence[0].quote) ? it.evidence[0].quote : "";
     var themes = (it.themes || []).map(esc).join(", ") || "tanpa tema";
@@ -229,6 +511,7 @@
       "<div class='news-meta'><span>" + esc(it.source || "sumber API") + "</span><span>tema: " + themes + "</span><span>horizon: " + esc(it.news_horizon || "short") + "</span></div>" +
       (it.rationale ? "<p style='font-size:14px;color:var(--text-secondary);margin:6px 0'>" + esc(it.rationale) + "</p>" : "") +
       (quote ? "<blockquote class='quote'>" + esc(quote) + "</blockquote>" : "") +
+      timeAuditLine(it) + evidenceDrawer(it) +
       "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'>" +
       "<button class='btn small primary' data-persona='" + esc(it.article_id) + "'>Lihat Persona POV</button></div></article>";
   }
@@ -322,6 +605,7 @@
     showState("statState", "Memuat uji statistik...");
     showState("allocState", "Memuat simulasi alokasi...");
     showState("newsState", "Memuat dampak berita...");
+    loadQuality();
 
     api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end).then(function (payload) {
       state.apiOk = true; setStatus("ok", "terhubung ke API");
@@ -332,7 +616,11 @@
     });
 
     api("/api/stats/" + t).then(function (rows) { renderStats(rows); })
-      .catch(function () { renderStats([{ test: "spearman", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62 }, { test: "ols", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62 }, { test: "granger", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60 }, { test: "event_study", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18 }]); });
+      .catch(function () {
+        renderStats([{ test: "spearman", market_metric: "return", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", market_metric: "return", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", market_metric: "return", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", market_metric: "abnormal_return", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }]);
+        /* Setelah renderStats, bukan sebelum: renderStats mengosongkan state di awal. */
+        showState("statState", "API statistik tidak terjangkau : tabel ini ilustrasi berlabel, bukan hasil uji nyata.");
+      });
 
     api("/api/allocation?profile_id=" + state.profile + "&article_id=current_market").then(function (d) { renderAllocation(d); })
       .catch(function () {
@@ -370,7 +658,7 @@
       var info = metaFor(id, row);
       var sel = i === 0 ? "true" : "false";
       return "<button class='target-tab' role='tab' data-target='" + esc(id) + "' aria-selected='" + sel + "'>" +
-        "<span class='swatch' style='background:" + esc(info.color) + "' aria-hidden='true'></span>" +
+        visualTarget(info) +
         "<span><span class='tick'>" + esc(id) + "</span>" +
         "<span class='meta'>" + esc(info.name) + " : " + esc(info.ticker) + " : " + esc(info.venue) + "</span></span></button>";
     }).join("");
@@ -393,6 +681,7 @@
     });
   }
   function loadUniverse() {
+    splashStatus("MEMUAT UNIVERSE");
     return api("/api/universe").then(function (rows) {
       var active = (rows || []).filter(function (r) { return r.active === 1 || r.active === true; });
       if (!active.length) throw new Error("universe kosong");
@@ -423,6 +712,10 @@
     });
     $("newsFilter").addEventListener("input", applyNewsFilter);
     $("dirFilter").addEventListener("change", applyNewsFilter);
+    $("wbMetric").addEventListener("change", function () {
+      updateWorkbenchControls(state.lastStats);
+    });
+    $("wbRun").addEventListener("click", runWorkbench);
     $("personaClose").addEventListener("click", function () { $("personaModal").close(); });
     $("personaModal").addEventListener("click", function (e) {
       var r = $("personaModal").getBoundingClientRect();
@@ -437,8 +730,15 @@
     });
   }
 
-  detectBase().then(function () { setStatus(state.apiBase ? "ok" : "warn", state.apiBase ? "terhubung ke API" : "API tidak terjangkau : ilustrasi"); });
+  /* Boot: base dulu, lalu meta + universe paralel. Splash selesai hanya setelah
+     keduanya beres ATAU fallback dipilih : tidak ada log palsu (Upgrade.md 3.1-5). */
+  detectBase().then(function () {
+    setStatus(state.apiBase ? "ok" : "warn", state.apiBase ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
+    Promise.allSettled([loadMeta(), loadUniverse()])
+      .then(function () { splashStatus(state.meta ? "MODE " + state.meta.mode.toUpperCase() : "MODE DEMO"); })
+      .then(reload)
+      .then(splashDone);
+  });
   bindTabs();
   bindControls();
-  loadUniverse().then(reload);
 })();

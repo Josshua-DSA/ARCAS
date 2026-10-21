@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Aset lokal ARCAS : ikon RATE_UST, lingkar suku bunga (persen), token #58A6FF -->
+  <circle cx="12" cy="12" r="9.2" fill="none" stroke="#58A6FF" stroke-width="2"/>
+  <circle cx="8.6" cy="9" r="2.1" fill="none" stroke="#58A6FF" stroke-width="1.6"/>
+  <circle cx="15.3" cy="15.1" r="2.1" fill="none" stroke="#58A6FF" stroke-width="1.6"/>
+  <line x1="16.4" y1="6.4" x2="7.6" y2="17.6" stroke="#58A6FF" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
