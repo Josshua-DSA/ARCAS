@@ -16,7 +16,7 @@ def temp_db():
     # a still-locked temp handle on Windows ("unable to open database file").
     with tempfile.TemporaryDirectory() as d:
         db = Database(db_path=str(Path(d) / "test.db"))
-        db.init_tables()
+        db.init_schema()
         yield db
 
 
@@ -95,3 +95,44 @@ def test_db_price_crud(temp_db):
     results = temp_db.query_prices("XAU", date(2026, 10, 1), date(2026, 10, 10))
     assert len(results) == 1
     assert results[0].close == 2655.0
+
+
+# ==========================================================
+# S-7: satu nama untuk satu fungsi
+# ==========================================================
+
+
+def test_init_schema_is_idempotent(temp_db):
+    """`init_schema()` aman dipanggil berulang — sifat yang tadinya
+    tersembunyi di balik alias `init_tables()`.
+
+    Dua nama untuk satu fungsi membuat pembaca baru mengira keduanya berbeda
+    dan menyembunyikan fakta bahwa pemanggilan ulang tidak merusak apa pun.
+    """
+    temp_db.init_schema()
+    temp_db.init_schema()
+
+    # Data yang sudah ada tidak boleh hilang karena skema dibuat ulang.
+    temp_db.save_daily_sentiment(
+        DailySentiment(
+            asset_id="XAU",
+            date=date(2026, 10, 1),
+            score_mean=0.4,
+            score_weighted=0.4,
+            n_articles=3,
+            n_sources=2,
+            has_news=True,
+        )
+    )
+    temp_db.init_schema()
+    rows = temp_db.query_daily_sentiment("XAU", date(2026, 10, 1), date(2026, 10, 1))
+    assert len(rows) == 1, "init_schema() menghapus data yang sudah ada"
+
+
+def test_init_tables_alias_is_gone():
+    """Alias yang membingungkan tidak boleh kembali."""
+    from backend.src.store.db import Database
+
+    assert not hasattr(Database, "init_tables"), (
+        "init_tables() adalah alias init_schema(); pakai init_schema() saja"
+    )

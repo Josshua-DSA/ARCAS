@@ -415,10 +415,6 @@ class Database:
                 ),
             )
 
-    def init_tables(self) -> None:
-        """Alias for init_schema."""
-        self.init_schema()
-
     # ==========================================================
     # CRUD: raw_articles — berita mentah dari API/RSS
     # ==========================================================

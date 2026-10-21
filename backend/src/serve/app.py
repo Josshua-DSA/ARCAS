@@ -71,7 +71,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     )
 
     db = Database(db_path=db_path)
-    db.init_tables()
+    db.init_schema()
 
     alloc_engine = AllocationEngine()
     persona_engine = PersonaEngine()
