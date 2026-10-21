@@ -40,6 +40,18 @@ jobs:
         run: |
           ruff check .
 
+      - name: Type-check with mypy
+        # RULES §4 mewajibkan ruff + mypy bersih sebelum merge.
+        run: |
+          mypy
+
+      - name: Latih baseline sentimen
+        # Artefak .joblib sengaja TIDAK di-commit: hasil pickling sklearn
+        # terikat versi Python & scikit-learn, jadi lebih aman dilatih ulang.
+        # Dataset gold_sinha ikut ter-commit, jadi langkah ini deterministik.
+        run: |
+          python -m model.common.train_baseline
+
       - name: Run test suite
         run: |
           pytest

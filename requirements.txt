@@ -9,3 +9,22 @@ uvicorn>=0.27.0
 rich>=13.7.0
 pytest>=8.0.0
 ruff>=0.2.0
+mypy>=1.10
+
+# --- Kolektor data nyata (backend/src/collect) ---
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# --- Model & penyimpanan kolumnar ---
+# scikit-learn: baseline TF-IDF + Logistic Regression (model/common/baseline.py).
+# Tanpa ini, baseline tidak bisa dilatih dan pipeline berhenti dengan pesan jelas.
+scikit-learn>=1.3.0
+joblib>=1.3.0
+# pyarrow: baca/tulis Parquet (dataset gold_sinha, ParquetStore). DIPAKAI TEST.
+pyarrow>=14.0.0
+# openpyxl: pd.read_excel di test model_router. Tanpa ini CI gagal.
+openpyxl>=3.1.0
+
+# Catatan: harga diambil lewat Yahoo chart API memakai urllib (stdlib).
+# `yfinance` TIDAK diperlukan dan sengaja tidak dipakai, agar tidak ada
+# jalur yang bisa diam-diam jatuh ke data sintetis.

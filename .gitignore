@@ -21,3 +21,7 @@ venv/
 # Code graph — commit the artefacts agents read, skip rebuild cache & snapshots
 graphify-out/cache/
 graphify-out/2*/
+
+# Artefak model terlatih — dilatih ulang oleh `python -m model.common.train_baseline`
+# (pickling sklearn terikat versi Python/scikit-learn, jangan di-commit)
+model/common/*.joblib
