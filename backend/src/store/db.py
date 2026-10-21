@@ -1088,6 +1088,134 @@ class Database:
                 )
             return res
 
+    # ------------------------------------------------------------------
+    # S-2: persist hasil persona & alokasi agar bisa diaudit ulang
+    # ------------------------------------------------------------------
+
+    def save_persona_views(self, views: list) -> int:
+        """Simpan PersonaView ke tabel `persona_views`.
+
+        NFR reproducibility: hasil yang hanya dikembalikan lewat API lalu
+        dibuang tidak bisa diperiksa ulang atau direproduksi.
+        """
+        if not views:
+            return 0
+        rows = [
+            (
+                v.article_id,
+                v.persona_id,
+                v.target,
+                v.stance.value if hasattr(v.stance, "value") else str(v.stance),
+                float(v.strength),
+                (
+                    v.news_horizon.value
+                    if hasattr(v.news_horizon, "value")
+                    else str(v.news_horizon)
+                ),
+                float(v.raw_value),
+                float(v.confidence),
+                getattr(v, "rationale", None),
+                getattr(v, "params_version", "unknown"),
+                datetime.now().isoformat(sep=" ", timespec="seconds"),
+            )
+            for v in views
+        ]
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO persona_views (
+                    article_id, persona_id, target, stance, strength,
+                    news_horizon, raw_value, confidence, rationale,
+                    params_version, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                rows,
+            )
+        return len(rows)
+
+    def save_alloc_suggestion(self, suggestion) -> int:
+        """Simpan AllocationSuggestion beserta seluruh barisnya.
+
+        `article_id` pada tabel adalah kunci simpanan; untuk tilt pasar
+        (bukan artikel) dipakai penanda seperti ``current_market``.
+        """
+        created = getattr(suggestion, "created_at", None) or datetime.now()
+        if hasattr(created, "isoformat"):
+            created_s = created.isoformat(sep=" ", timespec="seconds")
+        else:
+            created_s = str(created)
+
+        rows = [
+            (
+                suggestion.article_id,
+                line.alloc_class.value
+                if hasattr(line.alloc_class, "value")
+                else str(line.alloc_class),
+                suggestion.profile_id,
+                float(line.baseline_pct),
+                float(line.new_pct),
+                float(line.delta_pp),
+                float(line.confidence),
+                getattr(line, "rationale", None),
+                1 if getattr(line, "no_change", False) else 0,
+                suggestion.params_version,
+                created_s,
+            )
+            for line in suggestion.lines
+        ]
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO alloc_suggestions (
+                    article_id, alloc_class, profile_id, baseline_pct, new_pct,
+                    delta_pp, confidence, rationale, no_change,
+                    params_version, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                rows,
+            )
+        return len(rows)
+
+    def get_persona_views(self, article_id: str, target: str | None = None) -> list[dict]:
+        """Baca kembali persona_views yang tersimpan (untuk audit)."""
+        q = "SELECT * FROM persona_views WHERE article_id = ?"
+        params: list = [article_id]
+        if target:
+            q += " AND target = ?"
+            params.append(target)
+        q += " ORDER BY persona_id ASC;"
+        with self.get_connection() as conn:
+            return [dict(r) for r in conn.execute(q, params).fetchall()]
+
+    def get_alloc_suggestions(self, article_id: str) -> list[dict]:
+        """Baca kembali alloc_suggestions yang tersimpan (untuk audit)."""
+        with self.get_connection() as conn:
+            return [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT * FROM alloc_suggestions WHERE article_id = ? "
+                    "ORDER BY alloc_class ASC;",
+                    (article_id,),
+                ).fetchall()
+            ]
+
+    def get_impact_for_article(self, article_id: str, asset_id: str) -> dict | None:
+        """Dampak satu artikel pada satu aset, atau None bila tidak ada.
+
+        Dipakai endpoint persona: angka yang ditampilkan harus berasal dari
+        analisis yang tercatat, bukan nilai bawaan fungsi.
+        """
+        with self.get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT article_id, asset_id, direction, score, confidence, basis
+                FROM impacts WHERE article_id = ? AND asset_id = ?
+                ORDER BY confidence DESC LIMIT 1;
+                """,
+                (article_id, asset_id),
+            ).fetchone()
+            return dict(row) if row else None
+
     def get_daily_series(self, asset_id: str, start_date: Optional[date] = None) -> list[dict]:
         """Retrieves joint sentiment and price series for a target."""
         query = """
@@ -1111,3 +1239,105 @@ class Database:
         with self.get_connection() as conn:
             rows = conn.execute(query, params).fetchall()
             return [dict(row) for row in rows]
+
+    # ------------------------------------------------------------------
+    # T-3: kesehatan sumber (FR-18)
+    # ------------------------------------------------------------------
+
+    #: Status yang dianggap gagal. `no_key` TIDAK dihitung gagal: itu kondisi
+    #: konfigurasi yang disengaja, bukan sumber yang mati.
+    FAILURE_STATUSES = frozenset({"unauthorized", "rate_limited", "error"})
+
+    def save_source_health(
+        self,
+        source: str,
+        status: str,
+        detail: str = "",
+        latency_ms: float | None = None,
+        sample_size: int = 0,
+        usable: bool = False,
+        checked_at: datetime | None = None,
+    ) -> int:
+        """Catat satu hasil pemeriksaan kesehatan sumber.
+
+        Mengembalikan jumlah kegagalan BERTURUT-TURUT untuk sumber ini
+        (0 bila pemeriksaan ini berhasil). Nilai itu yang dipakai untuk
+        memutuskan kapan alert perlu berbunyi.
+        """
+        ts = (checked_at or datetime.now()).replace(microsecond=0)
+        is_failure = status in self.FAILURE_STATUSES
+
+        with self.get_connection() as conn:
+            if is_failure:
+                row = conn.execute(
+                    """
+                    SELECT consecutive_failures FROM source_health
+                    WHERE source = ? ORDER BY checked_at DESC LIMIT 1;
+                    """,
+                    (source,),
+                ).fetchone()
+                streak = (int(row["consecutive_failures"]) if row else 0) + 1
+            else:
+                streak = 0
+
+            conn.execute(
+                """
+                INSERT INTO source_health (
+                    source, checked_at, status, is_failure, usable,
+                    latency_ms, detail, sample_size, consecutive_failures
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    source,
+                    ts.isoformat(sep=" "),
+                    status,
+                    1 if is_failure else 0,
+                    1 if usable else 0,
+                    latency_ms,
+                    detail[:500] if detail else None,
+                    int(sample_size),
+                    streak,
+                ),
+            )
+        return streak
+
+    def latest_source_health(self) -> list[dict]:
+        """Status terakhir tiap sumber, satu baris per sumber.
+
+        Memakai `rowid` sebagai pemecah seri: `checked_at` beresolusi detik,
+        sehingga beberapa pemeriksaan dalam detik yang sama akan membuat
+        `MAX(checked_at)` cocok ke banyak baris sekaligus.
+        """
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT h.* FROM source_health h
+                JOIN (
+                    SELECT source, MAX(rowid) AS mx FROM source_health GROUP BY source
+                ) t ON t.mx = h.rowid
+                ORDER BY h.source ASC;
+                """
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def sources_needing_alert(self, threshold: int = 3) -> list[dict]:
+        """Sumber yang SEDANG gagal `threshold` kali berturut-turut.
+
+        Hanya keadaan TERAKHIR yang diperiksa. Kegagalan lama tidak boleh
+        membuat alert terus berbunyi setelah sumber pulih.
+        """
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT source, status, detail, consecutive_failures, checked_at
+                FROM source_health h
+                WHERE h.is_failure = 1
+                  AND h.consecutive_failures >= ?
+                  AND h.rowid = (
+                      SELECT MAX(rowid) FROM source_health WHERE source = h.source
+                  )
+                ORDER BY consecutive_failures DESC, source ASC;
+                """,
+                (int(threshold),),
+            ).fetchall()
+            return [dict(r) for r in rows]
