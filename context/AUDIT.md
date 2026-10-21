@@ -63,7 +63,7 @@ menolak mengarang hasil — perilaku yang benar.
 | FR | P | Status | Bukti / yang kurang |
 |---|---|---|---|
 | FR-1 Ingest | P0 | 🟡 | API (Finnhub/Marketaux/AlphaVantage) + RSS ✅ · **CSV/JSON/manual ❌** · scraper ID ❌ (tidak ada modul) |
-| FR-2 Normalisasi+dedup | P0 | 🟡 | SHA-256 exact ✅ · TF-IDF char 3-5gram + cosine ✅ · **near-dup tidak terbukti** (test di-skip) |
+| FR-2 Normalisasi+dedup | P0 | ✅ | SHA-256 exact ✅ · TF-IDF char 3-5gram + cosine ✅ · near-dup terbukti end-to-end (fixture sintetis, uji mutasi) · batas: parafrase sejati → pita tinjauan, bukan digabung |
 | FR-3 Penandaan target | P0 | 🟡 | router + impact graph ✅ · `source_registry.yaml` dibaca ✅ · **entitas non-emas belum masuk `asset_aliases`** |
 | FR-4 Jam bursa | P0 | ✅ | `compute_effective_trading_date` dipanggil `cleaner.py:99` |
 | FR-5 IndoBERT | P3 | ⚪ | MATI 2026-10-11, di luar hitungan |
@@ -115,20 +115,33 @@ TF-IDF), lalu evaluasi pada data berlabel.
 **Catatan:** ini pekerjaan besar (unduh model, latih, evaluasi) — jangan
 dicampur dengan perbaikan kecil.
 
-### 2. FR-2 · near-duplicate tidak terbukti bekerja — **P0, biaya kecil**
+### 2. FR-2 · near-duplicate tidak terbukti bekerja — **P0, ✅ SELESAI**
 
-Bukti: `test_dedup.py:193` → `pytest.skip("data uji tidak punya duplikat")`.
-Fixture `pipeline_db` tidak berisi pasangan yang mirip, jadi jalur
-`NearDuplicateDetector` **tidak pernah dieksekusi** di test mana pun.
+Bukti lama: `test_dedup.py:193` → `pytest.skip("data uji tidak punya duplikat")`.
+Fixture `pipeline_db` menyalin `data/finews.db`, yang isinya berubah, jadi jalur
+`NearDuplicateDetector` di dalam `Pipeline` **tidak pernah dieksekusi**.
 
-Ini pola yang sama dengan S-4: test yang tidak pernah terbukti bisa gagal
-bukan bukti apa pun. Kodenya ada (`TF-IDF char 3-5gram + cosine`, dipanggil
-`runner.py:246`), tetapi belum ada bukti ia menandai duplikat dengan benar.
+**Perbaikan:** fixture `seeded_pipeline_db` sintetis (3 berita: sepasang duplikat
+wire + satu topik lain) yang menjamin duplikat selalu ada, terlepas dari isi DB
+lokal. Test baru:
 
-**Yang harus dikerjakan:** fixture dengan 2 artikel parafrase (judul sama,
-sumber beda, badan diparafrase) → pastikan `duplicate_of` terisi, duplikat
-tidak menambah `n_articles`, dan artikel berbeda tetap lolos. Lalu uji mutasi:
-matikan detektor, test harus gagal.
+| Test | Yang dibuktikan |
+|---|---|
+| `test_pipeline_flags_duplicate_without_skipping` | `duplicate_of` terisi lewat `Pipeline`, asli = terbit lebih awal, topik lain lolos |
+| `test_duplicate_does_not_increase_daily_article_count` | duplikat tidak menambah hitungan |
+| `test_detector_disabled_breaks_the_assertions` | uji mutasi: detektor dimatikan → `duplicate_of` kosong |
+| `test_true_paraphrase_lands_in_review_band_not_merged` | batas metode: parafrase sejati → pita tinjauan |
+
+Uji mutasi manual juga dijalankan pada kode sumber (bukan hanya monkeypatch):
+mematikan cabang `best_score >= self.threshold` membuat **8 test gagal**.
+
+**Temuan yang perlu diketahui:** permintaan AUDIT v3 ("badan diparafrase →
+pastikan `duplicate_of` terisi") **tidak dapat dipenuhi** dengan metode leksikal
+ini. Parafrase menyeluruh terukur cosine ≈ 0.72, di bawah
+`NEAR_DUP_THRESHOLD=0.85`; ia masuk `last_review`, bukan digabung. Yang berhasil
+digabung adalah duplikasi **permukaan** (wire yang sama, beda beberapa kata atau
+boilerplate) — dan itulah kasus yang memang dominan di data berita. Menangkap
+parafrase semantik butuh embedding, yaitu pekerjaan §1, bukan §2.
 
 ### 3. FR-1 · ingest CSV/JSON/manual belum ada — **P0, parsial**
 
@@ -191,7 +204,7 @@ yang tidak terlihat oleh 190 test lain (`score` membaca `raw_articles`;
 ## Urutan Pengerjaan yang Disarankan
 
 **Langkah 1 — murah, nilai langsung (½ hari)**
-1. FR-2: fixture parafrase + uji mutasi near-dup.
+1. ~~FR-2: fixture + uji mutasi near-dup~~ ✅ selesai (`seeded_pipeline_db`).
 2. `yfinance_collector` dan `news_cli`: test parsing & alert.
 3. FR-20: putuskan hapus atau pindahkan ke tabel.
 
