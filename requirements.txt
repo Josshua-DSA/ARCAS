@@ -10,12 +10,25 @@ fastapi>=0.109.0
 uvicorn>=0.27.0
 rich>=13.7.0
 pytest>=8.0.0
-ruff>=0.2.0
-mypy>=1.10
+# ruff & mypy DIPIN PERSIS, bukan rentang. Alat ini memutuskan lulus/gagal CI,
+# jadi versinya harus deterministik: mypy 2.x tidak melaporkan
+# [import-untyped] yang dilaporkan mypy 1.11, sehingga `mypy>=1.10` membuat
+# hasil type-check bergantung pada apa yang dirilis upstream hari itu.
+ruff==0.17.0
+mypy==1.11.2
+# types-PyYAML: PyYAML tidak membawa py.typed, sehingga mypy 1.11 melaporkan
+# [import-untyped] untuk `import yaml` di 6 file. Tanpa stub ini CI gagal.
+types-PyYAML>=6.0.12
 
 # --- Kolektor data nyata (backend/src/collect) ---
 requests>=2.31.0
 python-dotenv>=1.0.0
+
+# --- Klien HTTP untuk test API ---
+# starlette.testclient (dipakai test_api_no_hardcoded.py & test_persistence.py)
+# butuh httpx2. Tanpa ini, collection GAGAL sebelum satu test pun jalan.
+# Sebelumnya lolos di mesin lokal karena paket ini terpasang di luar manifest.
+httpx2>=2.13.0
 
 # --- Model & penyimpanan kolumnar ---
 # scikit-learn: baseline TF-IDF + Logistic Regression (model/common/baseline.py).
