@@ -32,6 +32,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # File dataset di `dataset/gold_sinha/` di-track lewat Git LFS
+          # (lihat .gitattributes: *.parquet filter=lfs). Tanpa `lfs: true`,
+          # checkout hanya memberi pointer teks 131 byte, dan pelatihan
+          # baseline gagal dengan "Parquet magic bytes not found in footer".
+          # Ini tidak pernah terlihat di mesin lokal karena LFS sudah ter-pull.
+          lfs: true
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -123,6 +130,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Dockerfile memakai `COPY . .`, jadi dataset ikut masuk image.
+          # Tanpa LFS, image berisi pointer 131 byte alih-alih parquet asli.
+          lfs: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
