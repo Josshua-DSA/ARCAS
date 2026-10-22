@@ -15,11 +15,17 @@ class DailyAggregator:
         trading_date: date,
         impacts: list[TargetImpact],
         version: str = "v1",
+        sources: list[str] | None = None,
     ) -> DailySentiment:
         """
         Aggregates impacts for a single asset on a given trading date.
         Strict invariant: If no impacts exist (n_articles == 0),
         score_mean must be None (representing NaN), has_news = False.
+
+        `sources`: nama sumber per impact (paralel dengan `impacts`). Bila
+        diberikan, `n_sources` dihitung dari jumlah sumber unik — angka ini
+        dipakai untuk menilai independensi sinyal. Sebelumnya nilainya
+        hardcode 1, yang membuat berita dari 7 sumber tampak seperti 1 sumber.
         """
         if not impacts:
             return DailySentiment(
@@ -45,13 +51,20 @@ class DailyAggregator:
         else:
             score_weighted = score_mean
 
+        if sources is None:
+            # Tanpa informasi sumber, asumsikan minimal satu (konservatif:
+            # jangan mengklaim independensi yang tidak diketahui).
+            n_sources = 1
+        else:
+            n_sources = len({s for s in sources if s}) or 1
+
         return DailySentiment(
             asset_id=asset_id,
             date=trading_date,
             score_mean=round(score_mean, 4),
             score_weighted=round(score_weighted, 4),
             n_articles=n_articles,
-            n_sources=1,  # Default minimum source count
+            n_sources=n_sources,
             has_news=True,
             version=version,
         )

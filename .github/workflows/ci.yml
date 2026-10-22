@@ -16,42 +16,124 @@ on:
       - main
       - jeje
       - CI/CD
+  workflow_dispatch:
+
+# Batalkan run lama untuk ref yang sama: hemat kuota, dan hasil yang
+# dilaporkan selalu dari commit terakhir.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # File dataset di `dataset/gold_sinha/` di-track lewat Git LFS
+          # (lihat .gitattributes: *.parquet filter=lfs). Tanpa `lfs: true`,
+          # checkout hanya memberi pointer teks 131 byte, dan pelatihan
+          # baseline gagal dengan "Parquet magic bytes not found in footer".
+          # Ini tidak pernah terlihat di mesin lokal karena LFS sudah ter-pull.
+          lfs: true
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          # Semua versi alat datang dari requirements.txt supaya lokal dan CI
+          # memakai versi yang SAMA. Ini bukan detail kosmetik: mypy 2.x
+          # melewatkan error [import-untyped] yang dilaporkan mypy 1.11, jadi
+          # menguji dengan versi berbeda membuat CI merah padahal lokal hijau.
           pip install -r requirements.txt
 
-      - name: Lint with ruff
+      - name: Verifikasi versi alat sesuai kontrak CI
+        # Gagal cepat bila requirements.txt menghasilkan versi di luar rentang
+        # yang diuji. Tanpa ini, perubahan versi diam-diam mengubah hasil mypy.
         run: |
-          ruff check .
+          python - <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          def version_of(pkg: str) -> tuple[int, ...]:
+              out = subprocess.run(
+                  [sys.executable, "-m", pkg, "--version"],
+                  capture_output=True, text=True, check=True,
+              ).stdout
+              m = re.search(r"(\d+)\.(\d+)\.(\d+)", out)
+              assert m, f"tidak bisa membaca versi {pkg}: {out!r}"
+              return tuple(int(g) for g in m.groups())
+
+          ruff_v = version_of("ruff")
+          mypy_v = version_of("mypy")
+          print(f"ruff {ruff_v}  mypy {mypy_v}")
+
+          if not (ruff_v >= (0, 17, 0)):
+              print(f"::error::ruff {ruff_v} < 0.17.0 (aturan lint berubah)")
+              sys.exit(1)
+          # mypy wajib di mayor 1: mypy 2.x tidak melaporkan [import-untyped],
+          # sehingga kelas error yang justru ingin kita tangkap jadi tak terlihat.
+          if mypy_v[0] != 1:
+              print(f"::error::mypy {mypy_v} bukan 1.x; hasil type-check berbeda")
+              sys.exit(1)
+          PY
+
+      - name: Lint with ruff
+        # RULES §4 mewajibkan ruff + mypy bersih sebelum merge.
+        run: ruff check .
+
+      - name: Type-check with mypy
+        run: mypy
+
+      - name: Latih baseline sentimen
+        # Artefak .joblib sengaja TIDAK di-commit: hasil pickling sklearn
+        # terikat versi Python & scikit-learn, jadi lebih aman dilatih ulang.
+        # Dataset gold_sinha ikut ter-commit, jadi langkah ini deterministik.
+        run: python -m model.common.train_baseline
 
       - name: Run test suite
+        # `--timeout` belum tentu tersedia; batas waktu ditangani
+        # `timeout-minutes` job + durasi suite yang ~13 detik.
+        run: pytest
+
+      - name: Pastikan test tidak diam-diam di-skip
+        # Skip karena "latih dulu" berarti artefak model tidak terbentuk dan
+        # suite kehilangan cakupan tanpa gagal. Angka 1 yang diizinkan adalah
+        # `test_dedup.py` yang bergantung pada isi data/finews.db (tidak
+        # di-commit, jadi memang tak bisa dijamin).
         run: |
-          pytest
+          echo "Maksimum 5 test boleh skip; lebih dari itu berarti ada yang salah."
+          pytest -q -rs 2>&1 | tee /tmp/pytest.log
+          skipped=$(grep -c "^SKIPPED" /tmp/pytest.log || true)
+          echo "jumlah skip: $skipped"
+          if [ "$skipped" -gt 5 ]; then
+            echo "::error::$skipped test di-skip, melebihi batas 5."
+            exit 1
+          fi
 
   docker-build:
     name: Validate Docker Build
     runs-on: ubuntu-latest
     needs: test-and-lint
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Dockerfile memakai `COPY . .`, jadi dataset ikut masuk image.
+          # Tanpa LFS, image berisi pointer 131 byte alih-alih parquet asli.
+          lfs: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -62,3 +144,5 @@ jobs:
           context: .
           push: false
           tags: arcas-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

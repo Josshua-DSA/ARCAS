@@ -2,11 +2,18 @@
 
 import csv
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import yaml
 
-from backend.src.schema import Article, Basis, Direction, EvidenceSpan, TargetImpact
+from backend.src.schema import (
+    Article,
+    Basis,
+    Direction,
+    EvidenceSpan,
+    NewsHorizon,
+    TargetImpact,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - hanya untuk anotasi tipe
     from backend.src.tagging.model_router import ModelRouter
@@ -44,6 +51,57 @@ class TargetRouter:
             with open(self.impact_graph_path, mode="r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
                 self.impact_graph = data.get("themes", {})
+
+        # T-5: ambang & kalibrasi dari YAML, bukan angka ajaib di kode.
+        self.config_path = Path("data/router_config.yaml")
+        self.routing: dict[str, float] = {
+            "direction_threshold": 0.1,
+            "explicit_confidence": 0.88,
+            "macro_confidence_base": 0.50,
+            "macro_confidence_weight_factor": 0.35,
+            "macro_confidence_cap": 0.85,
+        }
+        # S-5: horizon per jenis jalur. Bawaan di sini mencerminkan isi YAML
+        # supaya perilaku tidak berubah bila file tidak ada.
+        self.horizon_policy: dict[str, Any] = {
+            "explicit": "short",
+            "macro": "medium",
+            "intraday_keywords": [],
+        }
+        if self.config_path.exists():
+            with open(self.config_path, mode="r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            section = data.get("routing") if isinstance(data, dict) else None
+            if isinstance(section, dict):
+                horizon = section.pop("horizon", None)
+                self.routing.update(section)
+                if isinstance(horizon, dict):
+                    self.horizon_policy.update(horizon)
+
+    def resolve_horizon(self, text: str, basis: Basis) -> NewsHorizon:
+        """Horizon berita untuk satu dampak (S-5 / FR-23).
+
+        Sebelumnya `news_horizon` selalu jatuh ke nilai bawaan SHORT karena
+        router tidak pernah mengisinya — FR-23 hanya "terisi" secara teknis.
+
+        Aturan, semuanya dari `router_config.yaml`:
+        - kata kunci intraday muncul  -> INTRADAY (reda di hari yang sama)
+        - jalur eksplisit             -> `horizon.explicit` (bawaan short)
+        - jalur makro                 -> `horizon.macro` (bawaan medium)
+        """
+        lower = text.lower()
+        for kw in self.horizon_policy.get("intraday_keywords", []) or []:
+            if str(kw).lower() in lower:
+                return NewsHorizon.INTRADAY
+
+        key = "explicit" if basis is Basis.EXPLICIT else "macro"
+        raw = str(self.horizon_policy.get(key, "short")).lower()
+        try:
+            return NewsHorizon(raw)
+        except ValueError:
+            # Konfigurasi salah tidak boleh menjatuhkan pipeline; pakai short
+            # dan biarkan nilai mentahnya terlihat di log pemanggil.
+            return NewsHorizon.SHORT
 
     def find_explicit_mentions(self, text: str) -> list[tuple[str, str, int, int]]:
         """
@@ -111,9 +169,10 @@ class TargetRouter:
         for asset_id, matched_alias, start, end in explicit_matches:
             tagged_assets.add(asset_id)
             # Direction follows sentiment score for explicit mentions
-            if sentiment_score > 0.1:
+            threshold = self.routing["direction_threshold"]
+            if sentiment_score > threshold:
                 direction = Direction.BULLISH
-            elif sentiment_score < -0.1:
+            elif sentiment_score < -threshold:
                 direction = Direction.BEARISH
             else:
                 direction = Direction.NEUTRAL
@@ -132,11 +191,12 @@ class TargetRouter:
                     asset_id=asset_id,
                     direction=direction,
                     score=sentiment_score,
-                    confidence=0.88,  # Under explicit cap 1.00
+                    confidence=self.routing["explicit_confidence"],
                     basis=Basis.EXPLICIT,
                     themes=[],
                     evidence=evidence,
                     flags=[],
+                    news_horizon=self.resolve_horizon(full_text, Basis.EXPLICIT),
                     model_version=model_version,
                     routed_from=routed_from,
                     route_score=route_score,
@@ -148,19 +208,20 @@ class TargetRouter:
         for theme in themes:
             theme_targets = self.impact_graph.get(theme, [])
             for entry in theme_targets:
-                asset_id = entry.get("target")
-                if not asset_id or asset_id not in LOCKED_UNIVERSE:
+                macro_asset = entry.get("target")
+                if not macro_asset or macro_asset not in LOCKED_UNIVERSE:
                     continue
-                if asset_id in tagged_assets:
+                if macro_asset in tagged_assets:
                     continue  # Explicit priority
 
                 sign = entry.get("sign", 1)
                 weight = entry.get("weight", 0.5)
                 projected_score = sentiment_score * sign * weight
 
-                if projected_score > 0.1:
+                threshold = self.routing["direction_threshold"]
+                if projected_score > threshold:
                     direction = Direction.BULLISH
-                elif projected_score < -0.1:
+                elif projected_score < -threshold:
                     direction = Direction.BEARISH
                 else:
                     direction = Direction.NEUTRAL
@@ -168,15 +229,20 @@ class TargetRouter:
                 impacts.append(
                     TargetImpact(
                         article_id=article.article_id,
-                        asset_id=asset_id,
+                        asset_id=macro_asset,
                         direction=direction,
                         score=max(-1.0, min(1.0, projected_score)),
-                        confidence=min(0.85, 0.50 + weight * 0.35),  # Cap 0.85
+                        confidence=min(
+                            self.routing["macro_confidence_cap"],
+                            self.routing["macro_confidence_base"]
+                            + weight * self.routing["macro_confidence_weight_factor"],
+                        ),
                         basis=Basis.MACRO_FACTOR,
                         themes=[theme],
-                        causal_path=[theme, f"{asset_id}_{direction.value}"],
+                        causal_path=[theme, f"{macro_asset}_{direction.value}"],
                         evidence=[],
                         flags=[],
+                        news_horizon=self.resolve_horizon(full_text, Basis.MACRO_FACTOR),
                         model_version=model_version,
                         routed_from=routed_from,
                         route_score=route_score,

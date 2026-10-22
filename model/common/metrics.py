@@ -5,11 +5,11 @@ from typing import Sequence
 import numpy as np
 
 try:
-    from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score  # type: ignore
-except ImportError:
-    accuracy_score = None  # type: ignore
-    cohen_kappa_score = None  # type: ignore
-    f1_score = None  # type: ignore
+    from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score
+except ImportError:  # pragma: no cover
+    accuracy_score = None
+    cohen_kappa_score = None
+    f1_score = None
 
 
 def compute_ece(probs: Sequence[float], confidences: Sequence[float], true_labels: Sequence[int], n_bins: int = 10) -> float:

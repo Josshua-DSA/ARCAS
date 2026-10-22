@@ -1,8 +1,38 @@
-version: "2026-10-19-r5"
+version: "2026-10-22-r6"
 # Tahap 2: skor dokumen = rata-rata z token; hanya dipakai bila ada cukup bukti kuat.
 z_min: 3.0      # |z| minimal satu token agar dihitung sebagai bukti
 min_votes: 2    # jumlah token bukti searah minimal
 fallback: baseline_tfidf
+
+# T-5: ambang & kalibrasi keyakinan. Sebelumnya angka-angka ini ditulis
+# langsung di router.py, sehingga mengubahnya butuh edit kode, tidak bisa
+# diuji lewat konfigurasi, dan tidak tercatat di version.
+routing:
+  # |skor| di atas ini baru dianggap punya arah (bullish/bearish).
+  direction_threshold: 0.1
+  # Keyakinan untuk sebutan eksplisit (aset disebut namanya langsung).
+  explicit_confidence: 0.88
+  # Keyakinan jalur makro: dasar + (bobot tema x faktor), dibatasi plafon.
+  macro_confidence_base: 0.50
+  macro_confidence_weight_factor: 0.35
+  macro_confidence_cap: 0.85
+
+  # S-5: horizon berita. Sebelumnya `TargetImpact.news_horizon` selalu jatuh
+  # ke nilai bawaan SHORT dan router tidak pernah mengisinya, sehingga FR-23
+  # hanya "terisi" secara teknis. Kini horizon ditentukan per jenis jalur:
+  #   explicit  -> aset disebut langsung, reaksinya paling cepat
+  #   macro     -> lewat tema, butuh waktu merambat
+  #   intraday  -> kejadian yang redanya dalam hari yang sama
+  horizon:
+    explicit: short        # 1-5 hari
+    macro: medium          # 1-4 minggu
+    intraday_keywords:     # memaksa intraday bila muncul di teks berita
+      - intraday
+      - hari ini
+      - sesi ini
+      - today's session
+      - at the open
+      - at the close
 
 # Tahap 1a: petunjuk sumber (substring, case-insensitive)
 sources:

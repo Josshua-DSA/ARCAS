@@ -13,8 +13,15 @@ from backend.src.schema import (
 )
 
 
+class ProfileConfigError(ValueError):
+    """`alloc_profiles.yaml` melanggar invarian SCHEMA.md #10/#11."""
+
+
 class AllocationEngine:
     """Computes relative portfolio tilt adjustments from asset scores."""
+
+    #: Toleransi pembulatan untuk Σ base_pct (SCHEMA.md invarian #10).
+    SUM_TOLERANCE = 1e-6
 
     def __init__(
         self,
@@ -34,11 +41,62 @@ class AllocationEngine:
                 data = yaml.safe_load(f) or {}
                 self.profiles = data.get("profiles", {})
                 self.params.update(data.get("params", {}))
+            # SCHEMA.md invarian #10 wajib ditegakkan saat memuat, bukan
+            # diasumsikan. Tanpa ini, profil dengan Σ base_pct != 100 tetap
+            # "jalan": langkah normalisasi di `tilt_portfolio` membagi ulang
+            # bobot sehingga hasilnya selalu 100%, tetapi proporsi yang dipakai
+            # bukan yang tertulis di YAML -- diam-diam, tanpa peringatan.
+            self._validate_profiles()
 
         if self.map_path.exists():
             with open(self.map_path, mode="r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
                 self.mappings = data.get("mappings", {})
+
+    def _validate_profiles(self) -> None:
+        """Tegakkan invarian SCHEMA.md #10 (Σ base_pct) dan #11 (min/max).
+
+        Gagal keras di sini jauh lebih baik daripada menghasilkan alokasi yang
+        tampak benar tapi berasal dari profil yang salah.
+        """
+        for profile_id, profile in self.profiles.items():
+            classes = profile.get("classes") or {}
+            if not classes:
+                raise ProfileConfigError(
+                    f"profil '{profile_id}' tidak punya kelas alokasi"
+                )
+
+            total = 0.0
+            for class_name, cfg in classes.items():
+                for field in ("base_pct", "min_pct", "max_pct"):
+                    if field not in cfg:
+                        raise ProfileConfigError(
+                            f"profil '{profile_id}' kelas '{class_name}': "
+                            f"field '{field}' tidak ada"
+                        )
+                base = float(cfg["base_pct"])
+                lo = float(cfg["min_pct"])
+                hi = float(cfg["max_pct"])
+                total += base
+
+                # Invarian #11: batas harus mengurung baseline.
+                if not (lo <= base <= hi):
+                    raise ProfileConfigError(
+                        f"profil '{profile_id}' kelas '{class_name}': "
+                        f"base_pct {base} di luar rentang [{lo}, {hi}]"
+                    )
+                if lo > hi:
+                    raise ProfileConfigError(
+                        f"profil '{profile_id}' kelas '{class_name}': "
+                        f"min_pct {lo} > max_pct {hi}"
+                    )
+
+            # Invarian #10: total baseline tepat 100%.
+            if abs(total - 100.0) > self.SUM_TOLERANCE:
+                raise ProfileConfigError(
+                    f"profil '{profile_id}': Σ base_pct = {total:.6f}, "
+                    f"harus 100.0 (selisih {total - 100.0:+.6f})"
+                )
 
     def compute_class_scores(
         self, target_scores: dict[str, tuple[float, float]]  # asset_id -> (score, conf)
