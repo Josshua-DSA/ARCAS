@@ -1,0 +1,72 @@
+{
+  "dataset": "FOMC Trillion Dollar Words (split-combine-5768)",
+  "test_samples": 495,
+  "baseline_tfidf_lr": {
+    "accuracy": 0.5798,
+    "f1_macro": 0.5532,
+    "cohen_kappa": 0.3419,
+    "ece": 0.0846,
+    "confusion_matrix": [
+      [
+        60,
+        30,
+        39
+      ],
+      [
+        28,
+        68,
+        26
+      ],
+      [
+        33,
+        52,
+        159
+      ]
+    ]
+  },
+  "fomc_roberta": {
+    "accuracy": 0.8687,
+    "f1_macro": 0.862,
+    "cohen_kappa": 0.7929,
+    "ece": 0.0378,
+    "calibrated_temperature": 2.129254,
+    "confusion_matrix": [
+      [
+        115,
+        6,
+        8
+      ],
+      [
+        7,
+        103,
+        12
+      ],
+      [
+        14,
+        18,
+        212
+      ]
+    ]
+  },
+  "component_necessity_test": {
+    "mcnemar": {
+      "contingency_table": {
+        "both_correct_n11": 267,
+        "both_wrong_n00": 45,
+        "baseline_correct_roberta_wrong_n10": 20,
+        "roberta_correct_baseline_wrong_n01": 163
+      },
+      "chi2_statistic": 110.1858,
+      "p_value": 0.0,
+      "significant_p_05": true,
+      "component_adopted": true
+    },
+    "bootstrap_ci": {
+      "n_bootstraps": 1000,
+      "mean_delta_macro_f1": 0.31,
+      "ci_95_lower": 0.2611,
+      "ci_95_upper": 0.3614,
+      "ci_strictly_positive": true
+    }
+  }
+}
