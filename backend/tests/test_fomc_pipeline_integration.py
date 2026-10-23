@@ -223,6 +223,8 @@ def test_non_fomc_article_fallback_to_baseline(temp_db: Database) -> None:
 )
 def test_real_fomc_model_execution_in_pipeline(temp_db: Database) -> None:
     """Uji end-to-end pemuatan model FOMC nyata ke dalam pipeline."""
+    pytest.importorskip("torch", reason="PyTorch belum terpasang di environment")
+    pytest.importorskip("transformers", reason="Transformers belum terpasang di environment")
     from model.fomc.src.model import FOMCRoBERTaSentiment
 
     pipeline = Pipeline(db_path=temp_db.db_path)
