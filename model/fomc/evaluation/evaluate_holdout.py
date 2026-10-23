@@ -74,8 +74,8 @@ def compute_mcnemar_test(
         },
         "chi2_statistic": round(chi2_stat, 4),
         "p_value": round(p_val, 6),
-        "significant_p_05": bool(p_val < 0.05),
-        "component_adopted": bool(p_val < 0.05 and n01 > n10),
+        "significant_p_05": p_val < 0.05,
+        "component_adopted": p_val < 0.05 and n01 > n10,
     }
 
 
@@ -110,7 +110,7 @@ def compute_bootstrap_ci(
         "mean_delta_macro_f1": round(mean_delta, 4),
         "ci_95_lower": round(ci_lower, 4),
         "ci_95_upper": round(ci_upper, 4),
-        "ci_strictly_positive": bool(ci_lower > 0.0),
+        "ci_strictly_positive": ci_lower > 0.0,
     }
 
 
