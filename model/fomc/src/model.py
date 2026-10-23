@@ -14,12 +14,12 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
-from dotenv import load_dotenv
 import joblib
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -96,9 +96,9 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
         self._model_version = "fomc-roberta-v1.0"
         self._device_str = device
         self._hf_token = hf_token
-        self._tokenizer = None
-        self._model = None
-        self._torch = None
+        self._tokenizer: Any = None
+        self._model: Any = None
+        self._torch: Any = None
 
         # Load temperature scaler if available
         if temperature_path and Path(temperature_path).exists():
