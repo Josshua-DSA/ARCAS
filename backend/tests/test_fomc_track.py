@@ -1,17 +1,24 @@
 """Unit tests for FOMC track data loader and methodology contracts."""
 
+import joblib
+import numpy as np
 import pytest
 
+from model.fomc.src.calibrator import (
+    TemperatureScaler,
+    compute_multiclass_ece,
+    softmax,
+)
 from model.fomc.src.data_loader import (
     DEFAULT_FOMC_TEST_PATH,
     DEFAULT_FOMC_TRAIN_PATH,
-    LABEL_TO_STANCE,
     STANCE_TO_TONE,
     get_fomc_texts_and_labels,
     load_fomc_test_holdout,
     load_fomc_train_raw,
     load_fomc_train_val_split,
 )
+from model.fomc.src.model import train_fomc_baseline
 
 
 @pytest.mark.skipif(not DEFAULT_FOMC_TRAIN_PATH.exists(), reason="FOMC train dataset missing")
@@ -95,9 +102,6 @@ def test_get_fomc_texts_and_labels():
 
 def test_softmax_temperature_properties():
     """Validates invariant that probabilities always sum to 1.0 and soften with higher T."""
-    import numpy as np
-    from model.fomc.src.calibrator import softmax
-
     logits = np.array([[2.0, 1.0, 0.0], [0.5, 3.0, 0.2]])
 
     # Row sums must equal 1.0
@@ -113,9 +117,6 @@ def test_softmax_temperature_properties():
 
 def test_multiclass_ece_calculation():
     """Validates multi-class Expected Calibration Error (ECE) metric."""
-    import numpy as np
-    from model.fomc.src.calibrator import compute_multiclass_ece
-
     # Case 1: Perfectly calibrated probabilities (confidence matches accuracy)
     probs_perfect = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1]])
     labels_perfect = [0, 1]
@@ -131,9 +132,6 @@ def test_multiclass_ece_calculation():
 
 def test_temperature_scaler_fit_and_persistence(tmp_path):
     """Validates TemperatureScaler fitting, scaling, and JSON persistence."""
-    import numpy as np
-    from model.fomc.src.calibrator import TemperatureScaler
-
     # Generate slightly overconfident synthetic logits for 3 classes
     np.random.seed(5768)
     n = 100
@@ -173,9 +171,6 @@ def test_temperature_scaler_fit_and_persistence(tmp_path):
 @pytest.mark.skipif(not DEFAULT_FOMC_TRAIN_PATH.exists(), reason="FOMC train dataset missing")
 def test_train_fomc_baseline(tmp_path):
     """Validates training and serializing the FOMC baseline TF-IDF + LR model."""
-    import joblib
-    from model.fomc.src.model import train_fomc_baseline
-
     df_train, df_val = load_fomc_train_val_split(val_ratio=0.10, seed=5768)
     save_path = tmp_path / "baseline_fomc.joblib"
 
