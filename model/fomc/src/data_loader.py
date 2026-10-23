@@ -18,7 +18,6 @@ Label taxonomy:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Sequence, Tuple
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
