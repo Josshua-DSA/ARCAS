@@ -21,18 +21,22 @@ Prinsip yang dipegang:
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from backend.src.aggregate.daily import DailyAggregator
 from backend.src.normalize.cleaner import ArticleCleaner
 from backend.src.schema import Article, Lang, RawArticle, TargetImpact, TargetTag
 from backend.src.store.db import Database
+from backend.src.tagging.model_router import ModelRouter
 from backend.src.tagging.router import TargetRouter
 from model.common.baseline import BaselineTfidfSentiment
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_PATH = Path("model/common/baseline_tfidf.joblib")
 SENTIMENT_VERSION = "v1"
@@ -152,8 +156,10 @@ class Pipeline:
         self.router = TargetRouter(
             aliases_path=aliases_path, impact_graph_path=impact_graph_path
         )
+        self.model_router = ModelRouter()
         self.model_path = Path(model_path)
         self.model: Optional[BaselineTfidfSentiment] = None
+        self.fomc_model: Optional[Any] = None
         self.asset_master_path = Path(asset_master_path)
         #: T-6: pasangan mirip yang perlu ditinjau manusia (tidak digabung).
         self.last_duplicate_review: list[tuple[str, str, float]] = []
@@ -186,6 +192,19 @@ class Pipeline:
             )
         self.model = BaselineTfidfSentiment.load(self.model_path)
         return self.model
+
+    def load_fomc_model(self) -> Optional[Any]:
+        """Memuat model spesialis FOMC-RoBERTa secara lazy."""
+        if self.fomc_model is not None:
+            return self.fomc_model
+        try:
+            from model.fomc.src.model import FOMCRoBERTaSentiment
+
+            self.fomc_model = FOMCRoBERTaSentiment()
+            return self.fomc_model
+        except Exception as exc:
+            logger.warning("FOMC-RoBERTa gagal dimuat: %s. Fallback ke baseline.", exc)
+            return None
 
     # ------------------------------------------------------------------
     # Tahap 1: normalisasi
@@ -290,7 +309,7 @@ class Pipeline:
     ) -> tuple[list[TargetImpact], PipelineStats]:
         """Sentimen + impact untuk tiap artikel."""
         stats = stats or PipelineStats()
-        model = self.load_model()
+        baseline_model: Optional[BaselineTfidfSentiment] = None
 
         all_impacts: list[TargetImpact] = []
         for article in articles:
@@ -307,11 +326,29 @@ class Pipeline:
                 continue
 
             try:
-                sentiment = model.score_article(article.article_id, text)
+                selected_model = None
+                model_version = SENTIMENT_VERSION
+
+                routed_models, _reason, _score = self.model_router.route(
+                    text, source=article.source or ""
+                )
+                if "fomc_roberta" in routed_models:
+                    fomc = self.load_fomc_model()
+                    if fomc is not None:
+                        selected_model = fomc
+                        model_version = getattr(fomc, "model_version", "fomc-roberta-v1.0")
+
+                if selected_model is None:
+                    if baseline_model is None:
+                        baseline_model = self.load_model()
+                    selected_model = baseline_model
+
+                sentiment = selected_model.score_article(article.article_id, text)
                 impacts = self.router.route_article(
                     article,
                     sentiment_score=sentiment.score,
-                    model_version=SENTIMENT_VERSION,
+                    model_version=model_version,
+                    model_router=self.model_router,
                 )
             except Exception as exc:  # noqa: BLE001
                 stats.errors.append(f"score {article.article_id}: {exc}")
