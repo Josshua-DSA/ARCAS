@@ -41,7 +41,7 @@ def softmax(logits: np.ndarray, temperature: float = 1.0) -> np.ndarray:
 
 def compute_multiclass_ece(
     probs: np.ndarray,
-    true_labels: Sequence[int],
+    true_labels: Sequence[int] | np.ndarray,
     n_bins: int = 10,
 ) -> float:
     """Computes Expected Calibration Error (ECE) for multi-class predictions.
