@@ -178,10 +178,14 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
 
         self._ensure_loaded()
         torch = self._torch
+        assert self._tokenizer is not None
+        assert self._model is not None
+        assert torch is not None
+
         all_logits: list[np.ndarray] = []
 
         for i in range(0, len(texts), batch_size):
-            batch = [str(t) for t in texts[i : i + batch_size]]
+            batch = list(texts[i : i + batch_size])
             inputs = self._tokenizer(
                 batch,
                 padding=True,
