@@ -43,3 +43,14 @@ openpyxl>=3.1.0
 # Catatan: harga diambil lewat Yahoo chart API memakai urllib (stdlib).
 # `yfinance` TIDAK diperlukan dan sengaja tidak dipakai, agar tidak ada
 # jalur yang bisa diam-diam jatuh ke data sintetis.
+
+# --- Model Spesialis NLP (Track FOMC & FinBERT) ---
+# PyTorch & HuggingFace Transformers untuk inferensi sequence classification.
+torch>=2.0.0
+transformers>=4.30.0
+
+# --- Visualisasi & Notebook Riset ---
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+
