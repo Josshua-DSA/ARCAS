@@ -100,10 +100,10 @@ def compute_bootstrap_ci(
         f1_r = f1_score(y_t[idx], y_r[idx], average="macro", zero_division=0)
         delta_f1s.append(f1_r - f1_b)
 
-    delta_f1s = np.array(delta_f1s)
-    ci_lower = float(np.percentile(delta_f1s, 2.5))
-    ci_upper = float(np.percentile(delta_f1s, 97.5))
-    mean_delta = float(np.mean(delta_f1s))
+    delta_f1s_arr = np.array(delta_f1s)
+    ci_lower = float(np.percentile(delta_f1s_arr, 2.5))
+    ci_upper = float(np.percentile(delta_f1s_arr, 97.5))
+    mean_delta = float(np.mean(delta_f1s_arr))
 
     return {
         "n_bootstraps": n_bootstraps,
