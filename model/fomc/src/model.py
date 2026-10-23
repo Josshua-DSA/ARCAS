@@ -17,9 +17,6 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from dotenv import load_dotenv
-
-load_dotenv()
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -28,7 +25,9 @@ from sklearn.linear_model import LogisticRegression
 
 from backend.src.schema import ArticleSentiment, ModelProbs, Tone
 from model.common.protocol import BaseSentimentModel
-from model.fomc.src.calibrator import DEFAULT_TEMPERATURE_PATH, TemperatureScaler, softmax
+from model.fomc.src.calibrator import DEFAULT_TEMPERATURE_PATH, TemperatureScaler
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +160,7 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
                     return
                 except Exception as fallback_exc:
                     logger.error("Gagal memuat fallback checkpoint: %s", fallback_exc)
-            
+
             if is_access_issue:
                 raise PermissionError(
                     f"Model '{self._checkpoint}' memerlukan otentikasi Hugging Face (Gated Repo).\n"
