@@ -198,6 +198,11 @@ class Pipeline:
         if self.fomc_model is not None:
             return self.fomc_model
         try:
+            import importlib.util
+
+            if not (importlib.util.find_spec("torch") and importlib.util.find_spec("transformers")):
+                logger.info("PyTorch / Transformers tidak terpasang. Fallback ke baseline.")
+                return None
             from model.fomc.src.model import FOMCRoBERTaSentiment
 
             self.fomc_model = FOMCRoBERTaSentiment()
@@ -343,7 +348,23 @@ class Pipeline:
                         baseline_model = self.load_model()
                     selected_model = baseline_model
 
-                sentiment = selected_model.score_article(article.article_id, text)
+                try:
+                    sentiment = selected_model.score_article(article.article_id, text)
+                except Exception as model_exc:
+                    if selected_model is not baseline_model:
+                        logger.warning(
+                            "Model spesialis gagal scoring (%s): %s. Fallback ke baseline.",
+                            model_version,
+                            model_exc,
+                        )
+                        if baseline_model is None:
+                            baseline_model = self.load_model()
+                        selected_model = baseline_model
+                        model_version = SENTIMENT_VERSION
+                        sentiment = selected_model.score_article(article.article_id, text)
+                    else:
+                        raise
+
                 impacts = self.router.route_article(
                     article,
                     sentiment_score=sentiment.score,
