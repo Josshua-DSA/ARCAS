@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # File dataset di `dataset/gold_sinha/` di-track lewat Git LFS
           # (lihat .gitattributes: *.parquet filter=lfs). Tanpa `lfs: true`,
@@ -42,7 +42,7 @@ jobs:
           lfs: true
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -130,17 +130,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Dockerfile memakai `COPY . .`, jadi dataset ikut masuk image.
           # Tanpa LFS, image berisi pointer 131 byte alih-alih parquet asli.
           lfs: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
