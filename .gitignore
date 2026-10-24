@@ -11,6 +11,10 @@ model/*/weights/*.bin
 model/*/weights/*.safetensors
 model/*/weights/*.pt
 model/*/weights/*.onnx
+# Direktori checkpoint hasil latih (save_pretrained): 440MB, direproduksi
+# lewat scripts.train_xau_finbert. Metadata kecil (metrics/temperature.json)
+# tetap di-commit karena itu ringkasan hasil yang bisa diaudit.
+model/*/weights/*/
 outputs/
 *.db
 *.db-journal
