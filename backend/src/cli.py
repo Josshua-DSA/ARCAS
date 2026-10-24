@@ -49,6 +49,57 @@ def cmd_seed(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ingest(args: argparse.Namespace) -> int:
+    """Impor artikel manual dari CSV/JSON ke raw_articles (FR-1).
+
+    Baris buruk dilewati dengan alasan dan dilaporkan; proses tidak berhenti.
+    Deduplikasi ditangani Database.save_raw_articles yang idempoten lewat
+    (source, url) atau (source, title), jadi menjalankan ulang file yang sama
+    tidak menggandakan baris.
+    """
+    from backend.src.collect.manual_ingest import baca_file, bangun_artikel
+
+    path = Path(args.file)
+    try:
+        baris = baca_file(path, args.format)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Gagal membaca {path}: {exc}")
+        return 1
+
+    hasil = bangun_artikel(baris)
+
+    print(f"Dibaca   : {hasil.dibaca} baris dari {path}")
+    print(f"Valid    : {hasil.jumlah_siap}")
+    print(f"Dilewati : {len(hasil.dilewati)}")
+    for skip in hasil.dilewati:
+        print(f"  baris {skip.baris}: {skip.alasan}")
+
+    if not hasil.siap:
+        print("Tidak ada baris valid — tidak ada yang ditulis.")
+        return 1
+
+    if args.dry_run:
+        print("\n=== DRY RUN — tidak ada yang ditulis ===")
+        for artikel in hasil.siap[:3]:
+            print(f"  [{artikel.source}] {artikel.title[:60]}")
+        if hasil.jumlah_siap > 3:
+            print(f"  ... dan {hasil.jumlah_siap - 3} lainnya")
+        return 0
+
+    db = Database(Path(args.db))
+    # init_schema idempoten (DDL memakai IF NOT EXISTS), jadi aman dipanggil
+    # baik untuk DB baru maupun yang sudah berisi.
+    db.init_schema()
+    ditulis = db.save_raw_articles([(artikel, None) for artikel in hasil.siap])
+    print(f"Ditulis  : {ditulis} artikel baru ke raw_articles")
+    if ditulis < hasil.jumlah_siap:
+        print(
+            f"  ({hasil.jumlah_siap - ditulis} dilewati karena sudah ada "
+            "— dedup berdasarkan source+url/title)"
+        )
+    return 0
+
+
 def cmd_prices(args: argparse.Namespace) -> int:
     """Ambil harga nyata dan SIMPAN ke tabel prices.
 
@@ -355,6 +406,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("seed", help="isi asset_master & asset_aliases")
     sp.set_defaults(func=cmd_seed)
+
+    sp = sub.add_parser("ingest", help="impor artikel manual dari CSV/JSON")
+    sp.add_argument("--file", required=True, help="path file .csv atau .json")
+    sp.add_argument(
+        "--format",
+        choices=("csv", "json"),
+        default=None,
+        help="format file; kalau kosong ditebak dari ekstensi",
+    )
+    sp.add_argument(
+        "--dry-run", action="store_true", help="validasi saja, jangan tulis ke DB"
+    )
+    sp.set_defaults(func=cmd_ingest)
 
     sp = sub.add_parser("prices", help="ambil & simpan harga harian")
     sp.add_argument("--days", type=int, default=30, help="rentang hari ke belakang")
