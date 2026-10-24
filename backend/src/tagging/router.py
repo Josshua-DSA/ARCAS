@@ -1,6 +1,8 @@
 """Router for mapping news text to targets via keywords and macro themes."""
 
 import csv
+import re
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -17,6 +19,23 @@ from backend.src.schema import (
 
 if TYPE_CHECKING:  # pragma: no cover - hanya untuk anotasi tipe
     from backend.src.tagging.model_router import ModelRouter
+
+
+@lru_cache(maxsize=512)
+def _alias_pattern(alias: str) -> re.Pattern[str]:
+    """Kompilasi alias menjadi regex word-boundary, case-insensitive.
+
+    Spasi/tanda hubung di dalam frasa dilonggarkan agar "safe haven" juga
+    cocok dengan "safe-haven". `(?<!\\w)`/`(?!\\w)` mencegah alias cocok
+    sebagai potongan kata lain ("gold" di "Goldman", "spx" di "spxfoo").
+
+    Versi `keywords.py` sengaja tidak diimpor langsung: modul itu milik
+    kolektor berita (membawa dependensi konfigurasi feed), sedangkan router
+    dipakai juga oleh pipeline tanpa kolektor. Regex-nya identik.
+    """
+    parts = [re.escape(p) for p in re.split(r"[\s\-]+", alias.strip()) if p]
+    body = r"[\s\-]*".join(parts)
+    return re.compile(rf"(?<!\w){body}(?!\w)", re.IGNORECASE)
 
 
 LOCKED_UNIVERSE = {
@@ -107,36 +126,81 @@ class TargetRouter:
         """
         Finds direct alias matches in text.
         Returns list of (asset_id, matched_alias, start_pos, end_pos).
+
+        Pencocokan memakai word-boundary, bukan `str.find`. Dengan substring
+        polos, "gold" ikut cocok di dalam "**Goldman** Sachs" dan "emas" di
+        dalam "s**emas**", sehingga berita yang tidak menyebut emas sama sekali
+        tetap ditandai XAU sebagai sebutan eksplisit — keyakinan tertinggi.
+        Itu mencemari sentimen aset dan tidak bisa dibedakan lagi di hilir.
+
+        Pencocokan bersifat case-insensitive; posisi yang dikembalikan tetap
+        merujuk teks asli agar `matched_text` dapat diaudit apa adanya.
         """
-        lower_text = text.lower()
         matches: list[tuple[str, str, int, int]] = []
 
         for asset_id, alias_list in self.aliases.items():
             for alias in alias_list:
-                pos = lower_text.find(alias)
-                if pos != -1:
-                    matches.append((asset_id, alias, pos, pos + len(alias)))
+                pattern = _alias_pattern(alias)
+                found = pattern.search(text)
+                if found is not None:
+                    matches.append((asset_id, alias, found.start(), found.end()))
                     break  # Found match for this asset
         return matches
 
+    #: Kamus tema makro. Setiap tema sengaja memuat frasa ID **dan** EN:
+    #: berita yang masuk campur (RSS Inggris + media Indonesia), dan kamus
+    #: yang hanya berisi satu bahasa membuat separuh korpus tak terpetakan.
+    #: Versi sebelumnya hanya punya "geopolitik"/"dovish" dsb sehingga
+    #: "geopolitical tensions" dan "Fed cuts rates" lolos tanpa tema.
+    THEME_KEYWORDS: dict[str, tuple[str, ...]] = {
+        "rates_down": (
+            # Bentuk dasar + berimbuhan (me-, di-) didaftarkan eksplisit:
+            # word-boundary memblokir "memangkas" bila kamus hanya memuat
+            # "pangkas". Lebih mudah diaudit daripada menambal regex dengan
+            # aturan morfologi.
+            "pangkas suku bunga", "memangkas suku bunga", "dipangkas",
+            "pemotongan bunga", "penurunan suku bunga", "suku bunga turun",
+            "turunkan suku bunga", "menurunkan suku bunga", "dovish",
+            "rate cut", "rate cuts", "cut rates", "cuts rates",
+            "lower rates", "rate reduction", "downward pressure on rates",
+        ),
+        "rates_up": (
+            "naikkan suku bunga", "menaikkan suku bunga", "kenaikan bunga",
+            "suku bunga naik", "hawkish",
+            "rate hike", "rate hikes", "hike rates", "hikes rates",
+            "hiked rates", "raise rates", "raises rates", "raised rates",
+            "hike interest rates", "hiked interest rates",
+            "raise interest rates", "raised interest rates", "higher rates",
+            "interest rate hike",
+        ),
+        "usd_up": (
+            "dolar perkasa", "dolar menguat", "dolar naik", "usd menguat",
+            "rupiah melemah",
+            "strong dollar", "dollar surges", "dollar strengthens",
+            "dollar rallies", "dollar rallied", "dollar rises", "dollar gains",
+        ),
+        "risk_off": (
+            "gejolak pasar", "ketidakpastian global", "panic selling",
+            "flight to safety", "pasar panik", "aksi jual",
+            "selloff", "sell-off", "risk aversion", "risk-off",
+            "safe haven buying", "flee to safety", "investors flee",
+        ),
+        "geopolitical_tension": (
+            "eskalasi perang", "geopolitik", "konflik timur tengah",
+            "sanksi dagang", "ketegangan geopolitik",
+            "geopolitical tension", "geopolitical tensions", "geopolitics",
+            "middle east conflict", "middle east tensions", "war escalates",
+            "military conflict", "sanctions",
+        ),
+    }
+
     def detect_themes(self, text: str) -> list[str]:
-        """Simple keyword detection for macro themes in text."""
-        lower = text.lower()
-        active_themes: list[str] = []
-
-        theme_keywords = {
-            "rates_down": ["pangkas suku bunga", "rate cut", "pemotongan bunga", "dovish"],
-            "rates_up": ["naikkan suku bunga", "rate hike", "kenaikan bunga", "hawkish"],
-            "usd_up": ["dolar perkasa", "usd menguat", "dollar surges", "strong dollar"],
-            "risk_off": ["gejolak pasar", "ketidakpastian global", "panic selling", "flight to safety"],
-            "geopolitical_tension": ["eskalasi perang", "geopolitik", "konflik timur tengah", "sanksi dagang"],
-        }
-
-        for theme, kw_list in theme_keywords.items():
-            if any(kw in lower for kw in kw_list):
-                active_themes.append(theme)
-
-        return active_themes
+        """Deteksi tema makro dari kata kunci ID + EN (word-boundary)."""
+        return [
+            theme
+            for theme, keywords in self.THEME_KEYWORDS.items()
+            if any(_alias_pattern(kw).search(text) for kw in keywords)
+        ]
 
     def route_article(
         self,
