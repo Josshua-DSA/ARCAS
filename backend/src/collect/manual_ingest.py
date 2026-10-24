@@ -117,8 +117,6 @@ def _normalisasi_kunci(baris: dict[str, Any]) -> dict[str, Any]:
     """Petakan alias kolom ke nama baku, dan buang spasi di nama kunci."""
     hasil: dict[str, Any] = {}
     for kunci, nilai in baris.items():
-        if kunci is None:
-            continue
         nama = str(kunci).strip()
         if not nama:
             continue
