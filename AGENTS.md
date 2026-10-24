@@ -153,14 +153,15 @@ Yang **sudah** ada:
 - REST API, Allocation Tilt, Persona POV, StatEngine (OLS HAC + Granger + BH-FDR)
 - **Pipeline end-to-end**: `raw_articles → articles → sentiments → impacts → daily_sentiment`
 - **Kolektor berita** API (Finnhub/Marketaux/AlphaVantage) + RSS
-- CLI 10 perintah: `seed prices pipeline status clean score aggregate stats export report`
+- CLI 11 perintah: `seed ingest prices pipeline status clean score aggregate stats export report`
 - Health source + alert (`source_health`)
 - Ekspor Parquet (`ParquetStore`)
+- **Track FOMC** (`model/fomc/`): model, kalibrator, bobot, evaluasi holdout
+- **Ingest manual** (`cli ingest --file x.csv|json`)
 
 Yang **belum** ada (jangan diasumsikan ada):
-- Implementasi FinBERT (`model/xau/src/` masih kosong, `transformers` belum terpasang)
-- Implementasi FOMC-RoBERTa (`model/fomc/src/` masih kosong)
-- Ingest CSV/JSON/manual (`cli ingest` tidak ada)
+- Implementasi FinBERT (`model/xau/src/` masih kosong). Catatan: `transformers`
+  dan `torch` **sudah** terpasang di `requirements.txt` sejak PR #13
 - Scraper media Indonesia (detik/kompas/antara)
 - CRUD tabel `alloc_profiles` (tabel ada, tanpa pemakai — profil jalan lewat YAML)
 - `stat_results` masih kosong: data baru 2–4 hari berpasangan, ambang `MIN_OBS_OLS=10`
