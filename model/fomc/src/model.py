@@ -25,6 +25,7 @@ from sklearn.linear_model import LogisticRegression
 
 from backend.src.schema import ArticleSentiment, ModelProbs, Tone
 from model.common.protocol import BaseSentimentModel
+from model.common.sentiment_config import neutral_band
 from model.fomc.src.calibrator import DEFAULT_TEMPERATURE_PATH, TemperatureScaler
 
 load_dotenv()
@@ -99,6 +100,10 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
         self._tokenizer: Any = None
         self._model: Any = None
         self._torch: Any = None
+
+        #: Ambang netral dari `data/sentiment_config.yaml` (RULES.md: tidak
+        #: ada magic number). Nilai bawaan identik dengan literal `0.10`.
+        self.neutral_band: float = neutral_band()
 
         # Load temperature scaler if available
         if temperature_path and Path(temperature_path).exists():
@@ -255,9 +260,9 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
         prob = probs[0]
         score = round(prob.p_pos - prob.p_neg, 4)
 
-        if score > 0.10:
+        if score > self.neutral_band:
             tone = Tone.POSITIVE
-        elif score < -0.10:
+        elif score < -self.neutral_band:
             tone = Tone.NEGATIVE
         else:
             tone = Tone.NEUTRAL
