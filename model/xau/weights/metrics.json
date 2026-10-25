@@ -1,0 +1,63 @@
+{
+  "model": "finbert_gold",
+  "model_version": "xau-finbert-20261025",
+  "base_checkpoint": "yiyanghkust/finbert-tone",
+  "max_length": 96,
+  "seed": 5768,
+  "epochs": 3,
+  "batch_size": 16,
+  "lr": 2e-05,
+  "val_fraction": 0.15,
+  "n_train": 5849,
+  "n_val": 1033,
+  "n_test": 1720,
+  "label_order": [
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "best_val_macro_f1": 0.895345,
+  "test_macro_f1": 0.888703,
+  "test_accuracy": 0.951744,
+  "test_per_class": {
+    "negative": {
+      "precision": 0.9484536082474226,
+      "recall": 0.9633507853403142,
+      "f1": 0.9558441558441558,
+      "support": 764
+    },
+    "neutral": {
+      "precision": 0.9583333333333334,
+      "recall": 0.6133333333333333,
+      "f1": 0.7479674796747967,
+      "support": 75
+    },
+    "positive": {
+      "precision": 0.9542410714285714,
+      "recall": 0.9704880817253121,
+      "f1": 0.9622960045019696,
+      "support": 881
+    }
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.8129835286854558,
+      "val_macro_f1": 0.8953452301188524,
+      "val_accuracy": 0.9486931268151017
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.1560046425791549,
+      "val_macro_f1": 0.8943238004072341,
+      "val_accuracy": 0.952565343659245
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.07373041263312329,
+      "val_macro_f1": 0.8804816116622199,
+      "val_accuracy": 0.9506292352371732
+    }
+  ],
+  "trained_at": "2026-10-25T14:27:02.273267+00:00"
+}
