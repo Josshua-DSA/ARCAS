@@ -60,6 +60,14 @@ class PipelineStats:
     tanpa_target: int = 0
     #: T-6: jumlah artikel yang ditandai near-duplicate (tidak ikut agregasi).
     artikel_duplikat: int = 0
+    #: Jumlah artikel yang dilewati karena bahasanya bukan Inggris.
+    #:
+    #: Terjemahan ID->EN MATI 2026-10-11 (DESIGN.md §3.1 #4), sedangkan
+    #: FinBERT-EMAS dan FOMC-RoBERTa hanya dilatih pada teks Inggris. Teks
+    #: Indonesia yang dipaksa masuk terbukti menghasilkan skor tak bermakna:
+    #: "Harga emas anjlok tajam..." diskor positive +0.231. Melewati artikel
+    #: ini lebih jujur daripada memasukkan sinyal palsu ke agregasi harian.
+    artikel_bukan_inggris: int = 0
     errors: list[str] = field(default_factory=list)
 
     def ringkas(self) -> str:
@@ -73,6 +81,7 @@ class PipelineStats:
             f"hari agregat      : {self.hari_agregat}\n"
             f"tanpa target      : {self.tanpa_target}\n"
             f"near-duplicate    : {self.artikel_duplikat}\n"
+            f"bukan Inggris     : {self.artikel_bukan_inggris}\n"
             f"error             : {len(self.errors)}"
         )
 
@@ -363,6 +372,19 @@ class Pipeline:
             text = f"{article.title} {article.body or ''}".strip()
             if not text:
                 stats.artikel_dilewati += 1
+                continue
+
+            # Terjemahan ID->EN MATI 2026-10-11 (DESIGN.md §3.1 #4) dan kedua
+            # model spesialis hanya dilatih pada teks Inggris. Memaksa teks
+            # non-Inggris lewat model EN menghasilkan skor yang menyesatkan
+            # (terbukti: kalimat emas negatif berbahasa Indonesia diskor
+            # positive). Artikel tetap tersimpan di tabel `articles`; yang
+            # dilewati hanya scoring sentimen + impact.
+            if article.language is not Lang.EN:
+                stats.artikel_bukan_inggris += 1
+                logger.debug(
+                    "Lewati scoring non-Inggris (%s): %s", article.language, article.article_id
+                )
                 continue
 
             try:

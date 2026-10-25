@@ -24,6 +24,14 @@ types-PyYAML>=6.0.12
 requests>=2.31.0
 python-dotenv>=1.0.0
 
+# lingua-language-detector: deteksi bahasa EN/ID di
+# backend/src/normalize/cleaner.py. Heuristik kata fungsi sebelumnya salah
+# menandai headline emas pendek sebagai `other` ("Gold rallies as Fed
+# signals rate cuts ahead"), dan karena pipeline melewati artikel
+# non-Inggris, kesalahan itu membuang berita sasaran model. Paket ini murni
+# Python (tanpa model besar), mendukung Python 3.10-3.12.
+lingua-language-detector>=2.0.2
+
 # --- Klien HTTP untuk test API ---
 # starlette.testclient (dipakai test_api_no_hardcoded.py & test_persistence.py)
 # butuh httpx2. Tanpa ini, collection GAGAL sebelum satu test pun jalan.
