@@ -60,7 +60,12 @@ def db_path(tmp_path: Path) -> Path:
                     sumber,
                     f"https://example.com/{abs(hash(judul))}",
                     judul,
-                    f"{judul}. Detail tambahan untuk tubuh artikel.",
+                    # Body harus berbahasa Inggris: sebelumnya fixture memakai
+                    # template Indonesia ("Detail tambahan untuk tubuh
+                    # artikel.") yang membuat detektor lingua — dengan benar —
+                    # menandai artikel ini `id`, sehingga pipeline (yang
+                    # melewati artikel non-Inggris) tidak menulis sentimen.
+                    f"{judul}. Additional detail for the article body.",
                     _iso(now),
                     _iso(now),
                     target,

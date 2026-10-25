@@ -3,7 +3,7 @@
 import hashlib
 import re
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from backend.src.schema import Article, Lang, RawArticle
 
@@ -30,15 +30,72 @@ class ArticleCleaner:
         content = (norm_title + norm_body).encode("utf-8")
         return hashlib.sha256(content).hexdigest()[:16]
 
+    #: Detektor lingua dibangun sekali saja: memuat model bahasa butuh
+    #: ~100 ms, sedangkan deteksi per artikel hanya ~0,1 ms. Membangunnya
+    #: per panggilan akan memperlambat ingest tanpa alasan.
+    #: Tri-state: None = belum dicoba, False = pustaka tidak ada,
+    #: selain itu objek detektor siap pakai.
+    _lingua_detector: object = None
+
+    @classmethod
+    def _get_lingua_detector(cls) -> Any:
+        """Bangun (sekali) detektor lingua EN vs ID, atau None bila absen."""
+        if cls._lingua_detector is not None:
+            return cls._lingua_detector or None
+        try:
+            from lingua import Language, LanguageDetectorBuilder
+
+            cls._lingua_detector = LanguageDetectorBuilder.from_languages(
+                Language.ENGLISH, Language.INDONESIAN
+            ).with_preloaded_language_models().build()
+        except ImportError:
+            # Penanda False (bukan None) agar kegagalan tidak dicoba ulang
+            # pada setiap artikel.
+            cls._lingua_detector = False
+        return cls._lingua_detector or None
+
     @staticmethod
     def detect_language(title: str, body: Optional[str]) -> Lang:
-        """Simple heuristic language detector for ID vs EN."""
-        combined = (title + " " + (body or "")).lower()
+        """Deteksi bahasa ID/EN dengan lingua; heuristik hanya sebagai cadangan.
+
+        Heuristik kata fungsi lama salah menandai headline emas pendek
+        sebagai `other` (mis. "Gold rallies as Fed signals rate cuts ahead"
+        tidak memuat satu pun penanda Inggris), dan karena pipeline kini
+        melewati artikel non-Inggris, kesalahan itu akan membuang berita
+        yang justru jadi sasaran model. `lingua` menangani teks pendek
+        dengan benar; heuristik dipertahankan hanya untuk lingkungan yang
+        tidak memasang paketnya.
+        """
+        combined = (title + " " + (body or "")).strip()
+        if not combined:
+            return Lang.OTHER
+
+        detector = ArticleCleaner._get_lingua_detector()
+        if detector is not None:
+            from lingua import Language
+
+            hasil = detector.detect_language_of(combined)
+            # Perbandingan wajib pakai `==`, bukan `is`: anggota enum lingua
+            # dibuat ulang per pemanggilan modul internal, sehingga `is`
+            # gagal walau bahasanya benar (terbukti: confidence 0.996 ENGLISH
+            # tetapi `hasil is Language.ENGLISH` bernilai False).
+            if hasil == Language.ENGLISH:
+                return Lang.EN
+            if hasil == Language.INDONESIAN:
+                return Lang.ID
+            return Lang.OTHER
+
+        return ArticleCleaner._detect_language_heuristic(combined)
+
+    @staticmethod
+    def _detect_language_heuristic(combined: str) -> Lang:
+        """Cadangan tanpa dependensi: hitung penanda kata fungsi ID vs EN."""
+        text = combined.lower()
         id_markers = [" yang ", " di ", " dan ", " dari ", " ini ", " untuk ", " pada ", " dengan ", " saham ", " rupiah "]
         en_markers = [" the ", " in ", " and ", " of ", " to ", " for ", " on ", " with ", " market ", " stock "]
 
-        id_score = sum(1 for m in id_markers if m in combined)
-        en_score = sum(1 for m in en_markers if m in combined)
+        id_score = sum(1 for m in id_markers if m in text)
+        en_score = sum(1 for m in en_markers if m in text)
 
         if id_score > en_score and id_score > 0:
             return Lang.ID
