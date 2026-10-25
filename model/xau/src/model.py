@@ -28,6 +28,7 @@ import numpy as np
 
 from backend.src.schema import ArticleSentiment, ModelProbs
 from model.common.protocol import BaseSentimentModel
+from model.common.sentiment_config import neutral_band
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class FinbertGoldSentiment(BaseSentimentModel):
         temperature_path: Path | str = DEFAULT_TEMPERATURE_PATH,
         metrics_path: Path | str = DEFAULT_METRICS_PATH,
         device: Optional[str] = None,
+        sentiment_config_path: Path | str | None = None,
     ) -> None:
         self.checkpoint_dir = Path(checkpoint_dir)
         self.temperature_path = Path(temperature_path)
@@ -69,6 +71,10 @@ class FinbertGoldSentiment(BaseSentimentModel):
         self._torch: Any = None
         self.temperature: float = 1.0
         self.metrics: dict[str, Any] = {}
+        #: Ambang netral dari `data/sentiment_config.yaml` (RULES.md: tidak
+        #: ada magic number). Nilai bawaan identik dengan literal `0.10`
+        #: yang sebelumnya ditulis di sini.
+        self.neutral_band: float = neutral_band(sentiment_config_path)
         self._load_metadata()
 
     # ------------------------------------------------------------------
@@ -201,9 +207,9 @@ class FinbertGoldSentiment(BaseSentimentModel):
         prob = self.predict_probs([text])[0]
         score = round(prob.p_pos - prob.p_neg, 4)
 
-        if score > 0.10:
+        if score > self.neutral_band:
             tone = Tone.POSITIVE
-        elif score < -0.10:
+        elif score < -self.neutral_band:
             tone = Tone.NEGATIVE
         else:
             tone = Tone.NEUTRAL

@@ -160,6 +160,7 @@ class Pipeline:
         self.model_path = Path(model_path)
         self.model: Optional[BaselineTfidfSentiment] = None
         self.fomc_model: Optional[Any] = None
+        self.xau_model: Optional[Any] = None
         self.asset_master_path = Path(asset_master_path)
         #: T-6: pasangan mirip yang perlu ditinjau manusia (tidak digabung).
         self.last_duplicate_review: list[tuple[str, str, float]] = []
@@ -192,6 +193,40 @@ class Pipeline:
             )
         self.model = BaselineTfidfSentiment.load(self.model_path)
         return self.model
+
+    def load_xau_model(self) -> Optional[Any]:
+        """Memuat model spesialis FinBERT-EMAS secara lazy (FR-6).
+
+        Mengembalikan ``None`` bila PyTorch/Transformers tidak terpasang
+        atau bobot hasil latih belum ada. Tanpa pemeriksaan bobot, pipeline
+        akan gagal di setiap artikel emas pada mesin yang belum melatih;
+        dengan pemeriksaan ini, jalur turun ke baseline TF-IDF seperti
+        perilaku sebelum FR-6 terpasang.
+        """
+        if self.xau_model is not None:
+            return self.xau_model
+        try:
+            import importlib.util
+
+            if not (importlib.util.find_spec("torch") and importlib.util.find_spec("transformers")):
+                logger.info("PyTorch / Transformers tidak terpasang. Fallback ke baseline.")
+                return None
+
+            from model.xau.src.model import DEFAULT_CHECKPOINT_DIR, FinbertGoldSentiment
+
+            if not Path(DEFAULT_CHECKPOINT_DIR).exists():
+                logger.info(
+                    "Bobot FinBERT-EMAS belum ada di %s. Fallback ke baseline. "
+                    "Latih dulu: python -m scripts.train_xau_finbert",
+                    DEFAULT_CHECKPOINT_DIR,
+                )
+                return None
+
+            self.xau_model = FinbertGoldSentiment()
+            return self.xau_model
+        except Exception as exc:
+            logger.warning("Gagal memuat model FinBERT-EMAS (%s). Fallback ke baseline.", exc)
+            return None
 
     def load_fomc_model(self) -> Optional[Any]:
         """Memuat model spesialis FOMC-RoBERTa secara lazy."""
@@ -342,6 +377,17 @@ class Pipeline:
                     if fomc is not None:
                         selected_model = fomc
                         model_version = getattr(fomc, "model_version", "fomc-roberta-v1.0")
+
+                if "finbert_emas" in routed_models:
+                    # FR-6: router sudah lama menunjuk `finbert_emas`, tetapi
+                    # pipeline belum pernah memuatnya, sehingga artikel emas
+                    # tetap diskor baseline TF-IDF generik. Tanpa bobot
+                    # terlatih, `load_xau_model` mengembalikan None dan
+                    # pemilihan jatuh ke baseline seperti sebelumnya.
+                    xau = self.load_xau_model()
+                    if xau is not None:
+                        selected_model = xau
+                        model_version = getattr(xau, "model_version", "finbert-gold-v1.0")
 
                 if selected_model is None:
                     if baseline_model is None:
