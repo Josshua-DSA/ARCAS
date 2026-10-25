@@ -177,6 +177,14 @@ def test_non_fomc_article_fallback_to_baseline(temp_db: Database) -> None:
     """Artikel emas / non-FOMC tidak menggunakan model FOMC."""
     pipeline = Pipeline(db_path=temp_db.db_path)
 
+    # Artikel emas dirutekan ke `finbert_emas` (keyword) SEBELUM baseline,
+    # jadi tanpa ini yang dipanggil adalah model XAU — bukan `pipeline.model`.
+    # Bobot XAU tidak di-git-track (`.gitignore`: `model/*/weights/*/`),
+    # sehingga test hanya lulus di mesin yang sudah melatih FinBERT-EMAS.
+    # Di sini XAU sengaja dimatikan agar yang diuji benar-benar jalur
+    # fallback ke baseline, dan hasilnya sama di mesin mana pun.
+    pipeline.load_xau_model = lambda: None  # type: ignore[method-assign]
+
     # Mock baseline TF-IDF model
     mock_baseline = MagicMock()
     mock_baseline.score_article.return_value = ArticleSentiment(
