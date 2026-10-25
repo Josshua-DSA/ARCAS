@@ -100,6 +100,67 @@ Untuk memastikan sistem tidak terhenti akibat kebijakan *Gated Repository* pada 
 
 ---
 
+## 4a. Status Artefak: Apa yang Benar-Benar Bisa Dipakai Hari Ini
+
+README ini mendokumentasikan hasil benchmark RoBERTa, tetapi **bobot RoBERTa tidak
+tersimpan di repo**. Tabel ini memisahkan apa yang sudah terbukti jalan dari apa
+yang masih berupa klaim benchmark. Verifikasi tanggal 2026-10-25.
+
+| Komponen | Status | Bukti / Catatan |
+|---|:---:|---|
+| `weights/baseline_fomc.joblib` | ✅ **Jalan** | TF-IDF + LR, bisa dimuat & diskor offline |
+| `weights/temperature.json` | ✅ **Ada** | T=2.1293, ECE 0.0737 → 0.0271 (n=194) |
+| `evaluation/benchmark_results.json` | ✅ **Ada** | Laporan McNemar, Bootstrap CI |
+| Bobot **FOMC-RoBERTa** (355M) | ❌ **Tidak di repo** | Unduh dari HF Hub saat runtime |
+| Inferensi RoBERTa offline | ❌ **Gagal** | `gtfintechlab/FOMC-RoBERTa` = **Gated Repo** |
+
+### Konsekuensi praktis
+
+Tanpa `HF_TOKEN`, pemanggilan `FOMCRoBERTaSentiment.score_article()` berhenti dengan:
+
+```
+PermissionError: Model 'gtfintechlab/FOMC-RoBERTa' memerlukan otentikasi
+Hugging Face (Gated Repo).
+```
+
+`Pipeline.load_fomc_model()` menangkap error ini dan mengembalikan `None`, sehingga
+pipeline **tidak crash** — artikel FOMC jatuh ke baseline TF-IDF. Ini fail-safe yang
+benar, tetapi artinya **angka 86,87% akurasi tidak berlaku pada jalur fallback**:
+yang dipakai adalah baseline dengan akurasi 57,98%.
+
+### Batas kemampuan baseline FOMC
+
+Baseline TF-IDF hanya menghitung frekuensi kata dan **tidak memahami arah kebijakan**.
+Terbukti pada uji langsung:
+
+```
+"The Committee decided to LOWER the target range for the federal funds rate"
+  -> tone=negative, score=-0.1829
+```
+
+Padahal *lower rate* adalah sinyal **dovish** yang umumnya **bullish** untuk aset risk
+dan emas. Baseline menilainya negatif karena kata "lower" berkonotasi turun. Untuk
+pemakaian produksi yang bergantung pada arah kebijakan, baseline **tidak memadai** —
+diperlukan RoBERTa (butuh akses HF) atau aturan arah eksplisit di hilir.
+
+### Cara mengaktifkan RoBERTa
+
+1. Buka https://huggingface.co/gtfintechlab/FOMC-RoBERTa → **Agree and access repository**.
+2. Buat token di https://huggingface.co/settings/tokens.
+3. Set `HF_TOKEN` di `.env`, lalu `python -m backend.cli.cli doctor` untuk verifikasi.
+
+Sesuai §4, `model.py` sudah mencoba mirror publik `tim9510019/FOMC-RoBERTa` bila repo
+resmi menolak akses.
+
+### Ingin setara XAU?
+
+Track XAU menyimpan bobotnya secara lokal (`model/xau/weights/finbert_gold/`, ~440 MB)
+sehingga inferensi jalan penuh offline. Untuk menyamakan FOMC, bobot RoBERTa perlu
+di-*vendor* ke repo (via Git LFS) setelah lisensi gated disetujui — pekerjaan terpisah
+yang belum dilakukan, dan **belum ada rencana** mengerjakannya saat ini.
+
+---
+
 ## 5. Struktur Direktori Track FOMC
 
 ```
