@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ARCAS : Market Overview (XAU, RATE_UST, SPX)</title>
+<title>ARCAS : Market Overview</title>
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
@@ -71,22 +71,21 @@
   <div class="wrap" id="targetTabs">
     <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
       <img class="ticon" src="src/assets/gold.svg" alt="">
-      <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
+      <span class="tick">Emas</span>
     </button>
     <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
       <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-      <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
+      <span class="tick">Suku Bunga</span>
     </button>
     <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
       <img class="ticon" src="src/assets/spx.svg" alt="">
-      <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
+      <span class="tick">S&amp;P 500</span>
     </button>
   </div>
 </div>
 
 <main class="wrap">
   <section class="hero" aria-labelledby="heroTitle">
-    <p class="kicker" id="heroKicker">Ringkasan hari ini : data berjalan</p>
     <h1 id="heroTitle">Arah sentimen tiga pasar makro, dibaca dari beritanya lalu diuji ke harganya.</h1>
     <p class="lead">Halaman ini ringkasan: grafik, statistik ringkas, strip alokasi, dan berita teratas. Bukti kutipan ada di News &amp; Evidence, meja kerjanya di Research Lab, simulasi penuhnya di Simulations. Hari tanpa berita tampil sebagai jeda, bukan nol.</p>
     <div class="hero-meta">
@@ -159,7 +158,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS Sentiment Desk : simulasi sudut pandang. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (XAU, RATE_UST, SPX) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
   </div>
 </footer>
 

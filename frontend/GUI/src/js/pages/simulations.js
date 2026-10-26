@@ -74,5 +74,5 @@
   }
 
   A.renderPage = renderAll;
-  A.boot("Simulasi dan persona : data berjalan");
+  A.boot();
 })(window.ARCAS);

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
-<title>ARCAS : Research Lab (XAU, RATE_UST, SPX)</title>
+<title>ARCAS : Research Lab</title>
 <meta name="description" content="Meja kerja asosiasi, statistik lengkap, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
@@ -64,22 +64,21 @@
   <div class="wrap" id="targetTabs">
     <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
       <img class="ticon" src="src/assets/gold.svg" alt="">
-      <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
+      <span class="tick">Emas</span>
     </button>
     <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
       <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-      <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
+      <span class="tick">Suku Bunga</span>
     </button>
     <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
       <img class="ticon" src="src/assets/spx.svg" alt="">
-      <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
+      <span class="tick">S&amp;P 500</span>
     </button>
   </div>
 </div>
 
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
-    <p class="kicker" id="heroKicker">Meja riset : data berjalan</p>
     <h1 id="resTitle">Uji asosiasi per lag, kualitas data, dan kejujuran model.</h1>
     <p class="lead">Panel gelap memuat angka uji. Panel kualitas data menaruh denominator sebelum skor. Panel kualitas model menyisakan ruang jujur: bagian yang belum punya artefak tetap bilang belum, bukan mengarang angka.</p>
   </section>
@@ -149,7 +148,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS Sentiment Desk : simulasi sudut pandang. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (XAU, RATE_UST, SPX) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
   </div>
 </footer>
 

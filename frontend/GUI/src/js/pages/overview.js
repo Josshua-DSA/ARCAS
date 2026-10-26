@@ -51,8 +51,6 @@
           itemStyle: { color: "#F6F4F4", opacity: 0.85 }, barMaxWidth: 5 }
       ]
     }, true);
-    var last = scores.filter(function (v) { return v !== null; }).slice(-1)[0];
-    A.$("heroKicker").textContent = "Ringkasan " + A.state.target + " : skor terakhir " + (last == null ? "n/a (hari tanpa berita)" : A.fmt(last) + (last > 0.1 ? " condong bullish" : last < -0.1 ? " condong bearish" : " netral"));
   }
 
   function isoDaysAgo(n) { return new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10); }
@@ -116,5 +114,5 @@
   }
 
   A.renderPage = renderAll;
-  A.boot("Ringkasan hari ini : data berjalan");
+  A.boot();
 })(window.ARCAS);

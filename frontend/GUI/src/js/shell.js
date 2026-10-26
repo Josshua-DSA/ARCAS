@@ -10,7 +10,7 @@ window.ARCAS = window.ARCAS || {};
      dari respons /api/universe, bukan dari konstanta lokal ini. */
   var TARGET_INFO = {
     XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg" },
-    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
+    RATE_UST: { name: "Suku Bunga", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
     SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg" }
   };
   A.TARGET_INFO = TARGET_INFO;
@@ -264,8 +264,7 @@ window.ARCAS = window.ARCAS || {};
       var sel = id === A.state.target ? "true" : "false";
       return "<button class='target-tab' role='tab' data-target='" + esc(id) + "' aria-selected='" + sel + "'>" +
         visualTarget(info) +
-        "<span><span class='tick'>" + esc(id) + "</span>" +
-        "<span class='meta'>" + esc(info.name) + " : " + esc(info.ticker) + " : " + esc(info.venue) + "</span></span></button>";
+        "<span class='tick'>" + esc(info.name) + "</span></button>";
     }).join("");
     var active = rows.filter(function (r) { return r.asset_id === A.state.target; });
     if (!active.length && rows.length) { A.state.target = rows[0].asset_id; } /* target URL tidak dikenal: pilih pertama */
@@ -306,18 +305,14 @@ window.ARCAS = window.ARCAS || {};
       }
     });
   }
-  A.loadUniverse = function (heroIdle) {
+  A.loadUniverse = function () {
     splashStatus("MEMUAT UNIVERSE");
     return A.api("/api/universe").then(function (rows) {
       var active = (rows || []).filter(function (r) { return r.active === 1 || r.active === true; });
       if (!active.length) throw new Error("universe kosong");
       renderTabs(active);
-      var kick = $("heroKicker");
-      if (kick && heroIdle) kick.textContent = heroIdle;
     }).catch(function () {
       renderTabs([{ asset_id: "XAU" }, { asset_id: "RATE_UST" }, { asset_id: "SPX" }]);
-      var kick = $("heroKicker");
-      if (kick && heroIdle) kick.textContent = heroIdle + " : ilustrasi lokal (API tidak terjangkau)";
     });
   };
   /* Kontrol rentang dan profil dipakai beberapa halaman; markup opsional. */
@@ -362,14 +357,14 @@ window.ARCAS = window.ARCAS || {};
 
   /* Boot bersama: base dulu, meta + universe paralel, lalu render halaman dan
      tutup splash. Tidak ada log palsu: status hanya untuk tahap nyata. */
-  A.boot = function (heroIdle) {
+  A.boot = function () {
     A.readStateFromUrl();
     A.bindSharedControls();
     bindTabs();
     setStatus("loading", "menghubungi API...");
     return A.detectBase().then(function () {
       setStatus(A.state.apiReachable ? "ok" : "err", A.state.apiReachable ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
-      return Promise.allSettled([A.loadMeta(), A.loadUniverse(heroIdle)]);
+      return Promise.allSettled([A.loadMeta(), A.loadUniverse()]);
     }).then(function () {
       splashStatus(A.state.meta ? "MODE " + A.state.meta.mode.toUpperCase() : "MODE DEMO");
       if (typeof A.renderPage === "function") return A.renderPage();

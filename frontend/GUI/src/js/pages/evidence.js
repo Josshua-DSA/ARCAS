@@ -117,5 +117,5 @@
   A.$("newsFilter").addEventListener("input", applyNewsFilter);
   A.$("dirFilter").addEventListener("change", applyNewsFilter);
   A.renderPage = renderAll;
-  A.boot("Bukti berita dan persona : data berjalan");
+  A.boot();
 })(window.ARCAS);
