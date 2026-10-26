@@ -36,16 +36,24 @@ nav.sections a:hover{background:var(--bg-sunken)}
 
 /* Tab target: satu aksen oranye hanya di tab aktif (anti overuse) */
 .target-bar{background:var(--base);border-bottom:1px solid var(--border-subtle)}
-.target-bar .wrap{display:flex;gap:10px;align-items:stretch;padding:14px 20px;flex-wrap:wrap}
-.target-tab{flex:1 1 200px;display:flex;gap:14px;align-items:center;justify-content:center;text-align:center;cursor:pointer;
-  background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:16px 18px;min-height:76px;
-  font-family:var(--font-sans);color:var(--text-primary)}
-.target-tab .tick{font-family:var(--font-mono);font-weight:500;font-size:18px}
-.target-tab .swatch{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.25)}
-.target-tab .ticon{width:28px;height:28px;flex:none;display:block}
-.target-tab[aria-selected="true"]{background:var(--accent-subtle);border-left:4px solid var(--accent)}
-.target-tab:hover{border-color:var(--border-strong)}
-.target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:1px}
+/* Segmented control: satu wadah bergaris tipis, tiga segmen dipisah hairline.
+   Tab aktif memakai isian, bukan border kiri, jadi isi tab tidak bergeser.
+   Catatan: #targetTabs adalah elemen .wrap itu sendiri, jadi jarak tepi memakai
+   margin (di luar border), bukan padding (di dalam border). */
+.target-bar .wrap{padding:0}
+#targetTabs{display:inline-flex;margin:12px 20px;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-card);overflow:hidden}
+.target-tab{display:flex;gap:9px;align-items:center;justify-content:center;cursor:pointer;border:0;border-left:1px solid var(--border-subtle);
+  background:transparent;padding:0 20px;min-height:46px;font-family:var(--font-sans);font-size:15px;color:var(--text-secondary)}
+.target-tab:first-child{border-left:0}
+.target-tab .tick{font-family:var(--font-sans);font-weight:400;font-size:15px;white-space:nowrap}
+.target-tab .swatch{width:10px;height:10px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.25)}
+.target-tab .ticon{width:20px;height:20px;flex:none;display:block;opacity:.72}
+.target-tab[aria-selected="true"]{background:var(--accent-subtle);color:var(--text-primary)}
+.target-tab[aria-selected="true"] .tick{font-weight:500}
+.target-tab[aria-selected="true"] .ticon{opacity:1}
+.target-tab:hover{background:var(--bg-sunken);color:var(--text-primary)}
+.target-tab[aria-selected="true"]:hover{background:var(--accent-subtle)}
+.target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
 
 main{display:block}
 .hero{padding:38px 0 10px}
@@ -196,5 +204,9 @@ footer a{color:var(--accent-text-on-dark)}
   #chart{height:300px}
   .alloc-total{font-size:12px}
   .news-card h3{font-size:19px}
-  .target-tab{flex:1 1 100%}
+  /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
+  #targetTabs{display:flex;width:auto;margin:10px 14px}
+  .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}
+  .target-tab .tick{font-size:14px}
+  .target-tab .ticon{width:18px;height:18px}
 }
