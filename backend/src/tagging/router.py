@@ -16,6 +16,7 @@ from backend.src.schema import (
     NewsHorizon,
     TargetImpact,
 )
+from model.common.sentiment_config import stance_direction as sentiment_stance_direction
 
 if TYPE_CHECKING:  # pragma: no cover - hanya untuk anotasi tipe
     from backend.src.tagging.model_router import ModelRouter
@@ -38,9 +39,7 @@ def _alias_pattern(alias: str) -> re.Pattern[str]:
     return re.compile(rf"(?<!\w){body}(?!\w)", re.IGNORECASE)
 
 
-LOCKED_UNIVERSE = {
-    "XAU", "RATE_UST", "SPX"
-}
+LOCKED_UNIVERSE = {"XAU", "RATE_UST", "SPX"}
 
 
 class TargetRouter:
@@ -58,6 +57,11 @@ class TargetRouter:
         self._load_configs()
 
     def _load_configs(self) -> None:
+        # P0-2: arah stance -> aset dari `data/sentiment_config.yaml`.
+        # Dibaca sekali di sini agar jalur hot (`route_article`) tidak
+        # menyentuh disk per artikel.
+        self.stance_direction: dict[str, int] = sentiment_stance_direction()
+
         if self.aliases_path.exists():
             with open(self.aliases_path, mode="r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -96,6 +100,26 @@ class TargetRouter:
                 self.routing.update(section)
                 if isinstance(horizon, dict):
                     self.horizon_policy.update(horizon)
+
+    def _stance_sign(self, asset_id: str) -> int:
+        """Arah aset terhadap stance hawkish (+1/-1).
+
+        Aset yang tidak terdaftar di `stance_direction` dianggap `+1` agar
+        perilaku sama seperti sebelumnya (skor dipakai apa adanya) dan aset
+        baru tidak diam-diam berbalik arah.
+        """
+        return self.stance_direction.get(asset_id, 1)
+
+    def _directional_score(self, asset_id: str, sentiment_score: float, is_stance: bool) -> float:
+        """Skor dalam ruang arah harga untuk satu aset.
+
+        Mode `price`: skor sudah berupa arah harga, kembalikan apa adanya.
+        Mode `stance`: skor adalah stance The Fed; kalikan dengan arah aset
+        supaya dovish (stance negatif) menjadi bullish untuk XAU.
+        """
+        if not is_stance:
+            return sentiment_score
+        return sentiment_score * self._stance_sign(asset_id)
 
     def resolve_horizon(self, text: str, basis: Basis) -> NewsHorizon:
         """Horizon berita untuk satu dampak (S-5 / FR-23).
@@ -158,39 +182,87 @@ class TargetRouter:
             # word-boundary memblokir "memangkas" bila kamus hanya memuat
             # "pangkas". Lebih mudah diaudit daripada menambal regex dengan
             # aturan morfologi.
-            "pangkas suku bunga", "memangkas suku bunga", "dipangkas",
-            "pemotongan bunga", "penurunan suku bunga", "suku bunga turun",
-            "turunkan suku bunga", "menurunkan suku bunga", "dovish",
-            "rate cut", "rate cuts", "cut rates", "cuts rates",
-            "lower rates", "rate reduction", "downward pressure on rates",
+            "pangkas suku bunga",
+            "memangkas suku bunga",
+            "dipangkas",
+            "pemotongan bunga",
+            "penurunan suku bunga",
+            "suku bunga turun",
+            "turunkan suku bunga",
+            "menurunkan suku bunga",
+            "dovish",
+            "rate cut",
+            "rate cuts",
+            "cut rates",
+            "cuts rates",
+            "lower rates",
+            "rate reduction",
+            "downward pressure on rates",
         ),
         "rates_up": (
-            "naikkan suku bunga", "menaikkan suku bunga", "kenaikan bunga",
-            "suku bunga naik", "hawkish",
-            "rate hike", "rate hikes", "hike rates", "hikes rates",
-            "hiked rates", "raise rates", "raises rates", "raised rates",
-            "hike interest rates", "hiked interest rates",
-            "raise interest rates", "raised interest rates", "higher rates",
+            "naikkan suku bunga",
+            "menaikkan suku bunga",
+            "kenaikan bunga",
+            "suku bunga naik",
+            "hawkish",
+            "rate hike",
+            "rate hikes",
+            "hike rates",
+            "hikes rates",
+            "hiked rates",
+            "raise rates",
+            "raises rates",
+            "raised rates",
+            "hike interest rates",
+            "hiked interest rates",
+            "raise interest rates",
+            "raised interest rates",
+            "higher rates",
             "interest rate hike",
         ),
         "usd_up": (
-            "dolar perkasa", "dolar menguat", "dolar naik", "usd menguat",
+            "dolar perkasa",
+            "dolar menguat",
+            "dolar naik",
+            "usd menguat",
             "rupiah melemah",
-            "strong dollar", "dollar surges", "dollar strengthens",
-            "dollar rallies", "dollar rallied", "dollar rises", "dollar gains",
+            "strong dollar",
+            "dollar surges",
+            "dollar strengthens",
+            "dollar rallies",
+            "dollar rallied",
+            "dollar rises",
+            "dollar gains",
         ),
         "risk_off": (
-            "gejolak pasar", "ketidakpastian global", "panic selling",
-            "flight to safety", "pasar panik", "aksi jual",
-            "selloff", "sell-off", "risk aversion", "risk-off",
-            "safe haven buying", "flee to safety", "investors flee",
+            "gejolak pasar",
+            "ketidakpastian global",
+            "panic selling",
+            "flight to safety",
+            "pasar panik",
+            "aksi jual",
+            "selloff",
+            "sell-off",
+            "risk aversion",
+            "risk-off",
+            "safe haven buying",
+            "flee to safety",
+            "investors flee",
         ),
         "geopolitical_tension": (
-            "eskalasi perang", "geopolitik", "konflik timur tengah",
-            "sanksi dagang", "ketegangan geopolitik",
-            "geopolitical tension", "geopolitical tensions", "geopolitics",
-            "middle east conflict", "middle east tensions", "war escalates",
-            "military conflict", "sanctions",
+            "eskalasi perang",
+            "geopolitik",
+            "konflik timur tengah",
+            "sanksi dagang",
+            "ketegangan geopolitik",
+            "geopolitical tension",
+            "geopolitical tensions",
+            "geopolitics",
+            "middle east conflict",
+            "middle east tensions",
+            "war escalates",
+            "military conflict",
+            "sanctions",
         ),
     }
 
@@ -208,6 +280,7 @@ class TargetRouter:
         sentiment_score: float,
         model_version: str = "fusion-v1",
         model_router: Optional["ModelRouter"] = None,
+        score_space: str = "price",
     ) -> list[TargetImpact]:
         """
         Routes an article to target impacts via explicit mentions and macro themes.
@@ -215,9 +288,23 @@ class TargetRouter:
 
         Bila `model_router` diberikan, pilihan model spesialis dicatat di
         `routed_from`/`route_score` supaya keputusan routing dapat diaudit.
+
+        `score_space` menyatakan **arti** `sentiment_score`:
+
+        - `"price"` (bawaan): skor sudah menyatakan arah harga aset, sehingga
+          arah ditentukan langsung oleh tanda skor. Berlaku untuk FinBERT-EMAS
+          yang dilatih pada sentimen harga emas.
+        - `"stance"`: skor menyatakan stance The Fed (hawkish positif, dovish
+          negatif) dan **bukan** arah harga. Untuk mode ini arah tiap aset
+          dihitung lewat `stance_direction` (`data/sentiment_config.yaml`),
+          dan `sign` pada `impact_graph.yaml` **tidak** dikalikan lagi —
+          mengalikan keduanya membalik arah dua kali (mis. dovish: stance
+          negatif x XAU -1 x rates_down +1 = bearish, padahal dovish justru
+          bullish emas).
         """
         impacts: list[TargetImpact] = []
         full_text = f"{article.title} {article.body or ''}".strip()
+        is_stance = score_space == "stance"
 
         routed_from: Optional[str] = None
         route_score: Optional[float] = None
@@ -232,11 +319,15 @@ class TargetRouter:
 
         for asset_id, matched_alias, start, end in explicit_matches:
             tagged_assets.add(asset_id)
-            # Direction follows sentiment score for explicit mentions
+            # P0-2: arah mengikuti arti skor. Untuk mode `stance`, skor adalah
+            # stance The Fed sehingga harus dipetakan per aset lewat
+            # `stance_direction`; memakai skor mentah akan menghasilkan dovish
+            # -> bearish XAU, kebalikan dari hubungan ekonomi yang benar.
+            effective_score = self._directional_score(asset_id, sentiment_score, is_stance)
             threshold = self.routing["direction_threshold"]
-            if sentiment_score > threshold:
+            if effective_score > threshold:
                 direction = Direction.BULLISH
-            elif sentiment_score < -threshold:
+            elif effective_score < -threshold:
                 direction = Direction.BEARISH
             else:
                 direction = Direction.NEUTRAL
@@ -254,7 +345,11 @@ class TargetRouter:
                     article_id=article.article_id,
                     asset_id=asset_id,
                     direction=direction,
-                    score=sentiment_score,
+                    # P0-2: simpan skor yang sudah berarah harga, bukan skor
+                    # stance mentah. Kalau tidak, `direction=BULLISH` bisa
+                    # berpasangan dengan `score=-0.38` dan konsumen hilir
+                    # (persona/alloc) membaca sinyal yang saling bertentangan.
+                    score=max(-1.0, min(1.0, effective_score)),
                     confidence=self.routing["explicit_confidence"],
                     basis=Basis.EXPLICIT,
                     themes=[],
@@ -280,7 +375,15 @@ class TargetRouter:
 
                 sign = entry.get("sign", 1)
                 weight = entry.get("weight", 0.5)
-                projected_score = sentiment_score * sign * weight
+                if is_stance:
+                    # P0-2: mode stance — arah dari pemetaan stance->aset,
+                    # BUKAN dari `sign` tema. `sign` tema mengasumsikan
+                    # `sentiment_score` sudah berisi arah harga; mengalikannya
+                    # dengan stance_direction membalik arah dua kali.
+                    # `weight` tetap dipakai untuk besaran/keyakinan.
+                    projected_score = sentiment_score * self._stance_sign(macro_asset) * weight
+                else:
+                    projected_score = sentiment_score * sign * weight
 
                 threshold = self.routing["direction_threshold"]
                 if projected_score > threshold:
