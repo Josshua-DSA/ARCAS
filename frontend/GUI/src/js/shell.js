@@ -76,11 +76,18 @@ window.ARCAS = window.ARCAS || {};
     return "<span class='chip hold'>● HOLD " + dots + "</span>";
   };
 
-  /* Status data: teks tampil di strip disclaimer (badge terpisah dihapus).
-     Teks hanya muncul untuk tahap yang benar-benar terjadi; aria-live tetap. */
+  /* Status data diumumkan ke pembaca layar saja: pita visualnya dihapus.
+     Region aria-live dibuat sekali di sini supaya tidak ada penanda kosong di HTML. */
+  var live = null;
   function setStatus(mode, text) {
-    var badge = $("dataBadge");
-    if (badge) badge.textContent = text;
+    if (!live) {
+      live = document.createElement("p");
+      live.className = "sr-only";
+      live.setAttribute("role", "status");
+      live.setAttribute("aria-live", "polite");
+      document.body.appendChild(live);
+    }
+    live.textContent = text;
   }
   function splashStatus(text) {
     if (window.Splash && typeof window.Splash.status === "function") window.Splash.status(text);
