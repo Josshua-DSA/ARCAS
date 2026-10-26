@@ -6,6 +6,7 @@ siap dipakai, tanpa pernah mencetak nilai kredensial.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from backend.src.collect.news_api.base import HealthReport, NewsAPIAdapter
 from backend.src.collect.news_api.eulerpool import EulerpoolAdapter
 from backend.src.collect.news_api.finnhub import FinnhubAdapter
 from backend.src.collect.news_api.marketaux import MarketauxAdapter
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_ENV_FILE = Path(".env")
 
@@ -87,7 +90,7 @@ class ApiRegistry:
 
             load_dotenv(dotenv_path=str(path), override=False)
         except ImportError:  # pragma: no cover - dotenv opsional
-            pass
+            logger.debug("python-dotenv tidak terpasang; kunci API hanya dari env proses")
 
     # ---------------- identifikasi ----------------
 

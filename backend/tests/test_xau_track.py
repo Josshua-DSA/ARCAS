@@ -183,17 +183,28 @@ class TestProbabilityOrder:
             m.predict_probs(["gold rises"])
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not CHECKPOINT_DIR.exists(),
     reason="bobot FinBERT-EMAS belum dilatih di mesin ini",
 )
 class TestTrainedModel:
-    """Dijalankan hanya bila artefak hasil latih tersedia."""
+    """Dijalankan hanya bila artefak hasil latih tersedia.
+
+    Ditandai `slow` (audit P2-6) karena memuat model 440 MB. Sebelumnya test
+    ini lolos deteksi `device` otomatis di dalam `FinbertGoldSentiment`, yang
+    memilih CUDA bila tersedia: di mesin dengan VRAM yang sudah terpakai, test
+    gagal karena OOM -- kegagalan lingkungan, bukan logika. Karena itu device
+    dipaksa "cpu" secara eksplisit di sini.
+    """
 
     def test_protokol_terpenuhi(self) -> None:
         from model.xau.src.model import FinbertGoldSentiment
 
-        m = FinbertGoldSentiment()
+        # device="cpu" dipaksa: test ini menguji protokol [pos, neu, neg],
+        # bukan performa. Tanpa ini, OOM di GPU bersama membuat test gagal
+        # karena lingkungan, bukan karena kode (audit P2-6).
+        m = FinbertGoldSentiment(device="cpu")
         probs = m.predict_probs(["gold prices rise sharply", "gold falls"])
         assert len(probs) == 2
         for p in probs:

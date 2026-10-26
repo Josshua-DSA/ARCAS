@@ -158,13 +158,17 @@ Yang **sudah** ada:
 - Ekspor Parquet (`ParquetStore`)
 - **Track FOMC** (`model/fomc/`): model, kalibrator, bobot, evaluasi holdout
 - **Ingest manual** (`cli ingest --file x.csv|json`)
+- **Track XAU FinBERT-EMAS** (`model/xau/`): `src/model.py` + `src/data_loader.py`,
+  bobot terlatih di `weights/finbert_gold/` (`test_macro_f1` 0,8887, temperature
+  kalibrasi tersimpan). Bobot **tidak di-track**; ambil ulang dengan
+  `python scripts/fetch_weights.py` (SHA256 terverifikasi)
 
 Yang **belum** ada (jangan diasumsikan ada):
-- Implementasi FinBERT (`model/xau/src/` masih kosong). Catatan: `transformers`
-  dan `torch` **sudah** terpasang di `requirements.txt` sejak PR #13
 - Scraper media Indonesia (detik/kompas/antara)
 - CRUD tabel `alloc_profiles` (tabel ada, tanpa pemakai — profil jalan lewat YAML)
 - `stat_results` masih kosong: data baru 2–4 hari berpasangan, ambang `MIN_OBS_OLS=10`
+- Bobot XAU di mesin baru: `fetch_weights.py` perlu dijalankan dulu, dan
+  `model/xau/weights/*` masuk `.gitignore` — jadi artefak tidak ikut clone
 
 ---
 

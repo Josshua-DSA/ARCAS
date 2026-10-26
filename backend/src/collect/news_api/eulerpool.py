@@ -28,6 +28,7 @@ Catatan penting yang ditemukan saat verifikasi:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 
@@ -44,6 +45,8 @@ from backend.src.collect.news_api.keywords import (
 )
 from backend.src.collect.news_api.quota import DailyQuota, QuotaExceeded
 
+logger = logging.getLogger(__name__)
+
 try:  # .env opsional; tanpa dotenv kunci bisa tetap datang dari lingkungan proses
     from pathlib import Path as _Path
 
@@ -51,7 +54,9 @@ try:  # .env opsional; tanpa dotenv kunci bisa tetap datang dari lingkungan pros
 
     _load_dotenv(dotenv_path=str(_Path(".env")), override=False)
 except ImportError:  # pragma: no cover
-    pass
+    # Sah: dotenv opsional. Dicatat supaya saat kunci API "tidak ditemukan",
+    # penyebabnya bisa dibedakan antara .env tidak ada vs dotenv tak terpasang.
+    logger.debug("python-dotenv tidak terpasang; .env tidak dimuat")
 
 BASE = "https://api.eulerpool.com/api/1/equity-extended/market-news"
 
