@@ -59,6 +59,29 @@
   var newsRows = [];
   var NEWS_PER_PAGE = 5;
 
+  /* Ilustrasi berlabel: dipakai hanya saat API mengirim kurang dari 5 berita,
+     supaya daftar tidak tampil kosong. Tidak pernah dicampur dengan data API. */
+  var NEWS_DEMO = [
+    { article_id: "ilustrasi-01", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-12",
+      title: "The Fed memberi sinyal pemangkasan suku bunga pada kuartal berikutnya",
+      rationale: "Nada dovish menekan imbal hasil obligasi dan menopang emas sebagai aset lindung nilai." },
+    { article_id: "ilustrasi-02", direction: "bearish", source: "Contoh Redaksi", published_at: "2026-10-11",
+      title: "Inflasi inti Amerika bertahan di atas target dua persen",
+      rationale: "Data panas menunda ekspektasi pelonggaran, sehingga yield tenor panjang kembali naik." },
+    { article_id: "ilustrasi-03", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-10",
+      title: "Laba emiten teknologi melampaui perkiraan analis",
+      rationale: "Hasil kuartalan yang kuat mengangkat indeks acuan dan memperbaiki selera risiko." },
+    { article_id: "ilustrasi-04", direction: "bearish", source: "Contoh Redaksi", published_at: "2026-10-09",
+      title: "Ketegangan dagang kembali memunculkan kekhawatiran perlambatan",
+      rationale: "Kekhawatiran pertumbuhan mendorong arus dana keluar dari aset berisiko menuju obligasi pemerintah." },
+    { article_id: "ilustrasi-05", direction: "neutral", source: "Contoh Redaksi", published_at: "2026-10-08",
+      title: "Pasar menanti rilis data tenaga kerja akhir pekan ini",
+      rationale: "Belum ada kejutan berarti, pelaku pasar memilih menahan posisi sampai angka utama keluar." },
+    { article_id: "ilustrasi-06", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-07",
+      title: "Bank sentral menambah cadangan emas untuk kuartal ketiga berturut-turut",
+      rationale: "Permintaan bank sentral menjadi penopang struktural harga emas di tengah suku bunga tinggi." }
+  ];
+
   function newsItem(t) {
     var d = String(t.direction || "neutral").toLowerCase();
     var cls = d === "bullish" ? "buy" : d === "bearish" ? "sell" : "hold";
@@ -73,6 +96,7 @@
       "<h3>" + esc(title) + "</h3>" +
       (t.rationale ? "<p class='news-note'>" + esc(t.rationale) + "</p>" : "") +
       "<div class='news-top'><span class='chip " + cls + "'>" + arrow + " " + label + "</span>" +
+      (t._demo ? "<span class='chip hold'>Ilustrasi</span>" : "") +
       (meta.length ? "<span class='news-src'>" + meta.join(" · ") + "</span>" : "") +
       "</div></article>";
   }
@@ -112,9 +136,22 @@
   }
 
   function renderNews(rows) {
-    newsRows = rows || [];
+    var real = rows || [];
+    if (real.length < NEWS_PER_PAGE) {
+      var pad = NEWS_DEMO.slice(0, NEWS_PER_PAGE - real.length).map(function (d) {
+        d._demo = true;
+        return d;
+      });
+      newsRows = real.concat(pad);
+      newsPage = 1;
+      renderNewsPage();
+      A.showState("newsState", "API hanya mengirim " + real.length +
+        " berita : sisanya ilustrasi berlabel.");
+      return;
+    }
+    newsRows = real;
     newsPage = 1;
-    A.showState("newsState", newsRows.length ? "" : "Belum ada berita terkumpul untuk target ini.");
+    A.showState("newsState", "");
     renderNewsPage();
   }
 
