@@ -18,16 +18,16 @@
 |---|:---:|---|
 | Test suite | ✅ **Sehat** | 369 passed, 2 skipped, 0 failed |
 | Lint (ruff) | ✅ **Bersih** | `All checks passed!` |
-| Type-check (mypy) | ❌ **Gagal lokal** | 4 error; CI hijau (lihat P1-3) |
+| Type-check (mypy) | ✅ **Bersih** | Diperbaiki via `.python-version` (P1-3) |
 | Coverage | ⚠️ **73%** | 1089 baris tak teruji dari 4105 (kode produksi saja) |
-| Reproducibility | ⚠️ **Lemah** | Tidak ada lock file, pin `>=` longgar |
+| Reproducibility | ✅ **Kuat** | `requirements-ci.lock` + `.python-version` (P1-2) |
 | Keamanan | ⚠️ **Cukup** | Tidak ada secret ter-track; API tanpa auth |
 | Integritas model | ⚠️ **Timpang** | XAU punya skrip training, FOMC tidak |
 
 | Tingkat | Jumlah | Status |
 |---|:---:|---|
 | P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
-| P1 — Penting | 6 | ⬜ terbuka |
+| P1 — Penting | 6 | 🟡 **2 selesai, 4 terbuka** |
 | P2 — Sedang | 6 | ⬜ terbuka |
 | P3 — Ringan | 6 | ⬜ terbuka |
 
@@ -141,8 +141,8 @@ Untuk artikel yang memicu **keduanya**, FOMC dimuat (biaya 355M parameter) lalu 
 
 ## 2. Temuan Penting (P1)
 
-> **Status: 6 item terbuka** (per 2026-10-26). Belum ada yang dikerjakan.
-> Urutan pengerjaan yang disarankan ada di §6.
+> **Status per 2026-10-26: 2 dari 6 selesai** — P1-2 dan P1-3 ✅.
+> Sisa P1-1, P1-4, P1-5, P1-6 masih terbuka. Urutan pengerjaan ada di §6.
 
 ### P1-1 — Artefak bobot tidak di-vendor, inferensi bergantung jaringan
 
@@ -155,7 +155,9 @@ Konsekuensi: `load_fomc_model()` mengembalikan `None` saat offline, dan pipeline
 
 **Rekomendasi:** gunakan Git LFS untuk bobot terlatih, atau sediakan `scripts/fetch_weights.py` dengan checksum SHA256 agar unduhan terverifikasi.
 
-### P1-2 — Tidak ada lock file; pin dependency longgar
+### P1-2 — Tidak ada lock file; pin dependency longgar — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26) · commit `616d04d`, `957b15a`
 
 ```
 requirements.txt: torch>=2.0.0, transformers>=4.30.0, numpy>=1.26.0
@@ -164,11 +166,27 @@ lock file: TIDAK ADA (tidak ada poetry.lock / uv.lock / pip.lock / requirements.
 
 Ini bukan teori — sudah menimbulkan bug nyata. `torch 2.5.1` menolak memuat `pytorch_model.bin` karena CVE-2025-32434, dan perbaikannya butuh kerja manual. Dengan lock file, kejadian ini terdeteksi sebelum merge.
 
-Selain itu `numpy>=1.26.0` tidak membatasi atas: `numpy 2.x` mengubah stub `.pyi` sehingga mypy 1.11 gagal parse (lihat P1-3).
+**Yang dikerjakan:**
 
-**Rekomendasi:** tambahkan `requirements.lock` (pip-tools/uv) dan batasi `numpy<3`.
+1. **`requirements-ci.lock`** — mengunci versi persis dependensi tingkat atas. Bukan `pip freeze` mentah: tanpa penanda build lokal (`+cu121` akan menggagalkan runner CPU), dan `torch`/`transformers` dikunci pada versi yang **diuji** (2.5.1 / 4.57.6), bukan yang terbaru — dibiarkan, pip memilih torch 2.14 dan transformers 5.x yang belum pernah dijalankan terhadap kode ini.
+2. **`requirements.txt` dilengkapi.** Empat paket dipakai kode/test tetapi tidak pernah ada di manifest: `scikit-learn`, `joblib`, `pyarrow`, `openpyxl`. Semuanya lolos di mesin pengembang karena terpasang di luar manifest; di lingkungan bersih kegagalannya berupa collection error sebelum satu test pun jalan.
+3. **CI memasang** `-r requirements.txt -r requirements-ci.lock`.
 
-### P1-3 — mypy gagal di lingkungan developer, hijau di CI
+**Koreksi penting terhadap rekomendasi di atas.** Audit menyarankan `numpy<3`. Saya sempat mencoba `numpy<2.0` dengan alasan menghindari kegagalan mypy, dan **itu terbukti merusak**:
+
+```
+ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4
+```
+
+9 test gagal. Batas `<3.0` memang yang benar — dan penyebab kegagalan mypy ternyata bukan numpy sama sekali (lihat P1-3).
+
+**Verifikasi:** venv Python 3.11 dibuat ulang dari nol → `pip install -r requirements.txt -r requirements-ci.lock` exit 0 → `mypy` `Success: no issues found in 62 source files` → seluruh test suite lulus.
+
+**Batasan yang jujur:** `seaborn` tidak terpasang di environment sumber, sehingga tidak dicantumkan di lock alih-alih dikarang versinya. CI memasang versi terbaru dari rentang.
+
+### P1-3 — mypy gagal di lingkungan developer, hijau di CI — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26) · commit `3ebc94a`, `c45ff70`
 
 ```
 lokal : Found 4 errors in 4 files — types-PyYAML TIDAK terpasang,
@@ -178,7 +196,30 @@ CI    : success (Python 3.11, dependency ter-resolve saat itu)
 
 `RULES §4` mewajibkan "ruff + mypy bersih sebelum merge", tetapi kontributor di Python 3.12 + numpy 2.x **tidak bisa memenuhinya** tanpa menyentuh `venv` secara manual. Gerbang mutu jadi tidak dapat dijalankan lokal.
 
-**Rekomendasi:** samakan versi Python dev/CI (3.11 di `pyproject.toml` dan CI, tapi `venv` lokal 3.12.3), atau naikkan `python_version` mypy + batasi numpy.
+**Diagnosis yang benar** — menggantikan dugaan awal "3.12 vs 3.11". Empat kombinasi diuji di venv terisolasi:
+
+| Python | numpy | mypy 1.11.2 |
+|---|---|---|
+| 3.11 | 2.4.6 | ✅ Success (kondisi CI) |
+| 3.11 | 1.26.4 | ✅ Success |
+| 3.12 | 1.26.4 | ✅ Success |
+| 3.12 | 2.5.4 | ❌ syntax error (venv pengembangan) |
+
+Pemicunya **python 3.12 DAN numpy 2.x bersamaan**, bukan salah satunya. Stub `numpy/__init__.pyi` 2.x memakai sintaks `type X = ...` (PEP 695) di dalam cabang `sys.version_info >= (3, 12)`. mypy 1.11 tidak bisa mem-parse sintaks itu sama sekali — bahkan saat target versi 3.11 — sehingga ia berhenti **sebelum** memeriksa satu berkas proyek pun. Pada target 3.11 baris itu tidak dibaca, karena itulah CI tidak pernah terkena.
+
+**Yang dikerjakan:** `.python-version` berisi `3.11`, dibaca otomatis oleh pyenv. Dev tidak perlu mengingat versi apa pun, dan gerbang mutu yang ia jalankan identik dengan yang menentukan lulus/gagal merge. `CONTRIBUTING.md` §6 diperbaiki: saran lama `mypy --python-version 3.12` **salah** — pada kondisi itu justru gagal.
+
+> ⚠️ **Sisa tindakan (tidak bisa diotomatiskan):** `.python-version` **tidak** memperbaiki venv yang sudah terlanjur dibuat dengan Python 3.12. Venv lama harus dibuat ulang:
+>
+> ```bash
+> rm -rf venv && python3.11 -m venv venv
+> ./venv/bin/pip install -r requirements.txt -r requirements-ci.lock
+> ```
+>
+> Tanpa itu, `./venv/bin/mypy` tetap gagal di mesin yang venv-nya 3.12 — meski `ruff` dan test suite tetap lulus di sana (`ruff`: `All checks passed!`; pytest: hanya 2 skip, 0 gagal).
+
+**Alternatif yang ditolak:** menaikkan mypy ke 2.x. Itu mengubah gerbang mutu diam-diam, karena mypy 2.x tidak melaporkan `[import-untyped]` yang dilaporkan 1.11.
+
 
 ### P1-4 — Tidak ada test yang membuktikan RoBERTa benar-benar dipakai
 
@@ -316,8 +357,8 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 | **P0-2** | Putuskan & uji arah dovish/hawkish | Kecil | Arah sinyal bisa terbalik | ✅ |
 | **P0-3** | Prioritas model eksplisit di pipeline | Kecil | Pemborosan + perilaku rapuh | ✅ |
 | **P1-1** | Vendor bobot via LFS / fetch ber-checksum | Sedang | Inferensi offline | ⬜ |
-| **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency | ⬜ |
-| **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal | ⬜ |
+| **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency | ✅ |
+| **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal | ✅ |
 | **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" | ⬜ |
 | **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | ⬜ |
 | **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ⬜ |
