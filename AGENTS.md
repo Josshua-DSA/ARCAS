@@ -143,7 +143,7 @@ Tambahkan `!` untuk breaking change (`refactor(model)!: ...`).
 
 ## 7. Kondisi repository saat ini
 
-> Diverifikasi `013e20a`. Rincian per FR: `context/AUDIT.md` (v4).
+> Diverifikasi `013e20a`. Rincian per FR: `audit.md` (di root repo).
 
 Yang **sudah** ada:
 - Skema DB **17 tabel** + migrasi idempoten

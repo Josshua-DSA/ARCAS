@@ -29,6 +29,20 @@ DEFAULT_CONFIG_PATH = Path("data/sentiment_config.yaml")
 #: keberadaan file.
 FALLBACK: dict[str, Any] = {
     "neutral_band": 0.10,
+    #: Arah stance The Fed terhadap tiap aset. Model FOMC mengukur `stance`
+    #: (hawkish/dovish), bukan dampak harga, sehingga tanda untuk aset yang
+    #: diperdagangkan harus dipetakan eksplisit di sini. `+1` berarti stance
+    #: hawkish menaikkan aset tersebut.
+    #:
+    #: XAU = -1: hawkish (rates naik) menekan emas; dovish menaikkannya.
+    #: Modal `STANCE_TO_TONE` di `model/fomc/src/data_loader.py` hanya
+    #: melayani RATE_UST/SPX dan tidak memuat XAU — karena itu XAU dinyatakan
+    #: di sini agar jalur explicit-match tidak memakai skor mentah.
+    "stance_direction": {
+        "XAU": -1,
+        "RATE_UST": 1,
+        "SPX": -1,
+    },
 }
 
 
@@ -76,10 +90,56 @@ def load_sentiment_config(path: Path | str | None = None) -> dict[str, Any]:
         return cfg
 
     cfg["neutral_band"] = band
+    cfg["stance_direction"] = _parse_stance_direction(source, cfg["stance_direction"])
     return cfg
+
+
+def _parse_stance_direction(source: dict[str, Any], fallback: dict[str, int]) -> dict[str, int]:
+    """Validasi peta arah stance -> aset.
+
+    Hanya menerima nilai `+1` atau `-1`. Nilai lain diabaikan per-entri
+    (bukan membatalkan seluruh berkas) supaya salah ketik pada satu aset
+    tidak mematikan arah aset lain; entri yang cacat memakai nilai bawaan.
+    """
+    raw = source.get("stance_direction")
+    if not isinstance(raw, dict):
+        return dict(fallback)
+
+    result = dict(fallback)
+    for asset, sign in raw.items():
+        if not isinstance(asset, str):
+            logger.warning("stance_direction: kunci bukan string (%r); dilewati.", asset)
+            continue
+        try:
+            value = int(sign)
+        except (TypeError, ValueError):
+            logger.warning(
+                "stance_direction[%s]=%r bukan bilangan bulat; memakai bawaan %+d.",
+                asset,
+                sign,
+                result.get(asset, 0),
+            )
+            continue
+        if value not in (-1, 1):
+            logger.warning(
+                "stance_direction[%s]=%+d di luar {+1, -1}; memakai bawaan %+d.",
+                asset,
+                value,
+                result.get(asset, 0),
+            )
+            continue
+        result[asset] = value
+
+    return result
 
 
 def neutral_band(path: Path | str | None = None) -> float:
     """Ambil satu nilai `neutral_band` siap pakai."""
     value = load_sentiment_config(path)["neutral_band"]
     return float(value)
+
+
+def stance_direction(path: Path | str | None = None) -> dict[str, int]:
+    """Ambil peta arah stance -> aset siap pakai (aset -> +1/-1)."""
+    value = load_sentiment_config(path)["stance_direction"]
+    return {str(k): int(v) for k, v in value.items()}

@@ -1,4 +1,4 @@
-version: "2026-10-24-s1"
+version: "2026-10-26-s2"
 # Ambang keputusan sentimen bersama kedua track (XAU dan FOMC).
 #
 # RULES.md: "Tidak ada magic number: ambang, cap, bobot, penalti ada di
@@ -14,3 +14,25 @@ decision:
   # oleh XAU dan FOMC supaya keduanya punya definisi "netral" yang sama;
   # bila berbeda, fusion menerima sinyal yang tidak sebanding.
   neutral_band: 0.10
+
+  # Arah stance The Fed terhadap tiap aset.
+  #
+  # Model FOMC-RoBERTa mengukur `stance` (hawkish/dovish), BUKAN dampak
+  # harga. `+1` berarti stance hawkish menaikkan aset; `-1` berarti
+  # hawkish menekannya. Peta ini dipakai jalur explicit-match di
+  # `backend/src/tagging/router.py` supaya skor stance tidak dipakai
+  # mentah sebagai arah harga.
+  #
+  # XAU = -1 : hawkish -> suku bunga riil naik -> emas tertekan.
+  #            dovish  -> emas naik. Sejalan dengan `impact_graph.yaml`
+  #            (`rates_down: XAU sign +1`, `rates_up: XAU sign -1`).
+  # RATE_UST = +1 : hawkish -> yield naik (sama dengan STANCE_TO_TONE).
+  # SPX = -1 : hawkish -> saham tertekan (sama dengan STANCE_TO_TONE).
+  #
+  # Catatan: `STANCE_TO_TONE` di `model/fomc/src/data_loader.py` hanya
+  # melayani RATE_UST dan SPX; XAU sengaja dinyatakan di sini agar
+  # satu-satunya tempat menentukan arah XAU adalah konfigurasi.
+  stance_direction:
+    XAU: -1
+    RATE_UST: 1
+    SPX: -1

@@ -1,23 +1,9 @@
 """Tests for SQLite database initialization, seeding, and operations."""
 
-import tempfile
 from datetime import date
 from pathlib import Path
 
-import pytest
-
 from backend.src.schema import DailySentiment, PriceRecord
-from backend.src.store.db import Database
-
-
-@pytest.fixture
-def temp_db():
-    # TemporaryDirectory instead of NamedTemporaryFile: sqlite cannot open
-    # a still-locked temp handle on Windows ("unable to open database file").
-    with tempfile.TemporaryDirectory() as d:
-        db = Database(db_path=str(Path(d) / "test.db"))
-        db.init_schema()
-        yield db
 
 
 def test_db_seeding(temp_db):
