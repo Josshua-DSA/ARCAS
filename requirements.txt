@@ -1,8 +1,30 @@
 # FinNews Core Dependencies
+#
+# Batas versi atas HANYA dipasang pada paket yang sudah terbukti merusak
+# lingkungan. Alasannya bukan kehati-hatian umum: setiap batas di bawah punya
+# kejadian nyata yang tercatat di audit.md (P1-2).
+
 pydantic>=2.6.0
 pyyaml>=6.0.1
 pandas>=2.1.0
-numpy>=1.26.0
+# numpy dibatasi di ATAS 3.0 saja, TIDAK di bawah 2.0.
+#
+# Percobaan pertama memakai `<2.0` untuk menghindari kegagalan mypy, dan itu
+# SALAH: pandas 3.0 + pyarrow mensyaratkan numpy>=2.0, terbukti dengan
+# "ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4". Batas
+# `<2.0` membuat 9 test gagal. Karena itu hanya `<3.0` yang dipasang, sesuai
+# rekomendasi audit P1-2.
+#
+# Kegagalan mypy yang sebenarnya BUKAN soal numpy melainkan kombinasi:
+#   mypy 1.11.2 + numpy>=2 + target python 3.12
+# Stub numpy 2.x memakai sintaks `type X = ...` (PEP 695) yang tidak dipahami
+# mypy 1.11, tetapi baris itu dijaga `sys.version_info` sehingga pada target
+# 3.11 tidak pernah dibaca:
+#   python 3.11 + numpy 2.4.6 -> Success        (kondisi CI)
+#   python 3.12 + numpy 2.5.4 -> syntax error   (venv pengembangan)
+# Penyelesaiannya menyamakan versi Python dev dan CI (lihat CONTRIBUTING
+# bagian "Python 3.11"), bukan menurunkan numpy.
+numpy>=1.26.0,<3.0
 scipy>=1.11.0
 # statsmodels: OLS Newey-West HAC + uji Granger (FR-11, backend/src/stats/engine.py).
 statsmodels>=0.14.0
@@ -54,11 +76,16 @@ openpyxl>=3.1.0
 
 # --- Model Spesialis NLP (Track FOMC & FinBERT) ---
 # PyTorch & HuggingFace Transformers untuk inferensi sequence classification.
+#
+# JANGAN pasang batas atas di sini secara asal. `torch 2.5.1` menolak memuat
+# `pytorch_model.bin` karena CVE-2025-32434 (lihat audit.md P1-2), tetapi
+# rentang yang aman bergantung pada platform: di mesin dengan GPU, torch harus
+# cocok dengan driver CUDA, sedangkan CI memakai roda CPU. Karena itu versi
+# yang TERBUKTI bekerja dicatat di requirements-ci.lock, bukan dipaksa lewat
+# batas atas di berkas ini.
 torch>=2.0.0
 transformers>=4.30.0
 
 # --- Visualisasi & Notebook Riset ---
 matplotlib>=3.7.0
 seaborn>=0.12.0
-
-
