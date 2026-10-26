@@ -1,6 +1,6 @@
 """Test FR-1: ingest artikel manual dari CSV/JSON.
 
-Kontrak yang diuji (dari context/AUDIT.md):
+Kontrak yang diuji (dari audit.md di root repo):
 - kolom dipetakan ke raw_articles
 - baris buruk DILEWATI dengan alasan, bukan membuat proses crash
 - menjalankan ulang file yang sama tidak menggandakan baris
