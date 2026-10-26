@@ -12,4 +12,4 @@ Lingkup kerja Backend Engineer:
 - `src/report/`: Ekspor payload JSON & generator artefak `outputs/report.html`.
 - `tests/`: Unit test & sanity checks pipeline.
 
-Konsumsi inferensi dari `model/weights/`, ekspor data beku ke `frontend/`.
+Konsumsi inferensi dari `model/{xau,fomc}/weights/`, ekspor data beku ke `frontend/`.

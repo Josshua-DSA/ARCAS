@@ -7,13 +7,27 @@ __pycache__/
 *.py[cod]
 *$py.class
 .ipynb_checkpoints/
-model/weights/*.bin
-model/weights/*.safetensors
-model/weights/*.pt
-model/weights/*.onnx
+model/*/weights/*.bin
+model/*/weights/*.safetensors
+model/*/weights/*.pt
+model/*/weights/*.onnx
+# Direktori checkpoint hasil latih (save_pretrained): 440MB, direproduksi
+# lewat scripts.train_xau_finbert. Metadata kecil (metrics/temperature.json)
+# tetap di-commit karena itu ringkasan hasil yang bisa diaudit.
+model/*/weights/*/
 outputs/
 *.db
 *.db-journal
 .venv/
 venv/
 .env
+
+# Code graph — commit the artefacts agents read, skip rebuild cache & snapshots
+.graphify/cache/
+.graphify/2*/
+.graphify/.graphify_analysis.json
+.graphify/*.sig
+
+# Artefak model terlatih — dilatih ulang oleh `python -m model.common.train_baseline`
+# (pickling sklearn terikat versi Python/scikit-learn, jangan di-commit)
+model/common/*.joblib

@@ -4,8 +4,61 @@ pyyaml>=6.0.1
 pandas>=2.1.0
 numpy>=1.26.0
 scipy>=1.11.0
+# statsmodels: OLS Newey-West HAC + uji Granger (FR-11, backend/src/stats/engine.py).
+statsmodels>=0.14.0
 fastapi>=0.109.0
 uvicorn>=0.27.0
 rich>=13.7.0
 pytest>=8.0.0
-ruff>=0.2.0
+# ruff & mypy DIPIN PERSIS, bukan rentang. Alat ini memutuskan lulus/gagal CI,
+# jadi versinya harus deterministik: mypy 2.x tidak melaporkan
+# [import-untyped] yang dilaporkan mypy 1.11, sehingga `mypy>=1.10` membuat
+# hasil type-check bergantung pada apa yang dirilis upstream hari itu.
+ruff==0.17.0
+mypy==1.11.2
+# types-PyYAML: PyYAML tidak membawa py.typed, sehingga mypy 1.11 melaporkan
+# [import-untyped] untuk `import yaml` di 6 file. Tanpa stub ini CI gagal.
+types-PyYAML>=6.0.12
+
+# --- Kolektor data nyata (backend/src/collect) ---
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# lingua-language-detector: deteksi bahasa EN/ID di
+# backend/src/normalize/cleaner.py. Heuristik kata fungsi sebelumnya salah
+# menandai headline emas pendek sebagai `other` ("Gold rallies as Fed
+# signals rate cuts ahead"), dan karena pipeline melewati artikel
+# non-Inggris, kesalahan itu membuang berita sasaran model. Paket ini murni
+# Python (tanpa model besar), mendukung Python 3.10-3.12.
+lingua-language-detector>=2.0.2
+
+# --- Klien HTTP untuk test API ---
+# starlette.testclient (dipakai test_api_no_hardcoded.py & test_persistence.py)
+# butuh httpx2. Tanpa ini, collection GAGAL sebelum satu test pun jalan.
+# Sebelumnya lolos di mesin lokal karena paket ini terpasang di luar manifest.
+httpx2>=2.13.0
+
+# --- Model & penyimpanan kolumnar ---
+# scikit-learn: baseline TF-IDF + Logistic Regression (model/common/baseline.py).
+# Tanpa ini, baseline tidak bisa dilatih dan pipeline berhenti dengan pesan jelas.
+scikit-learn>=1.3.0
+joblib>=1.3.0
+# pyarrow: baca/tulis Parquet (dataset gold_sinha, ParquetStore). DIPAKAI TEST.
+pyarrow>=14.0.0
+# openpyxl: pd.read_excel di test model_router. Tanpa ini CI gagal.
+openpyxl>=3.1.0
+
+# Catatan: harga diambil lewat Yahoo chart API memakai urllib (stdlib).
+# `yfinance` TIDAK diperlukan dan sengaja tidak dipakai, agar tidak ada
+# jalur yang bisa diam-diam jatuh ke data sintetis.
+
+# --- Model Spesialis NLP (Track FOMC & FinBERT) ---
+# PyTorch & HuggingFace Transformers untuk inferensi sequence classification.
+torch>=2.0.0
+transformers>=4.30.0
+
+# --- Visualisasi & Notebook Riset ---
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+

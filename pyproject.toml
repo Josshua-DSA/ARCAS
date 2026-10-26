@@ -29,3 +29,23 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+# RULES §4: "ruff + mypy bersih sebelum merge".
+# Dijalankan pada kode produksi (backend/ + model/), bukan test, agar sinyalnya
+# tajam. Test tetap dicek ruff; anotasi longgar di test wajar.
+files = ["backend/src", "model"]
+# Repo memakai paket `backend.src.*` dari root repo. Tanpa ini mypy membaca
+# modul yang sama dua kali (src.* dan backend.src.*).
+explicit_package_bases = true
+mypy_path = "."
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+strict_equality = true
+show_error_codes = true
+pretty = true

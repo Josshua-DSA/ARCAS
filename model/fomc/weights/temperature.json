@@ -1,0 +1,11 @@
+{
+  "model": "fomc_roberta",
+  "temperature": 2.129254,
+  "ece_pre": 0.07369,
+  "ece_post": 0.027096,
+  "ece_target": 0.1,
+  "meets_target": true,
+  "n_samples": 194,
+  "fitted_at": "2026-10-23T06:17:18.123731+00:00",
+  "schema_version": "1.0"
+}

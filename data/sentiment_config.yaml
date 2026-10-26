@@ -1,0 +1,16 @@
+version: "2026-10-24-s1"
+# Ambang keputusan sentimen bersama kedua track (XAU dan FOMC).
+#
+# RULES.md: "Tidak ada magic number: ambang, cap, bobot, penalti ada di
+# config / YAML." Sebelum berkas ini, `0.10` ditulis langsung di
+# `model/xau/src/model.py` dan `model/fomc/src/model.py`.
+#
+# Nilai di bawah WAJIB identik dengan FALLBACK pada
+# `model/common/sentiment_config.py` agar perilaku tidak berubah ketika
+# berkas ini tidak ditemukan (mis. paket dipasang tanpa `data/`).
+
+decision:
+  # |p_pos - p_neg| di bawah nilai ini dianggap netral. Dipakai bersama
+  # oleh XAU dan FOMC supaya keduanya punya definisi "netral" yang sama;
+  # bila berbeda, fusion menerima sinyal yang tidak sebanding.
+  neutral_band: 0.10

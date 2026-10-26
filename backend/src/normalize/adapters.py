@@ -49,8 +49,13 @@ FOMC_STANCE_TO_TONE = {
 }
 
 
-def gold_tone(price_sentiment: str) -> Optional[str]:
-    """Price Sentiment -> tone. `none` -> None (DROP)."""
+def gold_tone(price_sentiment: object) -> Optional[str]:
+    """Price Sentiment -> tone. `none` -> None (DROP).
+
+    Menerima `object` dengan sengaja: nilai berasal dari parquet pihak ketiga
+    yang bisa berisi NaN/float, bukan hanya `str`. Pemeriksaan `isinstance`
+    di bawah adalah penjaga nyata, bukan sisa kode.
+    """
     if not isinstance(price_sentiment, str):
         return None
     return GOLD_TONE_MAP.get(price_sentiment.strip().lower())

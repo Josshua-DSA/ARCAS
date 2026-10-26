@@ -1,4 +1,20 @@
-version: "2026-10-12-core3"
+version: "2026-10-22-core4"
+# Registry sumber data. Semua URL di bawah SUDAH DIVERIFIKASI HIDUP.
+#
+# ⚠️ FILE INI ADALAH SATU-SATUNYA SUMBER KEBENARAN untuk kata kunci dan feed.
+# `backend/src/collect/news_api/keywords.py` dan `rss_collector.py` membacanya
+# saat impor — tidak ada lagi daftar yang disalin manual ke kode. Menambah kata
+# kunci di sini langsung berpengaruh tanpa menyentuh Python.
+#
+# Perubahan 2026-10-22:
+#   - kata kunci digabung dengan daftar yang sebelumnya hanya ada di kode
+#     (15/22/17 -> tetap 15/22/17, tidak ada yang hilang) supaya pindah ke
+#     sini tidak menurunkan cakupan routing
+# Perubahan 2026-10-21:
+#   - kitco_rss (404) dihapus, diganti investing commodities
+#   - investing news_285 dikoreksi: itu BUKAN komoditas (isinya saham/bitcoin)
+#   - `api: finnhub_marketaux` diganti deklarasi per-penyedia yang nyata dipakai
+
 macro:
   keywords:
     - fed
@@ -9,32 +25,90 @@ macro:
     - jobs report
     - payrolls
     - tariff
+    - tariffs
     - rate cut
     - rate hike
     - war
+    - recession
+    - gdp
   feeds:
     - name: fed_press
       type: rss
       lang: en
       url: "https://www.federalreserve.gov/feeds/press_all.xml"
+      verified: ok
     - name: gdelt
       type: api
       lang: multi
       endpoint: "https://api.gdeltproject.org/api/v2/doc/doc"
+      verified: rate_limited  # 429 tanpa backoff; perlu retry
+
+# Penyedia API berita. Kredensial dibaca dari .env oleh
+# backend/src/collect/news_api/registry.py
+apis:
+  - name: finnhub
+    env_key: FINNHUB_API_KEY
+    free_tier: "60 req/menit"
+    status: ok
+    targets: [XAU, RATE_UST, SPX]
+    categories: [general, forex, merger]
+    note: "Tanpa pencarian kata kunci; relevansi difilter lokal."
+  - name: marketaux
+    env_key: MARKETAUX_API_KEY
+    free_tier: "100 req/hari"
+    status: ok
+    targets: [SPX]
+    note: >-
+      Filter symbols=XAUUSD / GC=F mengembalikan 0 hasil di paket gratis.
+      Pakai countries=us + filter_entities.
+  - name: alphavantage
+    env_key: ALPHAVANTAGE_API_KEY
+    free_tier: "25 req/hari"
+    status: premium_only
+    targets: []
+    note: "NEWS_SENTIMENT memerlukan langganan premium."
 
 targets:
   XAU:
     price: "GC=F"
-    keywords: [gold, bullion, safe haven, real yields, emas]
+    keywords: [gold, gold price, gold prices, gold futures, spot gold, bullion,
+               safe haven, safe-haven, real yield, real yields, emas, xau, comex,
+               precious metal, precious metals]
     feeds:
-      - {name: kitco_rss, type: rss, lang: en, url: "https://www.kitco.com/rss/news.xml"}
+      - {name: investing_commodities_news, type: rss, lang: en, url: "https://www.investing.com/rss/news_11.rss", verified: ok}
+      - {name: investing_commodities_analysis, type: rss, lang: en, url: "https://www.investing.com/rss/commodities.rss", verified: ok}
+      - {name: marketwatch_top, type: rss, lang: en, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", verified: ok}
   RATE_UST:
     price: "^TNX"
-    keywords: [treasury yield, 10-year, fed funds, fomc, yield obligasi as]
+    keywords: [treasury, treasuries, treasury yield, treasury yields, bond yield,
+               bond yields, yield curve, yield, 10-year, ten-year, two-year, 2-year,
+               fed funds, fomc, federal reserve, rate cut, rate cuts, rate hike,
+               rate hikes, powell, monetary policy, obligasi]
     note: "yield = ^TNX/10"
     feeds:
-      - {name: fed_press, type: rss, lang: en, url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+      - {name: fed_press, type: rss, lang: en, url: "https://www.federalreserve.gov/feeds/press_all.xml", verified: ok}
+      - {name: investing_commodities_news, type: rss, lang: en, url: "https://www.investing.com/rss/news_11.rss", verified: ok}
   SPX:
     price: "^GSPC"
-    keywords: [s&p 500, wall street, earnings, jobs, cpi, sp500]
-    api: finnhub_marketaux
+    keywords: [s&p, s&p 500, sp500, spx, wall street, equities, stock market,
+               stock markets, stocks, earnings, nasdaq, dow jones, risk appetite,
+               equity market, index futures, blue chip, blue chips]
+    feeds:
+      - {name: marketwatch_top, type: rss, lang: en, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", verified: ok}
+      - {name: bbc_business, type: rss, lang: en, url: "https://feeds.bbci.co.uk/news/business/rss.xml", verified: ok}
+    apis: [finnhub, marketaux]
+
+# Sumber yang DINONAKTIFKAN karena mati / salah lingkup. Jangan dipakai lagi.
+disabled:
+  - name: kitco_rss
+    url: "https://www.kitco.com/rss/news.xml"
+    reason: "HTTP 404"
+  - name: kitco_alt
+    url: "https://www.kitco.com/rss/KitcoNews.xml"
+    reason: "HTTP 404"
+  - name: yahoo_finance_rss
+    url: "https://feeds.finance.yahoo.com/rss/2.0/headline"
+    reason: "HTTP 404 (dipensiunkan Yahoo)"
+  - name: investing_news_285
+    url: "https://www.investing.com/rss/news_285.rss"
+    reason: "Hidup, tetapi isinya saham/bitcoin — bukan komoditas"

@@ -1,22 +1,65 @@
 """Tests for baseline ML model and evaluation metrics."""
 
-from model.evaluation.metrics import evaluate_predictions
-from model.src.baseline import BaselineTfidfSentiment
+from pathlib import Path
+
+import pytest
+
+from model.common.baseline import BaselineTfidfSentiment, ModelNotFittedError
+from model.common.metrics import evaluate_predictions
+
+MODEL_PATH = Path("model/common/baseline_tfidf.joblib")
+requires_model = pytest.mark.skipif(
+    not MODEL_PATH.exists(),
+    reason="latih dulu: python -m model.common.train_baseline",
+)
 
 
-def test_baseline_tfidf_predict():
-    """Tests TF-IDF + LR baseline model predictions."""
+def test_model_belum_dilatih_melempar():
+    """Model tanpa fit()/load() harus melempar, bukan mengarang prior.
+
+    Sebelum perbaikan AUDIT K-4, test ini gagal karena predict_probs()
+    diam-diam mengembalikan [0.20, 0.60, 0.20] dan menyamarkan model rusak.
+    """
     model = BaselineTfidfSentiment()
-    texts = ["Pasar saham menguat tajam hari ini.", "Inflasi menekan sentimen investor."]
-    probs = model.predict_probs(texts)
-    assert len(probs) == 2
-    for p in probs:
-        total = round(p.p_pos + p.p_neu + p.p_neg, 2)
-        assert total == 1.0
+    with pytest.raises(ModelNotFittedError):
+        model.predict_probs(["Pasar saham menguat tajam hari ini."])
 
-    sentiment = model.score_article("art_1", texts[0])
+
+def test_fit_membuat_model_siap():
+    """fit() pada data kecil harus menghasilkan prediksi valid."""
+    model = BaselineTfidfSentiment()
+    teks = [
+        "gold rallies strongly on safe haven demand",
+        "gold plunges as dollar strengthens sharply",
+        "gold trades flat ahead of fed decision",
+        "gold surges to record high",
+        "gold falls on profit taking",
+        "gold steady in quiet session",
+    ]
+    label = [2, 0, 1, 2, 0, 1]
+    model.fit(teks, label)
+
+    probs = model.predict_probs(["gold rallies on strong demand"])
+    assert len(probs) == 1
+    p = probs[0]
+    assert round(p.p_pos + p.p_neu + p.p_neg, 6) == 1.0
+
+    sentiment = model.score_article("art_1", "gold rallies on strong demand")
     assert sentiment.article_id == "art_1"
     assert -1.0 <= sentiment.score <= 1.0
+
+
+@requires_model
+def test_model_terlatih_membedakan_arah():
+    """Model nyata harus memberi sinyal berbeda untuk teks bullish vs bearish."""
+    model = BaselineTfidfSentiment.load(MODEL_PATH)
+
+    naik = model.predict_probs(["Gold surges to record high on safe haven demand"])[0]
+    turun = model.predict_probs(["Gold plunges as dollar rallies sharply"])[0]
+
+    assert naik.p_pos > naik.p_neg, "teks bullish harus condong positif"
+    assert turun.p_neg > turun.p_pos, "teks bearish harus condong negatif"
+    assert (naik.p_pos, naik.p_neg) != (turun.p_pos, turun.p_neg)
 
 
 def test_evaluation_metrics():

@@ -16,6 +16,44 @@ from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
 
 
+def _latest_scores(db: Database) -> tuple[dict[str, tuple[float, float]], dict[str, str]]:
+    """Ambil skor sentimen terakhir per aset dari DB.
+
+    Mengembalikan (scores, sources):
+    - scores  : asset_id -> (score, confidence)
+    - sources : asset_id -> keterangan asal angka ("db:2026-10-20" / "tanpa_data")
+
+    Aset tanpa baris `daily_sentiment` diberi (0.0, 0.0) — netral dan tanpa
+    keyakinan. Ini disengaja: lebih jujur daripada mengarang 0.25/0.70.
+    """
+    scores: dict[str, tuple[float, float]] = {}
+    sources: dict[str, str] = {}
+    with db.get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT d.asset_id, d.date, d.score_mean,
+                   (SELECT AVG(i.confidence) FROM impacts i
+                    WHERE i.asset_id = d.asset_id) AS avg_conf
+            FROM daily_sentiment d
+            JOIN (
+                SELECT asset_id, MAX(date) AS mx FROM daily_sentiment GROUP BY asset_id
+            ) t ON t.asset_id = d.asset_id AND t.mx = d.date;
+            """
+        ).fetchall()
+
+    for r in rows:
+        asset = r["asset_id"]
+        conf = r["avg_conf"] if r["avg_conf"] is not None else 0.5
+        scores[asset] = (float(r["score_mean"]), float(conf))
+        sources[asset] = f"db:{r['date']}"
+
+    for asset in ("XAU", "SPX", "RATE_UST"):
+        if asset not in scores:
+            scores[asset] = (0.0, 0.0)
+            sources[asset] = "tanpa_data"
+    return scores, sources
+
+
 def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     """Creates and configures the FastAPI application."""
     app = FastAPI(
@@ -33,7 +71,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     )
 
     db = Database(db_path=db_path)
-    db.init_tables()
+    db.init_schema()
 
     alloc_engine = AllocationEngine()
     persona_engine = PersonaEngine()
@@ -159,31 +197,67 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         profile_id: str = "moderate",
         article_id: str = "current_market",
     ) -> dict:
-        """Returns Allocation Tilt simulation result adhering to 100% constraint."""
-        # Derive current class scores across active universe
-        # In full run: pulls latest daily sentiment score for key assets
-        scores = {
-            "XAU": (0.25, 0.70),
-            "SPX": (0.20, 0.80),
-            "RATE_UST": (0.10, 0.65),
-        }
+        """Returns Allocation Tilt result, dengan skor dari DB (bukan angka tetap).
+
+        S-1: sebelumnya endpoint ini menyajikan angka karangan
+        ({"XAU": (0.25, 0.70), ...}) sehingga terlihat seperti hasil analisis
+        padahal konstanta. Sekarang skor diambil dari `daily_sentiment`
+        terakhir per aset; aset tanpa data diberi skor netral 0.0 dengan
+        keyakinan rendah, dan itu dinyatakan terbuka lewat `data_sources`.
+        """
+        scores, sources = _latest_scores(db)
         class_scores = alloc_engine.compute_class_scores(scores)
         suggestion = alloc_engine.tilt_portfolio(
             article_id=article_id,
             profile_id=profile_id,
             class_scores=class_scores,
         )
-        return suggestion.model_dump()
+        # S-2: simpan agar hasil bisa diaudit ulang, bukan hanya dikembalikan.
+        db.save_alloc_suggestion(suggestion)
+
+        payload = suggestion.model_dump()
+        payload["data_sources"] = sources
+        return payload
 
     @app.get("/api/persona/{article_id}")
     def get_persona_views(
         article_id: str,
         target: str = "SPX",
-        score: float = 0.35,
-        confidence: float = 0.75,
-        horizon: NewsHorizon = NewsHorizon.SHORT,
+        score: Optional[float] = None,
+        confidence: Optional[float] = None,
+        horizon: Optional[NewsHorizon] = None,
     ) -> list[dict]:
-        """Evaluates stances of 5 investor personas for an article impact."""
+        """Stance 5 persona untuk satu dampak artikel.
+
+        S-1: `score` dan `confidence` dulu punya nilai bawaan karangan
+        (0.35 / 0.75) sehingga setiap panggilan tanpa parameter menghasilkan
+        "analisis" yang sama persis. Kini bila tidak diberikan, nilainya
+        diambil dari `impacts` artikel tersebut; bila artikel tidak punya
+        dampak, jawabannya 404 -- bukan angka palsu.
+
+        S-5: `horizon` dulu selalu jatuh ke SHORT karena router tidak pernah
+        mengisinya, sehingga semua persona melihat berita berhorizon pendek.
+        Kini bila tidak diberikan, diambil dari `impacts.news_horizon`.
+        """
+        if score is None or confidence is None:
+            row = db.get_impact_for_article(article_id, target)
+            if row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"Tidak ada dampak tercatat untuk artikel '{article_id}' "
+                        f"pada target '{target}'. Berikan ?score=&confidence= "
+                        "atau jalankan pipeline lebih dulu."
+                    ),
+                )
+            score = row["score"] if score is None else score
+            confidence = row["confidence"] if confidence is None else confidence
+            if horizon is None and row.get("news_horizon"):
+                horizon = NewsHorizon(row["news_horizon"])
+
+        if horizon is None:
+            horizon = NewsHorizon.SHORT
+
         views = persona_engine.evaluate_all(
             article_id=article_id,
             target=target,
@@ -191,6 +265,8 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             confidence=confidence,
             news_horizon=horizon,
         )
+        # S-2: persist supaya reproducible & bisa diperiksa ulang.
+        db.save_persona_views(views)
         return [v.model_dump() for v in views]
 
     return app
