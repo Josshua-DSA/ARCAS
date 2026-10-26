@@ -1,0 +1,56 @@
+# requirements-ci.lock - versi dependensi yang TERBUKTI lulus di CI.
+#
+# Cara pakai (CI):
+#     pip install -r requirements.txt -r requirements-ci.lock
+# requirements.txt menentukan RENTANG yang sah; berkas ini memilih versi
+# PERSIS di dalam rentang itu, sehingga build CI tidak berubah hanya karena
+# upstream merilis versi baru hari itu.
+#
+# Bukan `pip freeze` mentah. Isinya sengaja:
+#   - hanya dependensi tingkat atas dari requirements.txt (transitif tetap
+#     diselesaikan pip, yang sekaligus memilih wheel platform yang cocok);
+#   - tanpa penanda build lokal seperti `+cu121`, karena penanda itu mengikat
+#     berkas ini ke satu mesin ber-GPU dan akan menggagalkan CI (runner CPU);
+#   - torch & transformers dikunci pada versi yang BENAR-BENAR diuji, bukan
+#     yang terbaru. pip di python 3.11 akan memilih torch 2.14 / transformers
+#     5.x bila dibiarkan; keduanya belum pernah dijalankan terhadap kode ini
+#     dan transformers 5.x mengubah API. Lock ada justru untuk mencegah itu.
+#
+# Seluruh baris di bawah diverifikasi pada python 3.11: `mypy` bersih tanpa
+# `--python-version`, dan pip dapat menyelesaikan requirements.txt + berkas
+# ini tanpa konflik.
+
+pydantic==2.14.1
+pyyaml==6.0.3
+pandas==3.0.6
+# numpy 2.4.6, bukan 2.5.4: 2.5.x hanya tersedia untuk python>=3.12, sedangkan
+# CI memakai python 3.11 (pembatasan versi itulah yang membuat resolusi gagal
+# dengan pesan menyesatkan "numpy<3.0 and >=1.26.0 and ==2.5.4 ... conflicting").
+# numpy 2.x WAJIB: pandas 3.0 + pyarrow menolak 1.x ("pyarrow requires NumPy
+# 2.0 or newer"). Batas atas <3.0 di requirements.txt menjaga dari lonjakan
+# mayor berikutnya.
+numpy==2.4.6
+scipy==1.17.1
+statsmodels==0.15.0
+fastapi==0.143.0
+uvicorn==0.54.0
+rich==15.0.0
+pytest==9.1.1
+ruff==0.17.0
+mypy==1.11.2
+types-PyYAML==6.0.12.20260906
+requests==2.34.2
+python-dotenv==1.2.4
+lingua-language-detector==2.1.1
+httpx2==2.16.0
+scikit-learn==1.9.1
+joblib==1.6.0
+pyarrow==26.0.0
+openpyxl==3.1.5
+torch==2.5.1
+transformers==4.57.6
+matplotlib==3.11.2
+
+# seaborn>=0.12.0 di requirements.txt sengaja TIDAK dikunci: paket ini tidak
+# terpasang di environment sumber, jadi versinya tidak bisa dicatat tanpa
+# dikarang. CI memasang versi terbaru yang memenuhi rentang.
