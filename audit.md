@@ -9,15 +9,28 @@
 
 ## 0. Ringkasan
 
+> **Cara membaca dokumen ini:** temuan dikelompokkan per tingkat keparahan —
+> **P0** (kritis, 3 item) · **P1** (penting, 6 item) · **P2** (sedang, 6 item) ·
+> **P3** (ringan, 6 item). Total **21 temuan**. Untuk melihat semua item
+> sekaligus, lompat ke §6 *Prioritas Perbaikan*.
+
 | Aspek | Status | Catatan singkat |
 |---|:---:|---|
 | Test suite | ✅ **Sehat** | 369 passed, 2 skipped, 0 failed |
 | Lint (ruff) | ✅ **Bersih** | `All checks passed!` |
-| Type-check (mypy) | ❌ **Gagal lokal** | 4 error; CI hijau (lihat B-1) |
+| Type-check (mypy) | ❌ **Gagal lokal** | 4 error; CI hijau (lihat P1-3) |
 | Coverage | ⚠️ **73%** | 1089 baris tak teruji dari 4105 (kode produksi saja) |
 | Reproducibility | ⚠️ **Lemah** | Tidak ada lock file, pin `>=` longgar |
 | Keamanan | ⚠️ **Cukup** | Tidak ada secret ter-track; API tanpa auth |
 | Integritas model | ⚠️ **Timpang** | XAU punya skrip training, FOMC tidak |
+
+| Tingkat | Jumlah | Status |
+|---|:---:|---|
+| P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
+| P1 — Penting | 6 | ⬜ terbuka |
+| P2 — Sedang | 6 | ⬜ terbuka |
+| P3 — Ringan | 6 | ⬜ terbuka |
+
 
 **Kesimpulan satu baris:** fondasi backend solid dan teruji, tetapi **artefak model tidak dapat direproduksi** — tidak ada satu pun skrip yang bisa menghasilkan ulang angka di `benchmark_results.json` atau `metrics.json`.
 
@@ -127,6 +140,9 @@ Untuk artikel yang memicu **keduanya**, FOMC dimuat (biaya 355M parameter) lalu 
 ---
 
 ## 2. Temuan Penting (P1)
+
+> **Status: 6 item terbuka** (per 2026-10-26). Belum ada yang dikerjakan.
+> Urutan pengerjaan yang disarankan ada di §6.
 
 ### P1-1 — Artefak bobot tidak di-vendor, inferensi bergantung jaringan
 
@@ -291,21 +307,39 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 
 ## 6. Prioritas Perbaikan
 
-| Prioritas | Item | Usaha | Dampak |
-|---|---|---|---|
-| **P0-1** | Skrip training FOMC-RoBERTa | Besar | Reproducibility hilang total tanpa ini |
-| **P0-2** | Putuskan & uji arah dovish/hawkish | Kecil | Arah sinyal bisa terbalik |
-| **P0-3** | Prioritas model eksplisit di pipeline | Kecil | Pemborosan + perilaku rapuh |
-| **P1-1** | Vendor bobot via LFS / fetch ber-checksum | Sedang | Inferensi offline |
-| **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency |
-| **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal |
-| **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" |
-| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi |
-| **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi |
-| **P2-1** | Auth/rate limit API | Kecil | Keamanan saat dipublikasikan |
-| **P2-2** | Test kolektor API berbayar | Sedang | Kuota & parsing error |
-| **P2-4** | Perbarui `AGENTS.md` | Kecil | Info basi berbiaya tinggi |
-| **P3-*** | `utcnow`, `except: pass`, `.graphify` | Kecil | Kebersihan |
+> Kolom **Status** ditambahkan 2026-10-26. Tanda ✅ berarti sudah dikerjakan
+> dan diverifikasi; rinciannya ada di bagian temuan masing-masing.
+
+| Prioritas | Item | Usaha | Dampak | Status |
+|---|---|---|---|---|
+| **P0-1** | Skrip training FOMC-RoBERTa | Besar | Reproducibility hilang total tanpa ini | ✅ |
+| **P0-2** | Putuskan & uji arah dovish/hawkish | Kecil | Arah sinyal bisa terbalik | ✅ |
+| **P0-3** | Prioritas model eksplisit di pipeline | Kecil | Pemborosan + perilaku rapuh | ✅ |
+| **P1-1** | Vendor bobot via LFS / fetch ber-checksum | Sedang | Inferensi offline | ⬜ |
+| **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency | ⬜ |
+| **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal | ⬜ |
+| **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" | ⬜ |
+| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | ⬜ |
+| **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ⬜ |
+| **P2-1** | Auth/rate limit API | Kecil | Keamanan saat dipublikasikan | ⬜ |
+| **P2-2** | Test kolektor API berbayar | Sedang | Kuota & parsing error | ⬜ |
+| **P2-3** | Hapus duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci` | Kecil | Satu sumber kebenaran metrik | ⬜ |
+| **P2-4** | Perbarui `AGENTS.md` | Kecil | Info basi berbiaya tinggi | ⬜ |
+| **P2-5** | Keluarkan `.graphify/` dari git atau beri batas ukuran | Kecil | Repo membengkak, diff berisik | ⬜ |
+| **P2-6** | Isolasi test `test_protokol_terpenuhi` dari VRAM | Kecil | Test gagal karena lingkungan, bukan logika | ⬜ |
+| **P3-*** | `utcnow`, `except: pass`, kebersihan lain (6 item) | Kecil | Kebersihan | ⬜ |
+
+**Usulan urutan pengerjaan P1** (dari yang paling murah dan berdampak):
+
+1. **P1-2 + P1-3** — satu paket, keduanya soal dependency/Python. Menutup
+   penyebab mypy merah di lokal sekaligus menutup celah `numpy 2.x`.
+2. **P1-4** — smoke test yang memastikan RoBERTa benar-benar dipakai, bukan
+   fallback diam-diam. Ini yang paling berbahaya karena kegagalannya senyap.
+3. **P1-1** — vendor bobot atau fetch ber-checksum; bergantung keputusan Anda
+   soal ukuran repo (bentrok dengan P2-5).
+4. **P1-6** lalu **P1-5** — `conftest.py` dulu agar helper uji metrik tidak
+   terduplikasi saat menulis test baru.
+
 
 ---
 
