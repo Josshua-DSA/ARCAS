@@ -137,17 +137,24 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
 
         self._torch = torch
 
+        token = self._hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
         if self._device_str:
             device = torch.device(self._device_str)
+        elif torch.cuda.is_available():
+            # GPU kecil (<=8 GiB) tidak muat FOMC-RoBERTa (355M) berdampingan
+            # dengan FinBERT-EMAS (440 MB bobot + aktivasi). Di rtx 4060 6 GiB
+            # ini berujung CUDA OOM yang menjatuhkan seluruh suite. CPU lebih
+            # lambat tetapi deterministik; set FOMC_DEVICE=cuda untuk memaksa.
+            device = torch.device(os.environ.get("FOMC_DEVICE", "cpu"))
         else:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
         self._device = device
-
-        token = self._hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
         logger.info("Loading FOMC-RoBERTa from %s onto %s...", self._checkpoint, device)
         try:
             self._tokenizer = AutoTokenizer.from_pretrained(self._checkpoint, token=token)
-            self._model = AutoModelForSequenceClassification.from_pretrained(self._checkpoint, token=token).to(device)
+            self._model = AutoModelForSequenceClassification.from_pretrained(
+                self._checkpoint, token=token, use_safetensors=True
+            ).to(device)
             self._model.eval()
         except Exception as exc:
             is_access_issue = any(k in str(exc).lower() for k in ["gated repo", "unauthorized", "401", "403", "awaiting a review"])
@@ -159,7 +166,9 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
                 )
                 try:
                     self._tokenizer = AutoTokenizer.from_pretrained(FALLBACK_ROBERTA_CHECKPOINT)
-                    self._model = AutoModelForSequenceClassification.from_pretrained(FALLBACK_ROBERTA_CHECKPOINT).to(device)
+                    self._model = AutoModelForSequenceClassification.from_pretrained(
+                        FALLBACK_ROBERTA_CHECKPOINT, use_safetensors=True
+                    ).to(device)
                     self._model.eval()
                     self._checkpoint = FALLBACK_ROBERTA_CHECKPOINT
                     return
