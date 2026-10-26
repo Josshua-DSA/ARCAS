@@ -13,7 +13,7 @@ diuji pada repo ini, bukan disalin dari tutorial.
 
 | Kebutuhan | Versi | Catatan |
 |---|---|---|
-| Python | **3.11** | Sesuai CI. 3.12 jalan, tetapi lihat §6 soal mypy. |
+| Python | **3.11** | **Wajib sama dengan CI.** Bukan sekadar saran: Python 3.12 + numpy 2.x membuat `mypy` berhenti sebelum memeriksa kode (lihat §6). Repo menyediakan `.python-version`. |
 | Git | terbaru | Dataset besar di-track lewat Git LFS. |
 | Docker | opsional | Hanya jika ingin menjalankan `docker-compose.yml`. |
 
@@ -160,28 +160,41 @@ Ringkasan dari `context/RULES.md` — baca aslinya sebelum mengubah hal besar.
 
 ## 6. Kalau mypy gagal karena numpy
 
-Di Python 3.12 dengan numpy 2.x, mypy 1.11 gagal saat membaca stub numpy:
+**Pakai Python 3.11** — repo menyediakan `.python-version` agar `pyenv`
+memilihnya otomatis. CI memakai 3.11, jadi menyamakannya menghilangkan seluruh
+kelas bug "hijau lokal, merah CI".
+
+Gejalanya bila versi berbeda:
 
 ```
 venv/lib/python3.12/site-packages/numpy/__init__.pyi:737: error:
 Type statement is only supported in Python 3.12 and greater  [syntax]
+Found 1 error in 1 file (errors prevented further checking)
 ```
 
-Ini **bukan** kesalahan kode Anda. Stub numpy 2.x memakai sintaks `type`
-statement yang tidak dipahami mypy 1.11 saat target versi 3.11. Terbukti:
-error ini muncul identik pada commit sebelum perubahan apa pun (19 error di 5
-berkas).
+Bukan kesalahan kode Anda. Stub numpy 2.x memakai sintaks `type X = ...`
+(PEP 695) di dalam cabang `sys.version_info >= (3, 12)`; mypy 1.11 tidak bisa
+mem-parse sintaks itu sama sekali sehingga berhenti sebelum memeriksa satu
+berkas proyek pun.
 
-Solusi: jalankan dengan target 3.12.
+Kombinasi yang sudah diuji (venv terisolasi):
 
-```bash
-mypy --python-version 3.12
-```
+| Python | numpy | mypy 1.11.2 |
+|---|---|---|
+| 3.11 | 2.4.6 | ✅ Success |
+| 3.11 | 1.26.4 | ✅ Success |
+| 3.12 | 1.26.4 | ✅ Success |
+| 3.12 | 2.5.4 | ❌ syntax error |
 
-Atau pakai Python 3.11 seperti CI. Jangan menaikkan versi mypy — `ruff` dan
-`mypy` **dipin persis** di `requirements.txt` dengan sengaja: mypy 2.x tidak
-melaporkan `[import-untyped]` yang dilaporkan 1.11, sehingga CI akan merah
-padahal lokal hijau (atau sebaliknya).
+Artinya pemicunya **Python 3.12 dan numpy 2.x bersamaan**, bukan salah satunya.
+Karena itu menurunkan numpy bukan solusi — dan bahkan merusak: pandas 3.0 +
+pyarrow menolak numpy 1.x (`pyarrow requires NumPy 2.0 or newer`). Yang benar
+adalah memakai Python 3.11, karena pada target 3.11 baris bermasalah itu tidak
+pernah dibaca.
+
+Jangan menaikkan versi mypy — `ruff` dan `mypy` **dipin persis** di
+`requirements.txt` dengan sengaja: mypy 2.x tidak melaporkan `[import-untyped]`
+yang dilaporkan 1.11, sehingga gerbang mutu berubah diam-diam.
 
 ---
 
