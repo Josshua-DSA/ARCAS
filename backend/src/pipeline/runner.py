@@ -41,6 +41,26 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_PATH = Path("model/common/baseline_tfidf.joblib")
 SENTIMENT_VERSION = "v1"
 
+#: P0-3: urutan prioritas model ketika router menunjuk lebih dari satu model.
+#:
+#: Sebelumnya urutan ditentukan oleh urutan penulisan blok `if` tanpa `break`,
+#: sehingga model yang ditulis terakhir menang (FinBERT-EMAS selalu mengalahkan
+#: FOMC) dan perilaku bergantung pada posisi baris, bukan keputusan desain.
+#: Sekarang prioritas adalah data eksplisit dan dapat diuji.
+#:
+#: FOMC lebih dulu: stance The Fed adalah penggerak utama aset yang tercakup,
+#: jadi artikel yang membahas keputusan suku bunga dinilai dengan model yang
+#: memang dilatih untuk itu. FinBERT-EMAS menyusul untuk artikel emas murni.
+#:
+#: Kolom: (nama model, nama method loader, versi bawaan, `score_space`).
+#: `score_space="stance"` menandai skor sebagai hawkish/dovish (bukan arah
+#: harga) sehingga `TargetRouter` memetakan arah per aset; `"price"` berarti
+#: skor sudah berupa arah harga aset.
+MODEL_PRIORITY: tuple[tuple[str, str, str, str], ...] = (
+    ("fomc_roberta", "load_fomc_model", "fomc-roberta-v1.0", "stance"),
+    ("finbert_emas", "load_xau_model", "finbert-gold-v1.0", "price"),
+)
+
 
 class PipelineError(RuntimeError):
     """Kesalahan yang membuat pipeline tidak boleh lanjut diam-diam."""
@@ -162,9 +182,7 @@ class Pipeline:
     ) -> None:
         self.db = Database(db_path)
         self.db.init_schema()
-        self.router = TargetRouter(
-            aliases_path=aliases_path, impact_graph_path=impact_graph_path
-        )
+        self.router = TargetRouter(aliases_path=aliases_path, impact_graph_path=impact_graph_path)
         self.model_router = ModelRouter()
         self.model_path = Path(model_path)
         self.model: Optional[BaselineTfidfSentiment] = None
@@ -394,22 +412,29 @@ class Pipeline:
                 routed_models, _reason, _score = self.model_router.route(
                     text, source=article.source or ""
                 )
-                if "fomc_roberta" in routed_models:
-                    fomc = self.load_fomc_model()
-                    if fomc is not None:
-                        selected_model = fomc
-                        model_version = getattr(fomc, "model_version", "fomc-roberta-v1.0")
-
-                if "finbert_emas" in routed_models:
-                    # FR-6: router sudah lama menunjuk `finbert_emas`, tetapi
-                    # pipeline belum pernah memuatnya, sehingga artikel emas
-                    # tetap diskor baseline TF-IDF generik. Tanpa bobot
-                    # terlatih, `load_xau_model` mengembalikan None dan
-                    # pemilihan jatuh ke baseline seperti sebelumnya.
-                    xau = self.load_xau_model()
-                    if xau is not None:
-                        selected_model = xau
-                        model_version = getattr(xau, "model_version", "finbert-gold-v1.0")
+                # P0-3: pilih model menurut MODEL_PRIORITY, bukan urutan `if`.
+                # Model hanya dimuat bila benar-benar terpilih, sehingga
+                # FOMC (355M parameter) tidak lagi dimuat lalu dibuang saat
+                # FinBERT-EMAS menang.
+                score_space = "price"
+                for name, loader_name, default_version, space in MODEL_PRIORITY:
+                    if name not in routed_models:
+                        continue
+                    loader = getattr(self, loader_name)
+                    model = loader()
+                    if model is None:
+                        # Bobot tidak tersedia: coba kandidat berikutnya
+                        # alih-alih berhenti di sini.
+                        logger.info(
+                            "Model %s ditunjuk router tetapi tidak tersedia; "
+                            "mencoba kandidat prioritas berikutnya.",
+                            name,
+                        )
+                        continue
+                    selected_model = model
+                    model_version = getattr(model, "model_version", default_version)
+                    score_space = space
+                    break
 
                 if selected_model is None:
                     if baseline_model is None:
@@ -429,6 +454,10 @@ class Pipeline:
                             baseline_model = self.load_model()
                         selected_model = baseline_model
                         model_version = SENTIMENT_VERSION
+                        # Baseline TF-IDF adalah sentimen generik, bukan stance
+                        # The Fed: kembalikan ke ruang harga agar arah tidak
+                        # dipetakan lewat `stance_direction`.
+                        score_space = "price"
                         sentiment = selected_model.score_article(article.article_id, text)
                     else:
                         raise
@@ -438,6 +467,7 @@ class Pipeline:
                     sentiment_score=sentiment.score,
                     model_version=model_version,
                     model_router=self.model_router,
+                    score_space=score_space,
                 )
             except Exception as exc:  # noqa: BLE001
                 stats.errors.append(f"score {article.article_id}: {exc}")
