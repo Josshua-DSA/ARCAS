@@ -144,6 +144,23 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
   background:var(--bg-card);border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px;min-height:44px}
 .news-tools input{flex:2 1 240px} .news-tools select{flex:1 1 160px}
 .news-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:16px 18px;margin:12px 0}
+/* Overview: rubrik berita tanpa bingkai panel, dipisah garis atas tipis */
+.news-section{margin:34px 0 8px;padding-top:22px;border-top:1px solid var(--border-subtle)}
+.news-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.news-head h2{font-family:var(--font-sans);font-size:19px;font-weight:700;letter-spacing:-0.01em;
+  color:var(--text-primary);margin:0}
+.news-head .hint{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);margin:0}
+.news-section .state{font-family:var(--font-sans);font-size:13px;color:var(--text-secondary);
+  background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;margin:10px 0}
+/* Overview: daftar berita gaya rubrik editorial, tanpa kartu dan tanpa gambar */
+.news-item{padding:20px 0;border-bottom:1px solid var(--border-subtle)}
+.news-item:first-child{padding-top:6px}
+.news-item:last-child{border-bottom:0;padding-bottom:4px}
+.news-item h3{font-family:var(--font-sans);font-weight:700;font-size:23px;line-height:1.22;letter-spacing:-0.01em;
+  margin:0 0 8px;color:var(--text-primary)}
+.news-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.news-src{font-family:var(--font-sans);font-size:12.5px;color:var(--text-muted)}
+.news-item .news-note{font-family:var(--font-sans);font-size:14px;line-height:1.55;color:var(--text-secondary);margin:0}
 .news-note{font-family:var(--font-sans);font-size:14px;color:var(--text-secondary);margin:0}
 /* Paginasi berita: 5 per halaman, tombol 44px agar aman disentuh */
 .pager{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:14px}
@@ -230,6 +247,8 @@ footer a{color:var(--accent-text-on-dark)}
   .panel-body{padding:12px}
   #chart{height:300px}
   .news-card h3{font-size:19px}
+  .news-item h3{font-size:19px}
+  .news-src{margin-left:0;flex-basis:100%}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
   #targetTabs{display:flex;width:auto;margin:10px 14px}
   .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}

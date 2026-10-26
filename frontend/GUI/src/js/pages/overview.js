@@ -65,13 +65,16 @@
     var arrow = d === "bullish" ? "▲" : d === "bearish" ? "▼" : "●";
     var label = d === "bullish" ? "Bullish" : d === "bearish" ? "Bearish" : "Netral";
     var title = t.title || t.article_id;
-    return "<article class='news-card'>" +
-      "<div class='news-meta'><span>" + esc(t.source || "sumber belum terekam") + "</span>" +
-      "<span>" + esc(A.fmtDate(t.published_at) || "tanggal belum terekam") + "</span>" +
-      "<span class='chip " + cls + "'>" + arrow + " " + label + "</span></div>" +
+    var meta = [];
+    if (t.source) meta.push("<span>" + esc(t.source) + "</span>");
+    var when = A.fmtDate(t.published_at);
+    if (when) meta.push("<span>" + esc(when) + "</span>");
+    return "<article class='news-item'>" +
       "<h3>" + esc(title) + "</h3>" +
       (t.rationale ? "<p class='news-note'>" + esc(t.rationale) + "</p>" : "") +
-      "</article>";
+      "<div class='news-top'><span class='chip " + cls + "'>" + arrow + " " + label + "</span>" +
+      (meta.length ? "<span class='news-src'>" + meta.join(" · ") + "</span>" : "") +
+      "</div></article>";
   }
 
   function renderPager() {
