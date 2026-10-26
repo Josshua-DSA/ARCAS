@@ -152,32 +152,27 @@ window.ARCAS = window.ARCAS || {};
     });
   };
 
-  /* Widget alokasi bersama: bar baseline vs baru + validasi total persis 100.
-     Alasan validasi tampil: konstrain domain paling mudah dilanggar diam-diam. */
+  /* Widget alokasi bersama: bar baseline vs baru. Total tetap divalidasi
+     persis 100; kalau melenceng, state memberi tahu alih-alih diam. */
   A.renderAllocation = function (data) {
     var bars = $("allocBars");
     if (!bars) return;
     if (!data || !data.lines || !data.lines.length) {
       bars.innerHTML = "";
       showState("allocState", "Belum ada simulasi alokasi untuk profil ini.");
-      var t = $("allocTotalNum"); if (t) t.textContent = "n/a";
       return;
     }
-    showState("allocState", "");
     var total = data.lines.reduce(function (a, l) { return a + Number(l.new_pct || 0); }, 0);
     var ok = Math.abs(total - 100) < 0.01;
-    var totalBox = $("allocTotal");
-    totalBox.classList.toggle("valid", ok);
-    totalBox.classList.toggle("invalid", !ok);
-    $("allocTotalNum").textContent = total.toFixed(2) + "% " + (ok ? ": valid" : ": TIDAK valid");
+    showState("allocState", ok ? "" : "Total alokasi " + total.toFixed(2) + "%, seharusnya 100%.");
     bars.innerHTML = data.lines.map(function (l) {
       var d = Number(l.delta_pp || 0);
       var cls = d > 0.005 ? "pos" : d < -0.005 ? "neg" : "flat";
       var arrow = d > 0.005 ? "▲" : d < -0.005 ? "▼" : "●";
       var wBase = Math.max(0, Math.min(100, Number(l.baseline_pct || 0)));
       var wNew = Math.max(0, Math.min(100, Number(l.new_pct || 0)));
-      return "<div class='alloc-row'><div class='lbl'><span>" + esc(CLASS_LABEL[l.alloc_class] || l.alloc_class) +
-        "</span><span class='" + cls + "'>" + esc(wBase.toFixed(1)) + "% " + arrow + " " + fmt(d, 2) + " pp : " + esc(wNew.toFixed(1)) + "%</span></div>" +
+      return "<div class='alloc-row'><div class='lbl'><span class='alloc-name'>" + esc(CLASS_LABEL[l.alloc_class] || l.alloc_class) +
+        "</span><span class='alloc-val " + cls + "'>" + esc(wNew.toFixed(1)) + "% <span class='alloc-delta'>" + arrow + " " + fmt(d, 2) + " pp</span></span></div>" +
         "<div class='bar' role='img' aria-label='" + esc(l.alloc_class) + " baseline " + esc(wBase.toFixed(1)) + " persen, baru " + esc(wNew.toFixed(1)) + " persen'>" +
         "<div class='base' style='width:" + wBase + "%'></div><div class='tilt' style='width:" + wNew + "%;opacity:.85'></div></div></div>";
     }).join("");

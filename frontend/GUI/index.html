@@ -21,7 +21,7 @@
 <body>
 
 <div id="splash" class="splash" role="status" aria-live="polite" hidden>
-  <div class="splash__title">ARCAS <b>:</b> Sentiment Desk</div>
+  <div class="splash__title">ARCAS Sentiment Desk</div>
   <div class="splash__log" id="splash-log"></div>
   <div class="splash__bar"><i></i></div>
   <div class="splash__pct">0%</div>
@@ -32,7 +32,7 @@
 <header class="brand">
   <div class="wrap brand-row">
     <div>
-      <p class="brand-name">ARCAS <span>:</span> Sentiment Desk</p>
+      <p class="brand-name">ARCAS Sentiment Desk</p>
     </div>
   </div>
   <!-- Navigasi 4 halaman (Upgrade.md 3): tautan biasa, state dibawa URL.
@@ -73,7 +73,7 @@
     <p class="lead">Tiga pasar makro dalam satu bacaan harian: bagaimana berita membentuk sentimen, seberapa kuat sentimen bergerak bersama harga, dan bagaimana ia menggeser alokasi. Setiap angka bisa ditelusuri sampai kutipan aslinya, dan hari tanpa berita dibiarkan kosong, bukan diisi nol.</p>
   </section>
 
-  <div class="grid">
+  <div class="grid overview">
     <section class="panel dark" id="grafik" aria-labelledby="chartTitle">
       <div class="panel-head">
         <h2 id="chartTitle">Harga vs sentimen harian</h2>
@@ -96,9 +96,8 @@
     </section>
 
     <section class="panel light" id="alokasi" aria-labelledby="allocTitle">
-      <div class="panel-head"><h2 id="allocTitle">Strip alokasi profil aktif</h2><span class="hint">total wajib 100%</span></div>
+      <div class="panel-head"><h2 id="allocTitle">Strip alokasi profil aktif</h2></div>
       <div class="panel-body">
-        <div class="alloc-total" id="allocTotal"><span>Total alokasi baru</span><strong id="allocTotalNum">memuat...</strong></div>
         <div class="state" id="allocState" hidden></div>
         <div id="allocBars"></div>
         <a class="btn small" href="simulations.html" data-page="simulations.html">Ganti profil dan lihat persona di Simulations</a>
@@ -106,16 +105,14 @@
     </section>
   </div>
 
-  <section class="panel light" id="berita" aria-labelledby="newsTitle">
-    <div class="panel-head">
-      <h2 id="newsTitle">Berita yang berhasil dikumpulkan</h2>
+  <section class="news-section" id="berita" aria-labelledby="newsTitle">
+    <div class="news-head">
+      <h2 id="newsTitle">News</h2>
       <span class="hint" id="newsKick">memuat...</span>
     </div>
-    <div class="panel-body">
-      <div class="state" id="newsState" hidden></div>
-      <div id="newsList"></div>
-      <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
-    </div>
+    <div class="state" id="newsState" hidden></div>
+    <div id="newsList"></div>
+    <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
   </section>
 </main>
 

@@ -11,6 +11,26 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0}
+
+/* Motion: masuk halus per bagian, hover lembut, semua dimatikan saat
+   prefers-reduced-motion. Durasi pendek supaya tidak terasa lambat. */
+@keyframes arcas-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes arcas-fade{from{opacity:0}to{opacity:1}}
+.hero,.news-section,.panel{animation:arcas-rise .5s cubic-bezier(.22,.61,.36,1) both}
+.hero{animation-delay:.02s}
+.grid .panel:nth-child(1){animation-delay:.08s}
+.grid .panel:nth-child(2){animation-delay:.14s}
+.news-section{animation-delay:.2s}
+.news-item{animation:arcas-fade .45s ease both}
+.news-item:nth-child(1){animation-delay:.22s}
+.news-item:nth-child(2){animation-delay:.28s}
+.news-item:nth-child(3){animation-delay:.34s}
+.news-item:nth-child(4){animation-delay:.4s}
+.news-item:nth-child(5){animation-delay:.46s}
+@media (prefers-reduced-motion:reduce){
+  .hero,.news-section,.panel,.news-item{animation:none}
+  html{scroll-behavior:auto}
+}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
 /* Teks hanya untuk pembaca layar */
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
@@ -22,7 +42,6 @@ body{margin:0}
 header.brand{background:var(--surface)}
 .brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:26px 20px 22px;flex-wrap:wrap}
 .brand-name{font-family:var(--font-serif);font-weight:400;font-size:52px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
-.brand-name span{color:var(--accent-on-dark)}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
@@ -78,6 +97,18 @@ main{display:block}
 
 /* Grid asimetris: panel primer lebar, pendamping sempit (fokus baca deret dulu) */
 .grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:18px;margin:20px 0;align-items:start}
+/* Overview: grafik lebih dominan, strip alokasi memanjang setinggi grafik */
+.grid.overview{grid-template-columns:minmax(0,3.1fr) minmax(240px,0.82fr);align-items:stretch}
+.grid.overview > #alokasi{display:flex;flex-direction:column}
+.grid.overview > #alokasi .panel-body{display:flex;flex-direction:column;flex:1;gap:12px}
+.grid.overview > #alokasi #allocBars{display:flex;flex-direction:column;justify-content:space-between;flex:1;padding:0}
+.grid.overview > #alokasi .alloc-row{margin:0;flex:0 0 auto;min-height:0;padding:14px 0;border-bottom:1px solid var(--border-subtle)}
+.grid.overview > #alokasi .alloc-row:first-child{padding-top:2px}
+.grid.overview > #alokasi .alloc-row:last-child{border-bottom:0}
+.grid.overview > #alokasi .profile-row{margin-top:auto;padding-top:14px}
+.alloc-name{font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--text-primary)}
+.alloc-val{font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.alloc-delta{font-size:11.5px;opacity:.85;margin-left:2px}
 /* Varian urutan terbalik tanpa inline style (inline style kebal media query) */
 .grid.flip{grid-template-columns:minmax(300px,1fr) minmax(0,1.65fr)}
 .panel{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden}
@@ -108,16 +139,14 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
 .panel.light .pos{color:var(--up)} .panel.light .neg{color:var(--down)} .panel.light .flat{color:var(--hold)}
 .sig{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:1px 6px;margin-left:8px;white-space:nowrap}
 
-/* Alokasi: bar proporsional + angka, total 100 persen selalu tampil */
-.alloc-total{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg-sunken);
-  border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;margin-bottom:12px;
-  font-family:var(--font-mono);font-size:13px}
-.alloc-total.valid{border-color:var(--up)} .alloc-total.invalid{border-color:var(--down)}
-.alloc-row{margin:10px 0}
-.alloc-row .lbl{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;margin-bottom:5px}
-.bar{height:10px;border-radius:6px;background:var(--bg-sunken);position:relative;overflow:hidden;border:1px solid var(--border-subtle)}
-.bar .base{position:absolute;top:0;bottom:0;left:0;background:#BDB7B7;opacity:.55}
-.bar .tilt{position:absolute;top:0;bottom:0;background:var(--accent)}
+/* Alokasi: bar proporsional + angka. Tiap baris mengisi tinggi panel secara
+   merata (flex:1) supaya kartu tidak menyisakan ruang kosong di bawah. */
+.alloc-row{margin:10px 0;display:flex;flex-direction:column;justify-content:center;flex:1;min-height:52px}
+.alloc-row .lbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-family:var(--font-mono);font-size:12.5px;margin-bottom:7px}
+.bar{height:13px;border-radius:7px;background:var(--bg-sunken);position:relative;overflow:hidden;border:1px solid var(--border-subtle)}
+.bar .base{position:absolute;top:0;bottom:0;left:0;background:#BDB7B7;opacity:.55;transition:width .5s cubic-bezier(.22,.61,.36,1)}
+.bar .tilt{position:absolute;top:0;bottom:0;background:var(--accent);transition:width .5s cubic-bezier(.22,.61,.36,1)}
 .profile-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .profile-btn{font-family:var(--font-mono);font-size:12px;border:1px solid var(--border-strong);background:var(--bg-card);
   color:var(--text-primary);border-radius:8px;padding:8px 14px;min-height:44px;cursor:pointer}
@@ -143,6 +172,23 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
   background:var(--bg-card);border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px;min-height:44px}
 .news-tools input{flex:2 1 240px} .news-tools select{flex:1 1 160px}
 .news-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;padding:16px 18px;margin:12px 0}
+/* Overview: rubrik berita tanpa bingkai panel, dipisah garis atas tipis */
+.news-section{margin:34px 0 8px;padding-top:22px;border-top:1px solid var(--border-subtle)}
+.news-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.news-head h2{font-family:var(--font-sans);font-size:19px;font-weight:700;letter-spacing:-0.01em;
+  color:var(--text-primary);margin:0}
+.news-head .hint{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);margin:0}
+.news-section .state{font-family:var(--font-sans);font-size:13px;color:var(--text-secondary);
+  background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;margin:10px 0}
+/* Overview: daftar berita gaya rubrik editorial, tanpa kartu dan tanpa gambar */
+.news-item{padding:20px 0;border-bottom:1px solid var(--border-subtle)}
+.news-item:first-child{padding-top:6px}
+.news-item:last-child{border-bottom:0;padding-bottom:4px}
+.news-item h3{font-family:var(--font-sans);font-weight:700;font-size:23px;line-height:1.22;letter-spacing:-0.01em;
+  margin:0 0 8px;color:var(--text-primary)}
+.news-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.news-src{font-family:var(--font-sans);font-size:12.5px;color:var(--text-muted)}
+.news-item .news-note{font-family:var(--font-sans);font-size:14px;line-height:1.55;color:var(--text-secondary);margin:0}
 .news-note{font-family:var(--font-sans);font-size:14px;color:var(--text-secondary);margin:0}
 /* Paginasi berita: 5 per halaman, tombol 44px agar aman disentuh */
 .pager{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:14px}
@@ -228,8 +274,9 @@ footer a{color:var(--accent-text-on-dark)}
   .hero p.lead{text-align:left;font-size:17px;line-height:1.6}
   .panel-body{padding:12px}
   #chart{height:300px}
-  .alloc-total{font-size:12px}
   .news-card h3{font-size:19px}
+  .news-item h3{font-size:19px}
+  .news-src{margin-left:0;flex-basis:100%}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
   #targetTabs{display:flex;width:auto;margin:10px 14px}
   .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}
