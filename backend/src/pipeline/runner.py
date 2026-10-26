@@ -193,6 +193,8 @@ class Pipeline:
         self.last_duplicate_review: list[tuple[str, str, float]] = []
         #: Peringatan non-fatal (mis. riwayat dedup tak terbaca).
         self.last_warnings: list[str] = []
+        #: Audit P1-1: jejak degradasi model (fallback diam-diam ke baseline).
+        self._degradasi: list[str] = []
 
     # ------------------------------------------------------------------
     # Setup
@@ -256,22 +258,43 @@ class Pipeline:
             return None
 
     def load_fomc_model(self) -> Optional[Any]:
-        """Memuat model spesialis FOMC-RoBERTa secara lazy."""
+        """Memuat model spesialis FOMC-RoBERTa secara lazy.
+
+        Audit P1-1: kegagalan memuat model ini TIDAK boleh diam. Sebelumnya
+        kegagalan hanya menghasilkan `logger.warning` lalu pipeline memakai
+        baseline TF-IDF, sehingga laporan bisa menyajikan akurasi baseline
+        (57,98%) seolah-olah hasil model spesialis (86,87%) tanpa tanda apa
+        pun di output. Sekarang kegagalan juga dicatat ke `self._degradasi`
+        yang dimasukkan ke `PipelineStats.errors`, sehingga muncul di
+        `ringkas()` yang dicetak CLI -- bukan hanya di log yang mudah terlewat.
+        """
         if self.fomc_model is not None:
             return self.fomc_model
         try:
             import importlib.util
 
             if not (importlib.util.find_spec("torch") and importlib.util.find_spec("transformers")):
-                logger.info("PyTorch / Transformers tidak terpasang. Fallback ke baseline.")
+                self._catat_degradasi(
+                    "FOMC: PyTorch/Transformers tidak terpasang -> baseline TF-IDF"
+                )
                 return None
             from model.fomc.src.model import FOMCRoBERTaSentiment
 
             self.fomc_model = FOMCRoBERTaSentiment()
             return self.fomc_model
         except Exception as exc:
-            logger.warning("FOMC-RoBERTa gagal dimuat: %s. Fallback ke baseline.", exc)
+            self._catat_degradasi(f"FOMC: RoBERTa gagal dimuat -> baseline TF-IDF ({exc})")
             return None
+
+    def _catat_degradasi(self, pesan: str) -> None:
+        """Catat bahwa pipeline berjalan dengan model yang lebih lemah.
+
+        Degradasi yang tidak terlihat adalah masalah utama audit P1-1: hasil
+        run bisa dilaporkan tanpa pembaca tahu bahwa model spesialis tidak
+        aktif. Pesan disimpan agar bisa ditampilkan di ringkasan run.
+        """
+        logger.warning("DEGRADASI: %s", pesan)
+        self._degradasi.append(pesan)
 
     # ------------------------------------------------------------------
     # Tahap 1: normalisasi
@@ -491,6 +514,11 @@ class Pipeline:
 
             all_impacts.extend(impacts)
 
+        # Audit P1-1: sertakan degradasi model pada ringkasan pemanggil.
+        for pesan in self._degradasi:
+            if pesan not in stats.errors:
+                stats.errors.append(pesan)
+
         return all_impacts, stats
 
     @staticmethod
@@ -583,4 +611,6 @@ class Pipeline:
         articles, stats = self.normalize_raw(limit=limit, dry_run=dry_run, stats=stats)
         impacts, stats = self.score_and_route(articles, dry_run=dry_run, stats=stats)
         stats = self.aggregate(impacts, articles, dry_run=dry_run, stats=stats)
+        # Audit P1-1: jangan biarkan degradasi model hilang dari ringkasan run.
+        stats.errors.extend(self._degradasi)
         return stats
