@@ -14,12 +14,16 @@ authors = [
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q"
+addopts = "-ra -q -m 'not slow and not network'"
 testpaths = [
     "backend/tests",
 ]
 pythonpath = [
     ".",
+]
+markers = [
+    "slow: test yang memuat model nyata (>1 GB) sehingga lambat",
+    "network: test yang butuh unduhan HuggingFace / akses internet",
 ]
 
 [tool.ruff]
