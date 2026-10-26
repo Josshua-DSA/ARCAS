@@ -95,12 +95,19 @@ FInews/
 
 ## 🚀 Panduan Memulai (Quickstart)
 
+> Kontributor baru: baca **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup venv,
+> konvensi commit, aturan yang tidak boleh dilanggar, dan cara memakai code
+> graph. Ringkasan di bawah hanya jalur cepatnya.
+
 ### 1. Prasyarat & Instalasi
 
 Gunakan Python 3.11+. Pasang dependensi:
 
 ```bash
+python -m venv venv
+source venv/bin/activate        # Windows: .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+cp .env.example .env            # isi kunci API yang Anda punya
 ```
 
 ### 2. Menjalankan Unit Test
