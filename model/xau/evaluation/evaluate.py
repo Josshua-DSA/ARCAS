@@ -41,13 +41,75 @@ ROOT = Path(__file__).resolve().parents[3]
 LABELS = [LABEL_TO_TONE[i] for i in range(3)]
 
 
+def softmax_with_temperature(z: np.ndarray, t: float = 1.0) -> np.ndarray:
+    """Softmax dengan suhu `t`. `t=1.0` = softmax biasa.
+
+    Diangkat dari dalam `evaluate()` agar bisa diuji tanpa memuat model.
+    `max(t, 1e-6)` mencegah pembagian nol bila suhu hasil kalibrasi rusak.
+    """
+    z = z / max(t, 1e-6)
+    z = z - z.max(axis=1, keepdims=True)
+    e = np.exp(z)
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def build_report(
+    y_true: np.ndarray,
+    logits: np.ndarray,
+    temperature: float,
+    ece_pre: float,
+    ece_post: float,
+) -> dict[str, Any]:
+    """Rakit laporan evaluasi dari prediksi & probabilitas yang sudah dihitung.
+
+    Dipisah dari `evaluate()` (yang memuat model 440 MB) supaya seluruh
+    perhitungan yang menghasilkan angka laporan dapat diuji tanpa GPU/jaringan.
+    Sebelum pemisahan ini, `model/xau/evaluation/evaluate.py` 0% teruji
+    (audit P1-5): angka macro-F1/ECE yang masuk bab evaluasi tidak diverifikasi
+    oleh test apa pun.
+    """
+    from sklearn.metrics import classification_report, confusion_matrix, f1_score
+
+    y_pred = logits.argmax(axis=1)
+    macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+    acc = float((y_pred == y_true).mean())
+
+    report = classification_report(
+        y_true, y_pred, labels=[0, 1, 2], target_names=LABELS, zero_division=0, output_dict=True
+    )
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
+
+    return {
+        "n_test": int(len(y_true)),
+        "accuracy": round(acc, 6),
+        "macro_f1": round(macro_f1, 6),
+        "temperature": temperature,
+        "ece_pre": round(ece_pre, 6),
+        "ece_post": round(ece_post, 6),
+        "ece_target": 0.1,
+        "meets_target": bool(ece_post <= 0.1),
+        "per_class": {
+            tone: {
+                "precision": round(float(report[tone]["precision"]), 6),
+                "recall": round(float(report[tone]["recall"]), 6),
+                "f1": round(float(report[tone]["f1-score"]), 6),
+                "support": int(report[tone]["support"]),
+            }
+            for tone in LABELS
+        },
+        "confusion_matrix": {
+            "labels": LABELS,
+            "rows_true_cols_pred": cm.tolist(),
+        },
+    }
+
+
 def evaluate(
     checkpoint_dir: Path = DEFAULT_CHECKPOINT_DIR,
     temperature_path: Path = DEFAULT_TEMPERATURE_PATH,
     batch_size: int = 32,
 ) -> dict[str, Any]:
     import torch
-    from sklearn.metrics import classification_report, confusion_matrix, f1_score
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
     from model.fomc.src.calibrator import TemperatureScaler, compute_multiclass_ece
@@ -79,54 +141,24 @@ def evaluate(
             all_logits.append(model(**enc).logits.cpu().numpy())
     logits = np.vstack(all_logits)
 
-    y_pred = logits.argmax(axis=1)
-    macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
-    acc = float((y_pred == y_true).mean())
-
-    def _softmax(z: np.ndarray, t: float = 1.0) -> np.ndarray:
-        z = z / max(t, 1e-6)
-        z = z - z.max(axis=1, keepdims=True)
-        e = np.exp(z)
-        return e / e.sum(axis=1, keepdims=True)
-
-    ece_pre = float(compute_multiclass_ece(_softmax(logits), y_true))
+    ece_pre = float(compute_multiclass_ece(softmax_with_temperature(logits), y_true))
 
     ece_post = ece_pre
     temp = 1.0
+    probs_post = softmax_with_temperature(logits)
     if Path(temperature_path).exists():
         scaler = TemperatureScaler.load(temperature_path)
         temp = float(scaler.temperature)
-        ece_post = float(compute_multiclass_ece(scaler.predict_proba(logits), y_true))
+        probs_post = scaler.predict_proba(logits)
+        ece_post = float(compute_multiclass_ece(probs_post, y_true))
 
-    report = classification_report(
-        y_true, y_pred, labels=[0, 1, 2], target_names=LABELS, zero_division=0, output_dict=True
+    return build_report(
+        y_true=y_true,
+        logits=logits,
+        temperature=temp,
+        ece_pre=ece_pre,
+        ece_post=ece_post,
     )
-    cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
-
-    result: dict[str, Any] = {
-        "n_test": int(len(y_true)),
-        "accuracy": round(acc, 6),
-        "macro_f1": round(macro_f1, 6),
-        "temperature": temp,
-        "ece_pre": round(ece_pre, 6),
-        "ece_post": round(ece_post, 6),
-        "ece_target": 0.1,
-        "meets_target": bool(ece_post <= 0.1),
-        "per_class": {
-            tone: {
-                "precision": round(float(report[tone]["precision"]), 6),
-                "recall": round(float(report[tone]["recall"]), 6),
-                "f1": round(float(report[tone]["f1-score"]), 6),
-                "support": int(report[tone]["support"]),
-            }
-            for tone in LABELS
-        },
-        "confusion_matrix": {
-            "labels": LABELS,
-            "rows_true_cols_pred": cm.tolist(),
-        },
-    }
-    return result
 
 
 def _print_summary(r: dict[str, Any]) -> None:
