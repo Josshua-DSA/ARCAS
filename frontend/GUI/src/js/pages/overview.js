@@ -23,8 +23,6 @@
     var scores = dates.map(function (d) { var v = byDate[d].score; return v == null ? null : Math.round(v * 1000) / 1000; });
     var gapCount = scores.filter(function (v) { return v === null; }).length;
 
-    A.$("targetMeta").textContent = "Target: " + A.state.target + " : " + info.name + " (" + info.ticker + ")";
-    A.$("rangeMeta").textContent = "Rentang: " + A.state.days + " hari terakhir";
     A.$("lgPrice").style.background = info.color;
 
     if (!chart) { A.showState("chartState", "Pustaka grafik lokal belum termuat (src/js/echarts.min.js). Periksa path file."); return; }
@@ -51,27 +49,83 @@
           itemStyle: { color: "#F6F4F4", opacity: 0.85 }, barMaxWidth: 5 }
       ]
     }, true);
-    var last = scores.filter(function (v) { return v !== null; }).slice(-1)[0];
-    A.$("heroKicker").textContent = "Ringkasan " + A.state.target + " : skor terakhir " + (last == null ? "n/a (hari tanpa berita)" : A.fmt(last) + (last > 0.1 ? " condong bullish" : last < -0.1 ? " condong bearish" : " netral"));
   }
 
   function isoDaysAgo(n) { return new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10); }
 
-  /* Berita teratas: tabel tiga baris dari dampak terbaru. Card lengkap + bukti
-     ada di halaman Evidence; pembawa query mengetahui target/rentang aktif. */
-  function renderTop(rows) {
-    var top = (rows || []).slice(0, 3);
-    var box = A.$("topList");
-    box.innerHTML = top.length ? "<table class='data'><thead><tr><th>Judul</th><th>Arah</th><th>Conf</th></tr></thead><tbody>" +
-      top.map(function (t) {
-        var cls = String(t.direction) === "bullish" ? "pos" : String(t.direction) === "bearish" ? "neg" : "flat";
-        var arrow = String(t.direction) === "bullish" ? "▲" : String(t.direction) === "bearish" ? "▼" : "●";
-        return "<tr><td>" + esc((t.title || t.article_id).slice(0, 64)) + "</td><td class='" + cls + "'>" + arrow + " " + esc(t.direction) + "</td><td>" + esc(Number(t.confidence || 0).toFixed(2)) + "</td></tr>";
-      }).join("") + "</tbody></table>"
-      : "";
-    A.showState("topState", top.length ? "" : "Belum ada berita berdampak.");
-    var kicker = A.$("topKick");
-    if (kicker) kicker.textContent = "menampilkan 3 teratas" + ((rows || []).length > top.length ? " dari " + rows.length + " dampak" : "");
+  /* Daftar berita + paginasi 5 per halaman. Halaman disimpan di memori;
+     mengubah target/rentang mengembalikan ke halaman 1. */
+  var newsPage = 1;
+  var newsRows = [];
+  var NEWS_PER_PAGE = 5;
+
+  function newsItem(t) {
+    var d = String(t.direction || "neutral").toLowerCase();
+    var cls = d === "bullish" ? "buy" : d === "bearish" ? "sell" : "hold";
+    var arrow = d === "bullish" ? "▲" : d === "bearish" ? "▼" : "●";
+    var label = d === "bullish" ? "Bullish" : d === "bearish" ? "Bearish" : "Netral";
+    var title = t.title || t.article_id;
+    return "<article class='news-card'>" +
+      "<div class='news-meta'><span>" + esc(t.source || "sumber belum terekam") + "</span>" +
+      "<span>" + esc(A.fmtDate(t.published_at) || "tanggal belum terekam") + "</span>" +
+      "<span class='chip " + cls + "'>" + arrow + " " + label + "</span></div>" +
+      "<h3>" + esc(title) + "</h3>" +
+      (t.rationale ? "<p class='news-note'>" + esc(t.rationale) + "</p>" : "") +
+      "</article>";
+  }
+
+  function renderPager() {
+    var pager = A.$("newsPager");
+    if (!pager) return;
+    var pages = Math.ceil(newsRows.length / NEWS_PER_PAGE);
+    if (pages <= 1) { pager.hidden = true; pager.innerHTML = ""; return; }
+    var buttons = [];
+    for (var i = 1; i <= pages; i++) {
+      buttons.push("<button type='button' class='pager-btn' data-page-no='" + i + "'" +
+        (i === newsPage ? " aria-current='page'" : "") + ">" + i + "</button>");
+    }
+    pager.innerHTML = "<button type='button' class='pager-btn' data-step='-1'" +
+      (newsPage === 1 ? " disabled" : "") + " aria-label='Halaman sebelumnya'>Sebelumnya</button>" +
+      buttons.join("") +
+      "<button type='button' class='pager-btn' data-step='1'" +
+      (newsPage === pages ? " disabled" : "") + " aria-label='Halaman berikutnya'>Berikutnya</button>";
+    pager.hidden = false;
+  }
+
+  function renderNewsPage() {
+    var box = A.$("newsList");
+    if (!box) return;
+    var from = (newsPage - 1) * NEWS_PER_PAGE;
+    var slice = newsRows.slice(from, from + NEWS_PER_PAGE);
+    box.innerHTML = slice.length ? slice.map(newsItem).join("")
+      : "<p class='hint'>Tidak ada berita pada halaman ini.</p>";
+    var kick = A.$("newsKick");
+    if (kick) {
+      kick.textContent = newsRows.length
+        ? "menampilkan " + (from + 1) + "-" + (from + slice.length) + " dari " + newsRows.length
+        : "belum ada berita";
+    }
+    renderPager();
+  }
+
+  function renderNews(rows) {
+    newsRows = rows || [];
+    newsPage = 1;
+    A.showState("newsState", newsRows.length ? "" : "Belum ada berita terkumpul untuk target ini.");
+    renderNewsPage();
+  }
+
+  function bindPager() {
+    var pager = A.$("newsPager");
+    if (!pager) return;
+    pager.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-page-no],button[data-step]");
+      if (!btn || btn.disabled) return;
+      var pages = Math.ceil(newsRows.length / NEWS_PER_PAGE);
+      if (btn.dataset.pageNo) newsPage = Number(btn.dataset.pageNo);
+      else newsPage = Math.min(pages, Math.max(1, newsPage + Number(btn.dataset.step)));
+      renderNewsPage();
+    });
   }
 
   function renderAll() {
@@ -79,9 +133,8 @@
     var end = new Date().toISOString().slice(0, 10);
     var start = isoDaysAgo(A.state.days);
     A.showState("chartState", "Memuat deret " + t + "...");
-    A.showState("statState", "Memuat uji statistik...");
     A.showState("allocState", "Memuat strip alokasi...");
-    A.showState("topState", "Memuat berita teratas...");
+    A.showState("newsState", "Memuat berita...");
 
     A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end).then(function (payload) {
       A.state.apiOk = true; A.state.apiReachable = true; A.setStatus("ok", "terhubung ke API");
@@ -91,13 +144,6 @@
       renderChart(A.demoSeries(t, A.state.days));
     });
 
-    A.api("/api/stats/" + t).then(function (rows) { A.renderStats(rows, "Belum ada hasil uji untuk target ini. Jalankan pipeline analyze dulu."); })
-      .catch(function () {
-        A.renderStats([{ test: "spearman", market_metric: "return", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", market_metric: "return", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", market_metric: "return", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", market_metric: "abnormal_return", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }]);
-        /* Setelah renderStats, bukan sebelum: renderStats mengosongkan state di awal. */
-        A.showState("statState", "API statistik tidak terjangkau : tabel ini ilustrasi berlabel, bukan hasil uji nyata.");
-      });
-
     A.api("/api/allocation?profile_id=" + A.state.profile + "&article_id=current_market").then(A.renderAllocation)
       .catch(function () {
         A.renderAllocation({ lines: [
@@ -105,16 +151,19 @@
           { alloc_class: "mutual_fund", baseline_pct: 15, new_pct: 15, delta_pp: 0, confidence: 0.5 },
           { alloc_class: "stock", baseline_pct: 15, new_pct: 14, delta_pp: -1, confidence: 0.65 },
           { alloc_class: "etf", baseline_pct: 20, new_pct: 19, delta_pp: -1, confidence: 0.8 },
-          { alloc_class: "btc", baseline_pct: 5, new_pct: 5, delta_pp: 0, confidence: 0.4 },
           { alloc_class: "gold", baseline_pct: 5, new_pct: 5, delta_pp: 0, confidence: 0.7 }
         ]});
         A.showState("allocState", "API alokasi tidak terjangkau, ilustrasi berlabel (total tetap 100%).");
       });
 
-    A.api("/api/impacts/" + t + "?limit=6").then(renderTop)
-      .catch(function () { renderTop(A.demoImpacts(t)); });
+    A.api("/api/impacts/" + t + "?limit=60").then(renderNews)
+      .catch(function () {
+        renderNews(A.demoImpacts(t));
+        A.showState("newsState", "API berita tidak terjangkau : daftar ini ilustrasi berlabel.");
+      });
   }
 
+  bindPager();
   A.renderPage = renderAll;
-  A.boot("Ringkasan hari ini : data berjalan");
+  A.boot();
 })(window.ARCAS);

@@ -157,6 +157,6 @@
   A.$("wbMetric").addEventListener("change", function () { updateWorkbenchControls(storedRows); });
   A.$("wbRun").addEventListener("click", runWorkbench);
   A.renderPage = renderAll;
-  A.boot("Meja riset : data berjalan");
+  A.boot();
   renderQuality(A.demoQuality()); /* stats boot akan dipanggil: kualitas mock tetap satu kali */
 })(window.ARCAS);

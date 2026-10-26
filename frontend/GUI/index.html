@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ARCAS : Market Overview (XAU, RATE_UST, SPX)</title>
+<title>ARCAS : Market Overview</title>
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
@@ -28,35 +28,11 @@
   <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
 </div>
 
-<div class="disclaimer-strip" role="note" aria-label="Peringatan risiko">
-  <div class="wrap">
-    <span><strong>Simulasi analitis.</strong> Bukan nasihat investasi. Angka dan stance persona adalah hasil kode deterministik, bukan ajakan transaksi.</span>
-    <span id="dataBadge">memuat status data...</span>
-  </div>
-</div>
 
 <header class="brand">
   <div class="wrap brand-row">
     <div>
       <p class="brand-name">ARCAS <span>:</span> Sentiment Desk</p>
-      <p class="brand-sub">FinNews deterministik : 3 target inti terkunci : tanpa model generatif</p>
-    </div>
-    <div class="status-badge" role="status" aria-live="polite">
-      <span class="dot loading" id="statusDot" aria-hidden="true"></span>
-      <span id="statusText">menghubungi API...</span>
-    </div>
-  </div>
-  <!-- Data Provenance Bar (Upgrade.md UI-01): identitas sumber, versi, dan kesegaran.
-       Mode data live/empty selalu terbaca teksnya, bukan cuma warna titik. -->
-  <div class="provenance" id="provenance" aria-label="Provenance data">
-    <div class="wrap prov-row">
-      <span class="prov-item"><strong id="provMode">mode : menunggu</strong></span>
-      <span class="prov-item">versi universe <span id="provUniverse">n/a</span></span>
-      <span class="prov-item">skema <span id="provSchema">n/a</span></span>
-      <span class="prov-item">model <span id="provModel">n/a</span></span>
-      <span class="prov-item">artikel <span id="provArticles">n/a</span></span>
-      <span class="prov-item">hari berita <span id="provNews">n/a</span></span>
-      <span class="prov-item">segar <span id="provFresh">n/a</span></span>
     </div>
   </div>
   <!-- Navigasi 4 halaman (Upgrade.md 3): tautan biasa, state dibawa URL.
@@ -72,32 +48,29 @@
 </header>
 
 <div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
-  <div class="wrap" id="targetTabs">
-    <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-      <img class="ticon" src="src/assets/gold.svg" alt="">
-      <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
-    </button>
-    <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-      <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-      <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
-    </button>
-    <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-      <img class="ticon" src="src/assets/spx.svg" alt="">
-      <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
-    </button>
+  <div class="wrap">
+    <div id="targetTabs">
+      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+        <img class="ticon" src="src/assets/gold.svg" alt="">
+        <span class="tick">Emas</span>
+      </button>
+      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+        <span class="tick">Suku Bunga</span>
+      </button>
+      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+        <img class="ticon" src="src/assets/spx.svg" alt="">
+        <span class="tick">S&amp;P 500</span>
+      </button>
+    </div>
+    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
   </div>
 </div>
 
 <main class="wrap">
   <section class="hero" aria-labelledby="heroTitle">
-    <p class="kicker" id="heroKicker">Ringkasan hari ini : data berjalan</p>
     <h1 id="heroTitle">Arah sentimen tiga pasar makro, dibaca dari beritanya lalu diuji ke harganya.</h1>
-    <p class="lead">Halaman ini ringkasan: grafik, statistik ringkas, strip alokasi, dan berita teratas. Bukti kutipan ada di News &amp; Evidence, meja kerjanya di Research Lab, simulasi penuhnya di Simulations. Hari tanpa berita tampil sebagai jeda, bukan nol.</p>
-    <div class="hero-meta">
-      <span id="targetMeta">Target: XAU : Emas</span>
-      <span id="rangeMeta">Rentang: 90 hari terakhir</span>
-      <span id="srcMeta">Sumber: API lokal</span>
-    </div>
+    <p class="lead">Tiga pasar makro dalam satu bacaan harian: bagaimana berita membentuk sentimen, seberapa kuat sentimen bergerak bersama harga, dan bagaimana ia menggeser alokasi. Setiap angka bisa ditelusuri sampai kutipan aslinya, dan hari tanpa berita dibiarkan kosong, bukan diisi nol.</p>
   </section>
 
   <div class="grid">
@@ -122,23 +95,6 @@
       </div>
     </section>
 
-    <section class="panel dark" id="statistik" aria-labelledby="statTitle">
-      <div class="panel-head">
-        <h2 id="statTitle">Keterkaitan sentimen dan pasar</h2>
-        <span class="hint">asosiasi, bukan bukti sebab</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="statState" hidden></div>
-        <div id="statTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n = jumlah observasi.
-        </p>
-        <a class="btn small" href="research.html" data-page="research.html">Meja kerja + periode uji di Research Lab</a>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid flip">
     <section class="panel light" id="alokasi" aria-labelledby="allocTitle">
       <div class="panel-head"><h2 id="allocTitle">Strip alokasi profil aktif</h2><span class="hint">total wajib 100%</span></div>
       <div class="panel-body">
@@ -148,22 +104,25 @@
         <a class="btn small" href="simulations.html" data-page="simulations.html">Ganti profil dan lihat persona di Simulations</a>
       </div>
     </section>
-
-    <section class="panel dark" id="ringkasBerita" aria-labelledby="topTitle">
-      <div class="panel-head"><h2 id="topTitle">Berita berdampak teratas</h2><span class="hint" id="topKick">memuat...</span></div>
-      <div class="panel-body">
-        <div class="state" id="topState" hidden></div>
-        <div id="topList"></div>
-        <a class="btn small" href="evidence.html" data-page="evidence.html">Bukti kutipan + persona di Evidence</a>
-      </div>
-    </section>
   </div>
+
+  <section class="panel light" id="berita" aria-labelledby="newsTitle">
+    <div class="panel-head">
+      <h2 id="newsTitle">Berita yang berhasil dikumpulkan</h2>
+      <span class="hint" id="newsKick">memuat...</span>
+    </div>
+    <div class="panel-body">
+      <div class="state" id="newsState" hidden></div>
+      <div id="newsList"></div>
+      <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap">
     <span>ARCAS Sentiment Desk : simulasi sudut pandang. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (XAU, RATE_UST, SPX) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
   </div>
 </footer>
 

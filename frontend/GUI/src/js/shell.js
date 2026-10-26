@@ -10,7 +10,7 @@ window.ARCAS = window.ARCAS || {};
      dari respons /api/universe, bukan dari konstanta lokal ini. */
   var TARGET_INFO = {
     XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg" },
-    RATE_UST: { name: "Yield UST 10Y", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
+    RATE_UST: { name: "Suku Bunga", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
     SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg" }
   };
   A.TARGET_INFO = TARGET_INFO;
@@ -76,17 +76,18 @@ window.ARCAS = window.ARCAS || {};
     return "<span class='chip hold'>● HOLD " + dots + "</span>";
   };
 
-  /* Status API + splash: teks hanya muncul untuk tahap yang benar-benar terjadi.
-     mode: "loading" (spinner) | "ok" (hijau + ping) | "err" (merah) | "warn". */
+  /* Status data diumumkan ke pembaca layar saja: pita visualnya dihapus.
+     Region aria-live dibuat sekali di sini supaya tidak ada penanda kosong di HTML. */
+  var live = null;
   function setStatus(mode, text) {
-    var dot = $("statusDot");
-    var known = { loading: 1, ok: 1, err: 1, warn: 1 };
-    if (dot) dot.className = "dot" + (known[mode] ? " " + mode : "");
-    if (dot && dot.parentNode) dot.parentNode.setAttribute("aria-busy", mode === "loading" ? "true" : "false");
-    var sText = $("statusText"); if (sText) sText.textContent = text;
-    var badge = $("dataBadge"); if (badge) badge.textContent = text;
-    var src = $("srcMeta");
-    if (src) src.textContent = "Sumber: " + (A.state.apiOk ? (A.state.apiBase === "" ? "API relatif" : A.state.apiBase) : "ilustrasi lokal (API tidak terjangkau)");
+    if (!live) {
+      live = document.createElement("p");
+      live.className = "sr-only";
+      live.setAttribute("role", "status");
+      live.setAttribute("aria-live", "polite");
+      document.body.appendChild(live);
+    }
+    live.textContent = text;
   }
   function splashStatus(text) {
     if (window.Splash && typeof window.Splash.status === "function") window.Splash.status(text);
@@ -96,37 +97,58 @@ window.ARCAS = window.ARCAS || {};
   }
   A.setStatus = setStatus;
 
-  /* Data Provenance Bar (UI-01): mode live/empty/demo selalu terbaca teks. */
-  A.renderProvenance = function (meta) {
-    var box = $("provenance");
-    if (!box) return;
-    if (!meta) {
-      $("provMode").textContent = "demo : ilustrasi lokal (API tidak terjangkau)";
-      box.querySelector(".prov-item").classList.add("warn");
-      ["provUniverse", "provSchema", "provModel", "provArticles", "provNews", "provFresh"]
-        .forEach(function (id) { $(id).textContent = "ilustrasi"; });
-      return;
-    }
-    box.querySelector(".prov-item").classList.remove("warn");
-    $("provMode").textContent = "mode : " + meta.mode;
-    $("provUniverse").textContent = meta.universe_version || "n/a";
-    $("provSchema").textContent = meta.schema_version || "n/a";
-    $("provModel").textContent = (meta.model_version || "n/a") + (meta.calibrated ? " (terkalibrasi)" : " (belum kalibrasi)");
-    $("provArticles").textContent = String(meta.coverage.articles);
-    $("provNews").textContent = String(meta.coverage.days_with_news);
-    var fresh = meta.coverage.last_price_date || meta.coverage.last_news_date;
-    $("provFresh").textContent = fresh ? "harga " + fresh : "belum ada deret";
-  };
+  /* Metadata disimpan di state untuk halaman yang butuh (kualitas data,
+     versi di Simulations). Bar provenance visual sudah dihapus. */
   A.loadMeta = function () {
     splashStatus("MEMUAT METADATA");
     return A.api("/api/meta").then(function (meta) {
       A.state.meta = meta;
-      A.renderProvenance(meta);
       return meta;
     }).catch(function () {
       A.state.meta = null;
-      A.renderProvenance(null);
       return null;
+    });
+  };
+
+  /* Pita harga di ujung nav: perubahan dihitung dari dua penutupan terakhir.
+     Bukan prediksi. Data yang tidak ada ditulis "n/a", tidak pernah nol. */
+  function fmtPrice(v) {
+    return Number(v).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  A.loadTicker = function () {
+    var box = $("ticker");
+    if (!box) return Promise.resolve();
+    var ids = Object.keys(TARGET_INFO);
+    var start = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
+    var jobs = ids.map(function (id) {
+      if (A.state.apiReachable === false) return Promise.resolve({ id: id, prices: [] });
+      return A.api("/api/series/" + id + "?start_date=" + start).then(function (payload) {
+        return { id: id, prices: (payload && payload.prices) || [] };
+      }).catch(function () { return { id: id, prices: [] }; });
+    });
+    return Promise.all(jobs).then(function (rows) {
+      var lastDate = "";
+      var parts = rows.map(function (row) {
+        var info = TARGET_INFO[row.id];
+        var prices = row.prices || [];
+        var last = prices[prices.length - 1];
+        var prev = prices[prices.length - 2];
+        if (!last) {
+          return "<span class='t'><span class='t-name'>" + esc(info.name) + "</span><span class='t-val'>n/a</span></span>";
+        }
+        var date = String(last.date).slice(0, 10);
+        if (date > lastDate) lastDate = date;
+        var close = Number(last.close);
+        var chg = prev ? (close - Number(prev.close)) / Number(prev.close) * 100 : null;
+        var dir = chg === null ? "flat" : chg > 0 ? "up" : chg < 0 ? "down" : "flat";
+        var arrow = dir === "up" ? "\u25B2" : dir === "down" ? "\u25BC" : "\u25CF";
+        var chgText = chg === null ? "n/a" : arrow + " " + (chg > 0 ? "+" : "") + chg.toFixed(2).replace(".", ",") + "%";
+        return "<span class='t'><span class='t-name'>" + esc(info.name) + "</span>" +
+          "<span class='t-val'>" + esc(fmtPrice(close)) + "</span>" +
+          "<span class='t-chg " + dir + "'>" + esc(chgText) + "</span></span>";
+      });
+      if (lastDate) parts.push("<span class='t t-date'>data per " + esc(lastDate) + "</span>");
+      box.innerHTML = parts.join("");
     });
   };
 
@@ -268,8 +290,7 @@ window.ARCAS = window.ARCAS || {};
       var sel = id === A.state.target ? "true" : "false";
       return "<button class='target-tab' role='tab' data-target='" + esc(id) + "' aria-selected='" + sel + "'>" +
         visualTarget(info) +
-        "<span><span class='tick'>" + esc(id) + "</span>" +
-        "<span class='meta'>" + esc(info.name) + " : " + esc(info.ticker) + " : " + esc(info.venue) + "</span></span></button>";
+        "<span class='tick'>" + esc(info.name) + "</span></button>";
     }).join("");
     var active = rows.filter(function (r) { return r.asset_id === A.state.target; });
     if (!active.length && rows.length) { A.state.target = rows[0].asset_id; } /* target URL tidak dikenal: pilih pertama */
@@ -310,18 +331,14 @@ window.ARCAS = window.ARCAS || {};
       }
     });
   }
-  A.loadUniverse = function (heroIdle) {
+  A.loadUniverse = function () {
     splashStatus("MEMUAT UNIVERSE");
     return A.api("/api/universe").then(function (rows) {
       var active = (rows || []).filter(function (r) { return r.active === 1 || r.active === true; });
       if (!active.length) throw new Error("universe kosong");
       renderTabs(active);
-      var kick = $("heroKicker");
-      if (kick && heroIdle) kick.textContent = heroIdle;
     }).catch(function () {
       renderTabs([{ asset_id: "XAU" }, { asset_id: "RATE_UST" }, { asset_id: "SPX" }]);
-      var kick = $("heroKicker");
-      if (kick && heroIdle) kick.textContent = heroIdle + " : ilustrasi lokal (API tidak terjangkau)";
     });
   };
   /* Kontrol rentang dan profil dipakai beberapa halaman; markup opsional. */
@@ -366,14 +383,14 @@ window.ARCAS = window.ARCAS || {};
 
   /* Boot bersama: base dulu, meta + universe paralel, lalu render halaman dan
      tutup splash. Tidak ada log palsu: status hanya untuk tahap nyata. */
-  A.boot = function (heroIdle) {
+  A.boot = function () {
     A.readStateFromUrl();
     A.bindSharedControls();
     bindTabs();
     setStatus("loading", "menghubungi API...");
     return A.detectBase().then(function () {
       setStatus(A.state.apiReachable ? "ok" : "err", A.state.apiReachable ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
-      return Promise.allSettled([A.loadMeta(), A.loadUniverse(heroIdle)]);
+      return Promise.allSettled([A.loadMeta(), A.loadUniverse(), A.loadTicker()]);
     }).then(function () {
       splashStatus(A.state.meta ? "MODE " + A.state.meta.mode.toUpperCase() : "MODE DEMO");
       if (typeof A.renderPage === "function") return A.renderPage();

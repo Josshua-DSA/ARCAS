@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
-<title>ARCAS : Research Lab (XAU, RATE_UST, SPX)</title>
+<title>ARCAS : Research Lab</title>
 <meta name="description" content="Meja kerja asosiasi, statistik lengkap, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
@@ -25,33 +25,11 @@
   <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
 </div>
 
-<div class="disclaimer-strip" role="note" aria-label="Peringatan risiko">
-  <div class="wrap">
-    <span><strong>Simulasi analitis.</strong> Bukan nasihat investasi. Angka dan stance persona adalah hasil kode deterministik, bukan ajakan transaksi.</span>
-    <span id="dataBadge">memuat status data...</span>
-  </div>
-</div>
 
 <header class="brand">
   <div class="wrap brand-row">
     <div>
       <p class="brand-name">ARCAS <span>:</span> Research Lab</p>
-      <p class="brand-sub">asosiasi diuji : denominator data : jujur saat kosong</p>
-    </div>
-    <div class="status-badge" role="status" aria-live="polite">
-      <span class="dot loading" id="statusDot" aria-hidden="true"></span>
-      <span id="statusText">menghubungi API...</span>
-    </div>
-  </div>
-  <div class="provenance" id="provenance" aria-label="Provenance data">
-    <div class="wrap prov-row">
-      <span class="prov-item"><strong id="provMode">mode : menunggu</strong></span>
-      <span class="prov-item">versi universe <span id="provUniverse">n/a</span></span>
-      <span class="prov-item">skema <span id="provSchema">n/a</span></span>
-      <span class="prov-item">model <span id="provModel">n/a</span></span>
-      <span class="prov-item">artikel <span id="provArticles">n/a</span></span>
-      <span class="prov-item">hari berita <span id="provNews">n/a</span></span>
-      <span class="prov-item">segar <span id="provFresh">n/a</span></span>
     </div>
   </div>
   <nav class="sections" aria-label="Halaman">
@@ -65,27 +43,29 @@
 </header>
 
 <div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
-  <div class="wrap" id="targetTabs">
-    <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-      <img class="ticon" src="src/assets/gold.svg" alt="">
-      <span><span class="tick">XAU</span><span class="meta">Emas : GC=F : CME</span></span>
-    </button>
-    <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-      <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-      <span><span class="tick">RATE_UST</span><span class="meta">Yield UST 10Y : ^TNX : CBOE</span></span>
-    </button>
-    <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-      <img class="ticon" src="src/assets/spx.svg" alt="">
-      <span><span class="tick">SPX</span><span class="meta">S&amp;P 500 : ^GSPC : SNP</span></span>
-    </button>
+  <div class="wrap">
+    <div id="targetTabs">
+      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+        <img class="ticon" src="src/assets/gold.svg" alt="">
+        <span class="tick">Emas</span>
+      </button>
+      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+        <span class="tick">Suku Bunga</span>
+      </button>
+      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+        <img class="ticon" src="src/assets/spx.svg" alt="">
+        <span class="tick">S&amp;P 500</span>
+      </button>
+    </div>
+    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
   </div>
 </div>
 
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
-    <p class="kicker" id="heroKicker">Meja riset : data berjalan</p>
     <h1 id="resTitle">Uji asosiasi per lag, kualitas data, dan kejujuran model.</h1>
-    <p class="lead">Panel gelap memuat angka uji. Panel kualitas data menaruh denominator sebelum skor. Panel kualitas model menyisakan ruang jujur: bagian yang belum punya artefak tetap bilang belum, bukan mengarang angka.</p>
+    <p class="lead">Di sini angka berhenti jadi klaim. Uji asosiasi dibaca per lag dengan rentang kepercayaan dan koreksi lipat ganda, kualitas data ditimbang sebelum skor, dan panel model hanya bicara setelah artefaknya ada. Yang belum terbukti tetap ditulis belum terbukti.</p>
   </section>
 
   <div class="grid">
@@ -153,7 +133,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS Sentiment Desk : simulasi sudut pandang. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (XAU, RATE_UST, SPX) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
   </div>
 </footer>
 
