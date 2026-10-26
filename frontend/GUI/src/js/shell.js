@@ -110,6 +110,48 @@ window.ARCAS = window.ARCAS || {};
     });
   };
 
+  /* Pita harga di ujung nav: perubahan dihitung dari dua penutupan terakhir.
+     Bukan prediksi. Data yang tidak ada ditulis "n/a", tidak pernah nol. */
+  function fmtPrice(v) {
+    return Number(v).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  A.loadTicker = function () {
+    var box = $("ticker");
+    if (!box) return Promise.resolve();
+    var ids = Object.keys(TARGET_INFO);
+    var start = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
+    var jobs = ids.map(function (id) {
+      if (A.state.apiReachable === false) return Promise.resolve({ id: id, prices: [] });
+      return A.api("/api/series/" + id + "?start_date=" + start).then(function (payload) {
+        return { id: id, prices: (payload && payload.prices) || [] };
+      }).catch(function () { return { id: id, prices: [] }; });
+    });
+    return Promise.all(jobs).then(function (rows) {
+      var lastDate = "";
+      var parts = rows.map(function (row) {
+        var info = TARGET_INFO[row.id];
+        var prices = row.prices || [];
+        var last = prices[prices.length - 1];
+        var prev = prices[prices.length - 2];
+        if (!last) {
+          return "<span class='t'><span class='t-name'>" + esc(info.name) + "</span><span class='t-val'>n/a</span></span>";
+        }
+        var date = String(last.date).slice(0, 10);
+        if (date > lastDate) lastDate = date;
+        var close = Number(last.close);
+        var chg = prev ? (close - Number(prev.close)) / Number(prev.close) * 100 : null;
+        var dir = chg === null ? "flat" : chg > 0 ? "up" : chg < 0 ? "down" : "flat";
+        var arrow = dir === "up" ? "\u25B2" : dir === "down" ? "\u25BC" : "\u25CF";
+        var chgText = chg === null ? "n/a" : arrow + " " + (chg > 0 ? "+" : "") + chg.toFixed(2).replace(".", ",") + "%";
+        return "<span class='t'><span class='t-name'>" + esc(info.name) + "</span>" +
+          "<span class='t-val'>" + esc(fmtPrice(close)) + "</span>" +
+          "<span class='t-chg " + dir + "'>" + esc(chgText) + "</span></span>";
+      });
+      if (lastDate) parts.push("<span class='t t-date'>data per " + esc(lastDate) + "</span>");
+      box.innerHTML = parts.join("");
+    });
+  };
+
   /* Widget alokasi bersama: bar baseline vs baru + validasi total persis 100.
      Alasan validasi tampil: konstrain domain paling mudah dilanggar diam-diam. */
   A.renderAllocation = function (data) {
@@ -348,7 +390,7 @@ window.ARCAS = window.ARCAS || {};
     setStatus("loading", "menghubungi API...");
     return A.detectBase().then(function () {
       setStatus(A.state.apiReachable ? "ok" : "err", A.state.apiReachable ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
-      return Promise.allSettled([A.loadMeta(), A.loadUniverse()]);
+      return Promise.allSettled([A.loadMeta(), A.loadUniverse(), A.loadTicker()]);
     }).then(function () {
       splashStatus(A.state.meta ? "MODE " + A.state.meta.mode.toUpperCase() : "MODE DEMO");
       if (typeof A.renderPage === "function") return A.renderPage();

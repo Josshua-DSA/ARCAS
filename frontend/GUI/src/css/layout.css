@@ -33,14 +33,26 @@ nav.sections a{font-family:var(--font-sans);font-size:14px;font-weight:400;color
 nav.sections a[aria-current="page"]{font-weight:600;color:var(--text-primary)}
 nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 
+/* Pita harga ringkas: angka tabular, bukan kartu. Nama target tidak diulang
+   sebagai kotak agar tidak bersaing dengan tab di sebelahnya. */
+.ticker{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:nowrap;
+  font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.ticker .t{display:inline-flex;align-items:center;gap:5px}
+.ticker .t + .t::before{content:"";width:1px;height:11px;background:var(--border-subtle);margin-right:7px}
+.ticker .t-name{color:var(--text-muted)}
+.ticker .t-val{color:var(--text-primary);font-variant-numeric:tabular-nums}
+.ticker .t-chg{font-variant-numeric:tabular-nums}
+.ticker .t-chg.up{color:var(--up)}
+.ticker .t-chg.down{color:var(--down)}
+.ticker .t-chg.flat{color:var(--text-muted)}
+.ticker .t-date{color:var(--text-muted);font-size:11px}
+
 /* Tab target: satu aksen oranye hanya di tab aktif (anti overuse) */
 .target-bar{background:var(--bg-sunken)}
-/* Segmented control: satu wadah bergaris tipis, tiga segmen dipisah hairline.
-   Tab aktif memakai isian, bukan border kiri, jadi isi tab tidak bergeser.
-   Wadah memakai .wrap yang sama dengan konten, jadi tepi kirinya sejajar
-   dengan nama merek, navigasi, dan grafik. */
-.target-bar .wrap{padding-top:14px;padding-bottom:14px}
-#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-card);overflow:hidden}
+/* Baris tab: kontrol di kiri, pita harga di kanan pada satu baris yang sama.
+   Di layar sempit pita membungkus ke baris kedua tanpa memotong angka. */
+.target-bar .wrap{padding-top:14px;padding-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-card);overflow:hidden;flex:none}
 .target-tab{display:flex;gap:9px;align-items:center;justify-content:center;cursor:pointer;border:0;border-left:1px solid var(--border-subtle);
   background:transparent;padding:0 20px;min-height:46px;font-family:var(--font-sans);font-size:15px;color:var(--text-secondary)}
 .target-tab:first-child{border-left:0}
@@ -195,6 +207,8 @@ footer a{color:var(--accent-text-on-dark)}
   .hero{padding:30px 0 8px}
   #chart{height:320px}
   .brand-name{font-size:38px}
+  /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit */
+  .ticker{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start;margin-left:0;gap:4px 12px}
 }
 /* HP kecil: ruang napas dirampingkan, grafik dipendekkan */
 @media (max-width:600px){
