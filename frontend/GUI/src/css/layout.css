@@ -22,7 +22,6 @@ body{margin:0}
 header.brand{background:var(--surface)}
 .brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:26px 20px 22px;flex-wrap:wrap}
 .brand-name{font-family:var(--font-serif);font-weight:400;font-size:52px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
-.brand-name span{color:var(--accent-on-dark)}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
@@ -78,6 +77,12 @@ main{display:block}
 
 /* Grid asimetris: panel primer lebar, pendamping sempit (fokus baca deret dulu) */
 .grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:18px;margin:20px 0;align-items:start}
+/* Overview: grafik lebih dominan, strip alokasi memanjang setinggi grafik */
+.grid.overview{grid-template-columns:minmax(0,2.6fr) minmax(260px,1fr);align-items:stretch}
+.grid.overview > #alokasi{display:flex;flex-direction:column}
+.grid.overview > #alokasi .panel-body{display:flex;flex-direction:column;flex:1;gap:12px}
+.grid.overview > #alokasi #allocBars{display:flex;flex-direction:column;justify-content:space-around;flex:1}
+.grid.overview > #alokasi .alloc-row{margin:6px 0}
 /* Varian urutan terbalik tanpa inline style (inline style kebal media query) */
 .grid.flip{grid-template-columns:minmax(300px,1fr) minmax(0,1.65fr)}
 .panel{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden}
@@ -108,11 +113,7 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
 .panel.light .pos{color:var(--up)} .panel.light .neg{color:var(--down)} .panel.light .flat{color:var(--hold)}
 .sig{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:1px 6px;margin-left:8px;white-space:nowrap}
 
-/* Alokasi: bar proporsional + angka, total 100 persen selalu tampil */
-.alloc-total{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg-sunken);
-  border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;margin-bottom:12px;
-  font-family:var(--font-mono);font-size:13px}
-.alloc-total.valid{border-color:var(--up)} .alloc-total.invalid{border-color:var(--down)}
+/* Alokasi: bar proporsional + angka */
 .alloc-row{margin:10px 0}
 .alloc-row .lbl{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;margin-bottom:5px}
 .bar{height:10px;border-radius:6px;background:var(--bg-sunken);position:relative;overflow:hidden;border:1px solid var(--border-subtle)}
@@ -228,7 +229,6 @@ footer a{color:var(--accent-text-on-dark)}
   .hero p.lead{text-align:left;font-size:17px;line-height:1.6}
   .panel-body{padding:12px}
   #chart{height:300px}
-  .alloc-total{font-size:12px}
   .news-card h3{font-size:19px}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
   #targetTabs{display:flex;width:auto;margin:10px 14px}

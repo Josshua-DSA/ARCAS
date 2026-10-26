@@ -152,24 +152,19 @@ window.ARCAS = window.ARCAS || {};
     });
   };
 
-  /* Widget alokasi bersama: bar baseline vs baru + validasi total persis 100.
-     Alasan validasi tampil: konstrain domain paling mudah dilanggar diam-diam. */
+  /* Widget alokasi bersama: bar baseline vs baru. Total tetap divalidasi
+     persis 100; kalau melenceng, state memberi tahu alih-alih diam. */
   A.renderAllocation = function (data) {
     var bars = $("allocBars");
     if (!bars) return;
     if (!data || !data.lines || !data.lines.length) {
       bars.innerHTML = "";
       showState("allocState", "Belum ada simulasi alokasi untuk profil ini.");
-      var t = $("allocTotalNum"); if (t) t.textContent = "n/a";
       return;
     }
-    showState("allocState", "");
     var total = data.lines.reduce(function (a, l) { return a + Number(l.new_pct || 0); }, 0);
     var ok = Math.abs(total - 100) < 0.01;
-    var totalBox = $("allocTotal");
-    totalBox.classList.toggle("valid", ok);
-    totalBox.classList.toggle("invalid", !ok);
-    $("allocTotalNum").textContent = total.toFixed(2) + "% " + (ok ? ": valid" : ": TIDAK valid");
+    showState("allocState", ok ? "" : "Total alokasi " + total.toFixed(2) + "%, seharusnya 100%.");
     bars.innerHTML = data.lines.map(function (l) {
       var d = Number(l.delta_pp || 0);
       var cls = d > 0.005 ? "pos" : d < -0.005 ? "neg" : "flat";

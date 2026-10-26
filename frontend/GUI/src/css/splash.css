@@ -8,7 +8,6 @@
 .splash[hidden]{display:none}
 .splash.is-hiding{opacity:0;pointer-events:none}
 .splash__title{font-family:var(--font-serif);font-weight:300;font-size:34px;color:var(--text-primary)}
-.splash__title b{color:var(--accent-text);font-weight:300}
 
 /* Log boot: kartu terminal ringan. Tinggi tetap supaya bar tidak melompat
    ketika baris baru masuk. */
