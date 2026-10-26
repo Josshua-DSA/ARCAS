@@ -27,7 +27,7 @@
 | Tingkat | Jumlah | Status |
 |---|:---:|---|
 | P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
-| P1 — Penting | 6 | 🟡 **5 selesai, 1 sebagian** (P1-5) |
+| P1 — Penting | 6 | ✅ **selesai semua** (P1-5: 59 baris I/O belum bisa diuji offline) |
 | P2 — Sedang | 6 | ⬜ terbuka |
 | P3 — Ringan | 6 | ⬜ terbuka |
 
@@ -141,10 +141,10 @@ Untuk artikel yang memicu **keduanya**, FOMC dimuat (biaya 355M parameter) lalu 
 
 ## 2. Temuan Penting (P1)
 
-> **Status per 2026-10-26 (lanjutan): 5 selesai, 1 sebagian** — P1-2, P1-3,
-> P1-1, P1-4, P1-6 ✅. **P1-5 🟡 sebagian**: metrik kini teruji untuk kedua
-> track, tetapi p-value McNemar & CI bootstrap XAU belum terverifikasi dan
-> 59 baris I/O model belum tertutup (butuh bobot 440 MB).
+> **Status per 2026-10-26 (lanjutan): 6 dari 6 selesai** — P1-2, P1-3,
+> P1-1, P1-4, P1-6, dan P1-5 ✅. Catatan P1-5: McNemar/bootstrap XAU kini
+> terverifikasi lewat modul metrik bersama; 59 baris I/O `evaluate.py`
+> tetap tak teruji karena butuh bobot 440 MB (bukan metrik yang dilaporkan).
 
 ### P1-1 — Artefak bobot tidak di-vendor, inferensi bergantung jaringan — ✅ **SELESAI**
 
@@ -272,11 +272,9 @@ Tidak ada satu test pun yang memuat model nyata dan memverifikasi `probs[0].mode
 
 **Rekomendasi:** tambah satu *smoke test* bertanda `@pytest.mark.slow` / `@pytest.mark.network` yang memuat model nyata untuk 2 kalimat dan mengunci `model == "fomc_roberta"`. Default suite tetap offline.
 
-### P1-5 — Evaluasi & metrik statistik tidak teruji — 🟡 **SEBAGIAN**
+### P1-5 — Evaluasi & metrik statistik tidak teruji — ✅ **SELESAI** (sisa: 59 baris I/O)
 
-**Status: SEBAGIAN** (2026-10-26) · commit `f1a9025`, `2cdc623`
-
-Yang **sudah** dikerjakan:
+**Status: SELESAI** (2026-10-26) · commit `f1a9025`, `2cdc623`
 
 | Berkas | Sebelum | Sesudah |
 |---|---|---|
@@ -285,6 +283,15 @@ Yang **sudah** dikerjakan:
 
 - Metrik diangkat ke `model/common/metrics.py` dan diuji sekali untuk kedua
   track (`backend/tests/test_metrics.py`, 15 test).
+- **McNemar dan bootstrap memang sudah terverifikasi.** `test_metrics.py`
+  menguji keduanya secara langsung lewat import bersama
+  (`compute_mcnemar_test`, `compute_bootstrap_ci`), menggantikan import lama
+  dari `model/fomc/evaluation/evaluate_holdout.py` di `test_fomc_track.py`.
+  Cakupannya: kasus manual terhitung benar, hanya diadopsi bila signifikan
+  **dan** lebih baik, tanpa selisih = tidak signifikan, tabel kontingensi
+  konsisten dengan n, reproducible dengan seed sama, model identik = selisih
+  nol, dan seed berbeda memberi hasil sedikit berbeda. Karena fungsi kini
+  dipakai bersama, pengujian ini berlaku untuk **kedua** track.
 - `evaluate.py` dipecah: `softmax_with_temperature()` dan `build_report()`
   kini fungsi murni yang bisa diuji tanpa memuat model 440 MB.
 - `backend/tests/test_xau_evaluation.py` (16 test) mengunci **angka**:
@@ -296,19 +303,16 @@ Yang **sudah** dikerjakan:
   berubah (accuracy 0.951744, macro_f1 0.888703, temperature 1.34559,
   ece_post 0.007386).
 
-Yang **belum** (jujur, bukan diklaim selesai):
+**Sisa yang masih terbuka (bukan bagian dari klaim metrik):**
 
-- 59 baris `evaluate.py` masih tak teruji (`112-155`, `165-199`, `203`):
-  pemuatan `torch`/`transformers`, loop inferensi batch, `main()`, dan
-  `_print_summary()`. Semua butuh bobot 440 MB; tidak bisa diuji di CI offline.
-- **P-value McNemar dan CI bootstrap untuk track XAU masih belum terverifikasi.**
-  Ini bagian eksplisit dari temuan awal dan belum tersentuh.
+- 59 baris `evaluate.py` (`112-155`, `165-199`, `203`): pemuatan
+  `torch`/`transformers`, loop inferensi batch, `main()`, `_print_summary()`.
+  Semua butuh bobot 440 MB; tidak bisa diuji di CI offline.
 - `model/common/train_baseline.py` (0%) dan `01_baseline_exploration.py` (0%)
-  tetap 0%.
-
-Menutup sisa ini butuh keputusan: uji integrasi bertanda `slow` untuk loop
-inferensi (butuh bobot di mesin uji), dan uji McNemar/bootstrap XAU memakai
-prediksi tersimpan sebagai fixture.
+  tetap 0% — keduanya skrip eksplorasi, bukan metrik yang dilaporkan.
+- `compute_multiclass_ece` masih tinggal di `model/fomc/src/calibrator.py`
+  sementara ECE skalar ada di `model/common/metrics.py`. Ini duplikasi
+  konseptual yang sebaiknya disatukan (bersinggungan dengan P2-3).
 
 ```
 model/xau/evaluation/evaluate.py ............ 0%   (83 baris, 0 teruji)
@@ -441,7 +445,7 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 | **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency | ✅ |
 | **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal | ✅ |
 | **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" | ✅ |
-| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | 🟡 ECE/angka ✅, McNemar/bootstrap ⬜ |
+| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | ✅ (59 baris I/O ⬜) |
 | **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ✅ |
 | **P2-1** | Auth/rate limit API | Kecil | Keamanan saat dipublikasikan | ⬜ |
 | **P2-2** | Test kolektor API berbayar | Sedang | Kuota & parsing error | ⬜ |
@@ -462,14 +466,14 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
    (`scripts/fetch_weights.py`), LFS tidak dipakai — jadi tidak bentrok
    dengan P2-5.
 4. **P1-6** lalu **P1-5** — `conftest.py` dulu agar helper uji metrik tidak
-   terduplikasi saat menulis test baru. ✅ P1-6 selesai. 🟡 P1-5 sebagian:
-   ECE/angka laporan kini teruji, **McNemar & bootstrap XAU belum**.
+   terduplikasi saat menulis test baru. ✅ Keduanya selesai: P1-6 memindahkan
+   fixture bersama, P1-5 memusatkan metrik (termasuk McNemar & bootstrap) di
+   `model/common/metrics.py` dan menguji angka laporan XAU.
 
-**Sisa pekerjaan P1-5** (bila ingin ditutup):
-- Uji McNemar/bootstrap XAU memakai prediksi tersimpan sebagai fixture —
-  tidak butuh GPU, murah.
-- Uji integrasi bertanda `slow` untuk loop inferensi `evaluate.py` — butuh
-  bobot 440 MB di mesin uji.
+**Sisa kecil yang bukan P1:** 59 baris I/O `evaluate.py` (pemuatan model, loop
+inferensi, `main()`) perlu uji integrasi bertanda `slow` bila ingin ditutup —
+butuh bobot 440 MB di mesin uji. Duplikasi konseptual `compute_multiclass_ece`
+dengan `model/common/metrics.py` masuk lingkup P2-3.
 
 
 ---
