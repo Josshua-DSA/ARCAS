@@ -16,13 +16,13 @@ body{margin:0}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-/* Header merek: pita oranye brand. Teks memakai tinta gelap, bukan putih:
-   putih di atas #FF7517 gagal kontras (aturan THEME). Nav di bawahnya tetap
-   hitam-putih karena punya latar sendiri. */
-header.brand{background:var(--accent)}
+/* Header merek: pita coklat tua (surface tema) dengan teks kertas.
+   Oranye sengaja disisakan untuk aksen kecil: tab aktif, tautan, penanda.
+   Kontras putih di #3E3939 = 11,36:1. */
+header.brand{background:var(--surface)}
 .brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:26px 20px 22px;flex-wrap:wrap}
-.brand-name{font-family:var(--font-serif);font-weight:400;font-size:52px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:#2C2727}
-.brand-name span{color:rgba(44,39,39,.5)}
+.brand-name{font-family:var(--font-serif);font-weight:400;font-size:52px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
+.brand-name span{color:var(--accent-on-dark)}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
