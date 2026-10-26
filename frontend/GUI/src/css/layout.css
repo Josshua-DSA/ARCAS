@@ -28,8 +28,29 @@ header.brand{background:var(--base);border-bottom:1px solid var(--border-subtle)
 .brand-sub{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);margin:6px 0 0;letter-spacing:.05em;text-transform:uppercase}
 .status-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;
   border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;background:var(--bg-card);min-height:44px}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--hold);flex:none}
-.dot.ok{background:var(--up)} .dot.err{background:var(--down)} .dot.warn{background:var(--warn)}
+.dot{position:relative;width:10px;height:10px;border-radius:50%;background:var(--hold);flex:none;
+  transition:background-color .18s ease}
+/* loading: cincin berputar (bukan klaim warna apa pun sebelum hasil nyata) */
+.dot.loading{width:12px;height:12px;background:transparent;border:2px solid var(--border-subtle);
+  border-top-color:var(--accent);animation:dot-spin .75s linear infinite}
+/* ok: hijau + ripple sekali-dua kali, lalu diam (sinyal "berhasil") */
+.dot.ok{background:var(--up)}
+.dot.ok::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--up);
+  opacity:0;animation:dot-ping 1.2s ease-out 2}
+/* err: merah berdenyut agar kegagalan tidak lolos dari pandangan */
+.dot.err{background:var(--down);animation:dot-pulse 1.4s ease-in-out infinite}
+.dot.warn{background:var(--warn)}
+@keyframes dot-spin{to{transform:rotate(360deg)}}
+@keyframes dot-ping{0%{opacity:.55;transform:scale(.6)}70%{opacity:0;transform:scale(1.7)}
+  100%{opacity:0;transform:scale(1.7)}}
+@keyframes dot-pulse{0%,100%{box-shadow:0 0 0 0 rgba(207,34,46,.45)}
+  55%{box-shadow:0 0 0 5px rgba(207,34,46,0)}}
+/* aksesibilitas: pengguna yang meminta gerak minim tetap dapat statusnya lewat teks */
+@media (prefers-reduced-motion:reduce){
+  .dot,.dot::after{animation:none!important}
+  .dot.loading{border-color:var(--accent);background:var(--accent-subtle)}
+  .dot.err{box-shadow:0 0 0 3px rgba(207,34,46,.25)}
+}
 
 /* Provenance bar: mono kecil, satu garis, terbaca di mobile lewat wrap (UI-01) */
 .provenance{background:var(--bg-sunken);border-bottom:1px solid var(--border-subtle)}

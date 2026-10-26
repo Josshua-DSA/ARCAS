@@ -5,7 +5,7 @@ window.ARCAS = window.ARCAS || {};
 (function (A) {
   "use strict";
 
-  A.state = { target: "XAU", days: 90, profile: "moderate", apiBase: "", apiOk: false, meta: null };
+  A.state = { target: "XAU", days: 90, profile: "moderate", apiBase: "", apiReachable: null, apiOk: false, meta: null };
 
   function readFromUrl() {
     try {

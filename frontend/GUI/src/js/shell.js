@@ -76,10 +76,13 @@ window.ARCAS = window.ARCAS || {};
     return "<span class='chip hold'>● HOLD " + dots + "</span>";
   };
 
-  /* Status API + splash: teks hanya muncul untuk tahap yang benar-benar terjadi. */
+  /* Status API + splash: teks hanya muncul untuk tahap yang benar-benar terjadi.
+     mode: "loading" (spinner) | "ok" (hijau + ping) | "err" (merah) | "warn". */
   function setStatus(mode, text) {
     var dot = $("statusDot");
-    if (dot) dot.className = "dot" + (mode === "ok" ? " ok" : mode === "err" ? " err" : mode === "warn" ? " warn" : "");
+    var known = { loading: 1, ok: 1, err: 1, warn: 1 };
+    if (dot) dot.className = "dot" + (known[mode] ? " " + mode : "");
+    if (dot && dot.parentNode) dot.parentNode.setAttribute("aria-busy", mode === "loading" ? "true" : "false");
     var sText = $("statusText"); if (sText) sText.textContent = text;
     var badge = $("dataBadge"); if (badge) badge.textContent = text;
     var src = $("srcMeta");
@@ -367,8 +370,9 @@ window.ARCAS = window.ARCAS || {};
     A.readStateFromUrl();
     A.bindSharedControls();
     bindTabs();
+    setStatus("loading", "menghubungi API...");
     return A.detectBase().then(function () {
-      setStatus(A.state.apiBase ? "ok" : "warn", A.state.apiBase ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
+      setStatus(A.state.apiReachable ? "ok" : "err", A.state.apiReachable ? "terhubung ke API" : "API tidak terjangkau : ilustrasi");
       return Promise.allSettled([A.loadMeta(), A.loadUniverse(heroIdle)]);
     }).then(function () {
       splashStatus(A.state.meta ? "MODE " + A.state.meta.mode.toUpperCase() : "MODE DEMO");

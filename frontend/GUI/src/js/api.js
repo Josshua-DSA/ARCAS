@@ -8,7 +8,9 @@ window.ARCAS = window.ARCAS || {};
      satu halaman jalan di dua konteks tanpa konfigurasi. */
   var basePromise = null;
   function detectBase() {
-    if (A.state.apiBase) return Promise.resolve(A.state.apiBase);
+    /* apiReachable dipakai sebagai penanda hasil deteksi, bukan apiBase: ""
+       berarti "path relatif jalan" sekaligus nilai fallback saat gagal. */
+    if (A.state.apiReachable !== null) return Promise.resolve(A.state.apiBase);
     if (basePromise) return basePromise;
     var candidates = ["", "http://localhost:8000", "http://127.0.0.1:8000"];
     var chain = Promise.reject();
@@ -17,10 +19,10 @@ window.ARCAS = window.ARCAS || {};
         return fetch(base + "/health", { cache: "no-store" }).then(function (r) {
           if (!r.ok) throw new Error("bad");
           return r.json();
-        }).then(function () { A.state.apiBase = base; return base; });
+        }).then(function () { A.state.apiBase = base; A.state.apiReachable = true; return base; });
       });
     });
-    basePromise = chain.catch(function () { A.state.apiBase = ""; return ""; });
+    basePromise = chain.catch(function () { A.state.apiBase = ""; A.state.apiReachable = false; return ""; });
     return basePromise;
   }
   function api(path) {

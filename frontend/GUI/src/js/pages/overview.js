@@ -84,10 +84,10 @@
     A.showState("topState", "Memuat berita teratas...");
 
     A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end).then(function (payload) {
-      A.state.apiOk = true; A.setStatus("ok", "terhubung ke API");
+      A.state.apiOk = true; A.state.apiReachable = true; A.setStatus("ok", "terhubung ke API");
       renderChart(payload);
     }).catch(function () {
-      A.state.apiOk = false; A.setStatus("warn", "API tidak terjangkau : ilustrasi");
+      A.state.apiOk = false; A.setStatus("err", "API tidak terjangkau : ilustrasi");
       renderChart(A.demoSeries(t, A.state.days));
     });
 
