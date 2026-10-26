@@ -1,0 +1,20 @@
+# Versi Python untuk pengembangan lokal.
+#
+# CI memakai Python 3.11 (lihat .github/workflows/ci.yml). Tanpa berkas ini,
+# pengembang memakai Python apa pun yang ada di mesinnya, dan `mypy` bisa
+# gagal di lokal sambil hijau di CI. Itu bukan hipotesis: dengan Python 3.12
+# dan numpy 2.x, mypy 1.11.2 berhenti membaca stub numpy
+#
+#     numpy/__init__.pyi:737: error: Type statement is only supported in
+#     Python 3.12 and greater  [syntax]
+#
+# Stub numpy 2.x memakai sintaks `type X = ...` (PEP 695) di dalam cabang
+# `if sys.version_info >= (3, 12)`. mypy 1.11 tidak bisa mem-parse sintaks itu
+# sama sekali - bahkan saat target versi 3.11 - sehingga ia berhenti sebelum
+# memeriksa satu berkas proyek pun. Pada target 3.11 baris itu tidak dibaca,
+# jadi CI tidak pernah terkena.
+#
+# Dengan menyamakan versi, gerbang mutu yang dijalankan pengembang identik
+# dengan yang menentukan lulus/gagal merge. Ini menghilangkan seluruh kelas
+# bug "hijau lokal, merah CI" maupun sebaliknya.
+3.11
