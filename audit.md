@@ -27,7 +27,7 @@
 | Tingkat | Jumlah | Status |
 |---|:---:|---|
 | P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
-| P1 — Penting | 6 | 🟡 **2 selesai, 4 terbuka** |
+| P1 — Penting | 6 | 🟡 **5 selesai, 1 sebagian** (P1-5) |
 | P2 — Sedang | 6 | ⬜ terbuka |
 | P3 — Ringan | 6 | ⬜ terbuka |
 
@@ -141,10 +141,12 @@ Untuk artikel yang memicu **keduanya**, FOMC dimuat (biaya 355M parameter) lalu 
 
 ## 2. Temuan Penting (P1)
 
-> **Status per 2026-10-26: 2 dari 6 selesai** — P1-2 dan P1-3 ✅.
-> Sisa P1-1, P1-4, P1-5, P1-6 masih terbuka. Urutan pengerjaan ada di §6.
+> **Status per 2026-10-26 (lanjutan): 5 selesai, 1 sebagian** — P1-2, P1-3,
+> P1-1, P1-4, P1-6 ✅. **P1-5 🟡 sebagian**: metrik kini teruji untuk kedua
+> track, tetapi p-value McNemar & CI bootstrap XAU belum terverifikasi dan
+> 59 baris I/O model belum tertutup (butuh bobot 440 MB).
 
-### P1-1 — Artefak bobot tidak di-vendor, inferensi bergantung jaringan
+### P1-1 — Artefak bobot tidak di-vendor, inferensi bergantung jaringan — ✅ **SELESAI**
 
 `.gitignore` mengecualikan `model/*/weights/*/`, `*.bin`, `*.safetensors`, `*.pt`, `*.onnx`.
 
@@ -154,6 +156,23 @@ Untuk artikel yang memicu **keduanya**, FOMC dimuat (biaya 355M parameter) lalu 
 Konsekuensi: `load_fomc_model()` mengembalikan `None` saat offline, dan pipeline **diam-diam** jatuh ke baseline 57,98% alih-alih RoBERTa 86,87%. Tidak ada log level-warning yang membedakan "sengaja fallback" dari "gagal karena masalah".
 
 **Rekomendasi:** gunakan Git LFS untuk bobot terlatih, atau sediakan `scripts/fetch_weights.py` dengan checksum SHA256 agar unduhan terverifikasi.
+
+**Status: SELESAI** (2026-10-26) · commit `b9ccb68` — rekomendasi kedua yang dipakai.
+
+1. **`scripts/fetch_weights.py`** — unduh + verifikasi SHA256 tiap berkas.
+   Checksum diambil dari bobot yang sudah terbukti lulus smoke test, bukan
+   dari dokumentasi pihak ketiga. Checksum salah = **exit 1**, bukan
+   peringatan yang bisa dilewat. Mode: `--all`, `--model`,
+   `--verify-only` (offline, untuk CI), `--print-checksums`.
+   Diuji negatif: merusak 1 byte `config.json` → exit 1; dipulihkan → exit 0.
+2. **Fallback tidak lagi senyap** — `load_fomc_model()` mencatat kegagalan ke
+   `self._degradasi`, diteruskan ke `PipelineStats.errors` sehingga muncul di
+   `ringkas()` yang dicetak CLI. Ketiadaan `torch`/`transformers` juga dicatat
+   eksplisit. Sebelumnya hanya `logger.warning` — mudah terlewat di cron/CI.
+
+Keputusan: **Git LFS tidak dipakai.** Bobot tetap di-`ignore`; yang di-vendor
+adalah cara mengambilnya secara terverifikasi. Ini juga menghindari bentrok
+dengan P2-5 soal ukuran repo.
 
 ### P1-2 — Tidak ada lock file; pin dependency longgar — ✅ **SELESAI**
 
@@ -221,7 +240,26 @@ Pemicunya **python 3.12 DAN numpy 2.x bersamaan**, bukan salah satunya. Stub `nu
 **Alternatif yang ditolak:** menaikkan mypy ke 2.x. Itu mengubah gerbang mutu diam-diam, karena mypy 2.x tidak melaporkan `[import-untyped]` yang dilaporkan 1.11.
 
 
-### P1-4 — Tidak ada test yang membuktikan RoBERTa benar-benar dipakai
+### P1-4 — Tidak ada test yang membuktikan RoBERTa benar-benar dipakai — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26) · commit `5fb4abe`
+
+`backend/tests/test_fomc_roberta_real.py` — 6 test memuat model **nyata** dari
+cache HuggingFace (bukan `MagicMock`): `model_name`/`model_version` bukan
+baseline, invarian probabilitas (tiap p ∈ [0,1], total 1.0), kalimat hawkish
+condong `p_pos` (menangkap pemetaan label terbalik), batch == single
+(menangkap bug padding/masking), dan lewat `Pipeline` mengunci
+`model_version == "fomc-roberta-v1.0"` serta `routed_from` menyebut
+`fomc_roberta`.
+
+Marker `slow`+`network` didaftarkan di `pyproject.toml` dan dikecualikan dari
+suite default, sehingga default tetap offline. Menjalankan eksplisit:
+`pytest -m "slow or network" backend/tests/test_fomc_roberta_real.py` →
+**6 passed**.
+
+Catatan: checkpoint primer `gtfintechlab/FOMC-RoBERTa` sedang dibatasi di HF,
+sehingga jalur fallback `tim9510019/FOMC-RoBERTa` yang dipakai. Itu perilaku
+kode yang sudah ada, dan test membuktikannya bekerja.
 
 Seluruh `test_fomc_pipeline_integration.py` memakai `MagicMock` untuk model:
 
@@ -234,7 +272,43 @@ Tidak ada satu test pun yang memuat model nyata dan memverifikasi `probs[0].mode
 
 **Rekomendasi:** tambah satu *smoke test* bertanda `@pytest.mark.slow` / `@pytest.mark.network` yang memuat model nyata untuk 2 kalimat dan mengunci `model == "fomc_roberta"`. Default suite tetap offline.
 
-### P1-5 — Evaluasi & metrik statistik tidak teruji
+### P1-5 — Evaluasi & metrik statistik tidak teruji — 🟡 **SEBAGIAN**
+
+**Status: SEBAGIAN** (2026-10-26) · commit `f1a9025`, `2cdc623`
+
+Yang **sudah** dikerjakan:
+
+| Berkas | Sebelum | Sesudah |
+|---|---|---|
+| `model/common/metrics.py` | 38% | **94%** |
+| `model/xau/evaluation/evaluate.py` | 0% | **31%** |
+
+- Metrik diangkat ke `model/common/metrics.py` dan diuji sekali untuk kedua
+  track (`backend/tests/test_metrics.py`, 15 test).
+- `evaluate.py` dipecah: `softmax_with_temperature()` dan `build_report()`
+  kini fungsi murni yang bisa diuji tanpa memuat model 440 MB.
+- `backend/tests/test_xau_evaluation.py` (16 test) mengunci **angka**:
+  akurasi 3/4-benar = 0.75, prediksi sempurna → macro-F1 1.0, confusion
+  matrix baris=aktual/kolom=prediksi, argmax tidak berubah oleh suhu, dan
+  `meets_target` memakai ECE **sesudah** kalibrasi (salah pilih kolom akan
+  membuat laporan berbohong).
+- Refaktor dibuktikan **tidak menggeser angka**: `eval_report.json` tidak
+  berubah (accuracy 0.951744, macro_f1 0.888703, temperature 1.34559,
+  ece_post 0.007386).
+
+Yang **belum** (jujur, bukan diklaim selesai):
+
+- 59 baris `evaluate.py` masih tak teruji (`112-155`, `165-199`, `203`):
+  pemuatan `torch`/`transformers`, loop inferensi batch, `main()`, dan
+  `_print_summary()`. Semua butuh bobot 440 MB; tidak bisa diuji di CI offline.
+- **P-value McNemar dan CI bootstrap untuk track XAU masih belum terverifikasi.**
+  Ini bagian eksplisit dari temuan awal dan belum tersentuh.
+- `model/common/train_baseline.py` (0%) dan `01_baseline_exploration.py` (0%)
+  tetap 0%.
+
+Menutup sisa ini butuh keputusan: uji integrasi bertanda `slow` untuk loop
+inferensi (butuh bobot di mesin uji), dan uji McNemar/bootstrap XAU memakai
+prediksi tersimpan sebagai fixture.
 
 ```
 model/xau/evaluation/evaluate.py ............ 0%   (83 baris, 0 teruji)
@@ -248,7 +322,14 @@ model/fomc/evaluation/evaluate_holdout.py ... 52%
 
 **Rekomendasi:** angkat fungsi metrik ke `model/common/metrics.py` (sebagian sudah di sana) dan uji sekali untuk kedua track. Saat ini fungsi serupa terduplikasi antar dua skrip evaluasi.
 
-### P1-6 — Duplikasi fixture `temp_db` dan tidak ada `conftest.py`
+### P1-6 — Duplikasi fixture `temp_db` dan tidak ada `conftest.py` — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26) · commit `f84edfb`
+
+`backend/tests/conftest.py` sekarang berisi fixture bersama; `def temp_db`
+hanya ada di satu tempat (sebelumnya diduplikasi di 3 file test).
+Diverifikasi: `grep -rln "def temp_db" backend/tests/` → hanya
+`backend/tests/conftest.py`.
 
 `temp_db` didefinisikan ulang di 3 file test berbeda, dan repo **tidak punya `conftest.py`** sama sekali.
 
@@ -356,12 +437,12 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 | **P0-1** | Skrip training FOMC-RoBERTa | Besar | Reproducibility hilang total tanpa ini | ✅ |
 | **P0-2** | Putuskan & uji arah dovish/hawkish | Kecil | Arah sinyal bisa terbalik | ✅ |
 | **P0-3** | Prioritas model eksplisit di pipeline | Kecil | Pemborosan + perilaku rapuh | ✅ |
-| **P1-1** | Vendor bobot via LFS / fetch ber-checksum | Sedang | Inferensi offline | ⬜ |
+| **P1-1** | Vendor bobot via LFS / fetch ber-checksum | Sedang | Inferensi offline | ✅ |
 | **P1-2** | Lock file + batas `numpy<3` | Kecil | Mencegah bug dependency | ✅ |
 | **P1-3** | Samakan Python dev/CI | Kecil | Gerbang mutu bisa dijalankan lokal | ✅ |
-| **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" | ⬜ |
-| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | ⬜ |
-| **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ⬜ |
+| **P1-4** | Smoke test model nyata | Kecil | Menangkap "fallback diam-diam" | ✅ |
+| **P1-5** | Uji metrik XAU (ECE/McNemar/bootstrap) | Sedang | Angka evaluasi terverifikasi | 🟡 ECE/angka ✅, McNemar/bootstrap ⬜ |
+| **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ✅ |
 | **P2-1** | Auth/rate limit API | Kecil | Keamanan saat dipublikasikan | ⬜ |
 | **P2-2** | Test kolektor API berbayar | Sedang | Kuota & parsing error | ⬜ |
 | **P2-3** | Hapus duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci` | Kecil | Satu sumber kebenaran metrik | ⬜ |
@@ -370,16 +451,25 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 | **P2-6** | Isolasi test `test_protokol_terpenuhi` dari VRAM | Kecil | Test gagal karena lingkungan, bukan logika | ⬜ |
 | **P3-*** | `utcnow`, `except: pass`, kebersihan lain (6 item) | Kecil | Kebersihan | ⬜ |
 
-**Usulan urutan pengerjaan P1** (dari yang paling murah dan berdampak):
+**Urutan pengerjaan P1** (dari yang paling murah dan berdampak) — ✅ **selesai dijalankan**:
 
 1. **P1-2 + P1-3** — satu paket, keduanya soal dependency/Python. Menutup
-   penyebab mypy merah di lokal sekaligus menutup celah `numpy 2.x`.
+   penyebab mypy merah di lokal sekaligus menutup celah `numpy 2.x`. ✅
 2. **P1-4** — smoke test yang memastikan RoBERTa benar-benar dipakai, bukan
-   fallback diam-diam. Ini yang paling berbahaya karena kegagalannya senyap.
+   fallback diam-diam. Ini yang paling berbahaya karena kegagalannya senyap. ✅
 3. **P1-1** — vendor bobot atau fetch ber-checksum; bergantung keputusan Anda
-   soal ukuran repo (bentrok dengan P2-5).
+   soal ukuran repo (bentrok dengan P2-5). ✅ Dipilih fetch ber-checksum
+   (`scripts/fetch_weights.py`), LFS tidak dipakai — jadi tidak bentrok
+   dengan P2-5.
 4. **P1-6** lalu **P1-5** — `conftest.py` dulu agar helper uji metrik tidak
-   terduplikasi saat menulis test baru.
+   terduplikasi saat menulis test baru. ✅ P1-6 selesai. 🟡 P1-5 sebagian:
+   ECE/angka laporan kini teruji, **McNemar & bootstrap XAU belum**.
+
+**Sisa pekerjaan P1-5** (bila ingin ditutup):
+- Uji McNemar/bootstrap XAU memakai prediksi tersimpan sebagai fixture —
+  tidak butuh GPU, murah.
+- Uji integrasi bertanda `slow` untuk loop inferensi `evaluate.py` — butuh
+  bobot 440 MB di mesin uji.
 
 
 ---
