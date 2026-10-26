@@ -1,6 +1,6 @@
 """Unit tests for SCHEMA v0.5.0 data contracts and invariants."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -45,7 +45,7 @@ def test_target_impact_invariants():
         model_version="indobert-v1",
         universe_version="2026-10-12-core3",
         schema_version="v0.5.0",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     assert impact.score == 0.45
 
@@ -62,7 +62,7 @@ def test_target_impact_invariants():
             model_version="indobert-v1",
             universe_version="2026-10-12-core3",
             schema_version="v0.5.0",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
 

@@ -7,6 +7,7 @@ yang menghentikan pipeline (RULES: kegagalan sumber dicatat).
 
 from __future__ import annotations
 
+import logging
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -19,6 +20,8 @@ import yaml
 from backend.src.collect.news_api.base import ApiStatus, HealthReport, NewsItem
 from backend.src.collect.news_api.client import ApiError, NewsAPIClient
 from backend.src.collect.news_api.keywords import TARGET_KEYWORDS, matches_target, score_relevance
+
+logger = logging.getLogger(__name__)
 
 REGISTRY_PATH = Path("data/source_registry.yaml")
 
@@ -99,7 +102,10 @@ def _parse_date(raw: str | None) -> datetime | None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
     except (TypeError, ValueError):
-        pass
+        # Bukan penelanan error: ini pola coba-format-berikutnya. Sebagian
+        # besar feed memakai ISO-8601, jadi kegagalan di sini adalah jalur
+        # normal. Dicatat DEBUG agar tetap bisa dilacak tanpa membanjiri log.
+        logger.debug("tanggal bukan RFC 2822, mencoba format ISO: %r", raw)
     for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
         try:
             dt = datetime.strptime(raw, fmt)

@@ -7,6 +7,7 @@ pipeline (dicatat sebagai status, bukan exception yang naik).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import urllib.error
@@ -15,6 +16,8 @@ import urllib.request
 from typing import Any
 
 from backend.src.collect.news_api.base import ApiStatus
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_UA = "FInews/0.6 (+research; contact: local)"
 
@@ -120,7 +123,10 @@ class NewsAPIClient:
                 try:
                     body = exc.read().decode("utf-8", errors="replace")
                 except Exception:  # pragma: no cover - best effort
-                    pass
+                    # Body yang tak terbaca tidak boleh menggagalkan klasifikasi
+                    # error, tapi juga tidak boleh hilang tanpa jejak: tanpa ini
+                    # pesan error 5xx jadi kosong dan sulit didiagnosis.
+                    logger.debug("gagal membaca body respons error", exc_info=True)
                 err = self._classify(exc, body)
                 # 401/403/404/premium tidak akan sembuh dengan retry
                 if err.status in (ApiStatus.UNAUTHORIZED, ApiStatus.PREMIUM_ONLY) or exc.code == 404:

@@ -28,8 +28,8 @@
 |---|:---:|---|
 | P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
 | P1 — Penting | 6 | ✅ **selesai semua** (P1-5: 59 baris I/O belum bisa diuji offline) |
-| P2 — Sedang | 6 | ⬜ terbuka |
-| P3 — Ringan | 6 | ⬜ terbuka |
+| P2 — Sedang | 6 | 🟡 **3 selesai, 3 terbuka** (P2-1, P2-2, P2-5) |
+| P3 — Ringan | 6 | 🟡 **2 selesai, 2 terbuka, 2 bukan cacat** (P3-4, P3-5 terbuka) |
 
 
 **Kesimpulan satu baris:** fondasi backend solid dan teruji, tetapi **artefak model tidak dapat direproduksi** — tidak ada satu pun skrip yang bisa menghasilkan ulang angka di `benchmark_results.json` atau `metrics.json`.
@@ -370,17 +370,29 @@ Sebaliknya, 26 modul sudah **100%** — termasuk `normalize/dedup.py`, `persona/
 
 Jalur yang menyentuh **API eksternal berbayar** justru paling sedikit teruji — padahal di situ kuota dan parsing error paling mahal. `eulerpool.py` (64%) punya penanganan kuota yang tidak tercakup penuh.
 
-### P2-3 — Duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci`
+### P2-3 — Duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci` — ✅ **SELESAI**
 
-Fungsi statistik diimplementasikan ulang di `model/fomc/evaluation/evaluate_holdout.py` dan variannya, bukan dipakai bersama dari `model/common/`. Risiko: perbaikan di satu tempat tidak merambat ke tempat lain.
+**Status: SELESAI** (sebelum audit ini diperbarui) · commit `f1a9025`
 
-### P2-4 — Dokumentasi tidak sinkron dengan kode
+Diverifikasi ulang: fungsi kini hanya ada di `model/common/metrics.py`
+(`:82`, `:133`). `model/fomc/evaluation/evaluate_holdout.py:23` mengimpornya
+dari sana (`from model.common.metrics import compute_bootstrap_ci,
+compute_mcnemar_test`), dan `backend/tests/test_metrics.py` menguji keduanya
+lewat jalur bersama itu. Tidak ada implementasi kedua yang tersisa.
 
-| Dokumen | Klaim | Kenyataan |
+### P2-4 — Dokumentasi tidak sinkron dengan kode — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26)
+
+| Dokumen | Klaim lama | Kenyataan |
 |---|---|---|
-| `AGENTS.md:163` | "`model/xau/src/` masih kosong" | Berisi 3 modul + bobot 440 MB, sudah jalan |
-| `AGENTS.md:66` | Track XAU sebagai tabel | Ada, tapi status "kosong" menyesatkan |
-| `model/fomc/README.md` | mirror otomatis dipakai | **Baru benar setelah commit `b9550b3`**; sebelumnya klaim tanpa implementasi |
+| `AGENTS.md:163` | "`model/xau/src/` masih kosong" | **Salah.** Berisi `model.py` + `data_loader.py`, bobot terlatih (`test_macro_f1` 0,8887) |
+| `AGENTS.md` §7 | Track XAU tidak disebut di daftar "sudah ada" | Sudah ditambahkan |
+| `model/fomc/README.md` | mirror otomatis dipakai | **Baru benar setelah commit `b9550b3`** |
+
+Dua rujukan mati ke `context/AUDIT.md` (dihapus pemilik) juga diperbaiki:
+`AGENTS.md:146` dan `backend/tests/test_manual_ingest.py:3` kini menunjuk
+`audit.md` di root repo.
 
 `AGENTS.md` adalah dokumen yang dibaca agen/kontributor **sebelum** menyentuh repo, sehingga informasi basi di sini berbiaya tinggi.
 
@@ -394,26 +406,52 @@ Fungsi statistik diimplementasikan ulang di `model/fomc/evaluation/evaluate_hold
 
 Artefak hasil generate ikut masuk version control. Menambah noise pada diff dan memperbesar `.git` (29 MB — juga memuat `research/papers/*.pdf` ±7 MB).
 
-### P2-6 — Test pollution: `test_protokol_terpenuhi` gagal karena VRAM, bukan logika
+### P2-6 — Test pollution: `test_protokol_terpenuhi` gagal karena VRAM, bukan logika — ✅ **SELESAI**
+
+**Status: SELESAI** (2026-10-26)
 
 Test `backend/tests/test_xau_track.py::TestTrainedModel::test_protokol_terpenuhi` **lulus sendiri** tapi gagal di suite penuh dengan `CUDA out of memory` (GPU 6 GiB). Test ini memuat model nyata dan bersaing VRAM dengan test lain.
 
-Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tetapi **XAU masih rentan** terhadap kondisi yang sama jika suite bertambah.
+Yang dikerjakan (rekomendasi audit dijalankan keduanya):
 
-**Rekomendasi:** beri mark `slow`/`gpu` dan jalankan terpisah, atau paksa `device="cpu"` di test.
+- `TestTrainedModel` diberi `@pytest.mark.slow`, sehingga keluar dari suite
+  default (`-m "not slow and not network"`).
+- `test_protokol_terpenuhi` memanggil `FinbertGoldSentiment(device="cpu")`
+  secara eksplisit, bukan membiarkan auto-deteksi CUDA di dalam model.
+
+Bukti: suite default **420 passed, 2 skipped, 8 deselected**; dijalankan
+eksplisit `pytest -m slow backend/tests/test_xau_track.py` → **2 passed**
+(4,47s). Jumlah deselected naik dari 6 ke 8 karena 2 test inilah yang pindah
+jalur — bukan test yang hilang.
 
 ---
 
 ## 4. Temuan Ringan (P3)
 
-| # | Temuan | Bukti |
+**Status per 2026-10-26: P3-1, P3-2 selesai.** P3-3 (tidak ada TODO/FIXME)
+adalah observasi, bukan cacat. P3-4, P3-5 tetap terbuka.
+
+| # | Temuan | Bukti | Status |
+|---|---|---|---|
+| P3-1 | `datetime.utcnow()` deprecated | `schema.py:159`, `:258` + `test_schema.py` | ✅ diganti `datetime.now(timezone.utc)`; 0 warning `utcnow` |
+| P3-2 | `except ... : pass` menelan error | 4 lokasi (lihat bawah) | ✅ semua diberi log DEBUG |
+| P3-3 | Tidak ada penanda TODO/FIXME | 0 kemunculan | observasi, bukan cacat |
+| P3-4 | `dataset/` + `research/papers/` di-track (PDF & parquet ±9 MB) | membesarkan repo | ⬜ terbuka |
+| P3-5 | Tidak ada migrasi/seed DB | skema dibuat di kode | ⬜ terbuka |
+| P3-6 | `.env.example` ada, `.env` tidak ter-track | ✅ aman | ✅ tidak ada API key hardcoded |
+
+**Rincian P3-2.** Penting dibedakan: 2 lokasi memang menelan error, 2 lokasi
+lain adalah import opsional yang sah — keduanya kini berjejak:
+
+| Lokasi | Sifat | Penanganan |
 |---|---|---|
-| P3-1 | `datetime.utcnow()` deprecated | 10 kemunculan di `backend/src` + `model`; memicu `DeprecationWarning` di suite |
-| P3-2 | `except ... : pass` menelan error | 4 lokasi: `rss_collector.py:102`, `news_api/client.py:123`, `registry.py:90`, `eulerpool.py:54` |
-| P3-3 | Tidak ada penanda TODO/FIXME | 0 kemunculan — baik, tapi juga berarti utang teknis tidak dilacak eksplisit |
-| P3-4 | `dataset/` + `research/papers/` di-track (PDF & parquet ±9 MB) | Membesarkan repo tanpa manfaat runtime |
-| P3-5 | Tidak ada migrasi/seed DB | Skema SQLite dibuat di kode; perubahan skema tidak punya jalur upgrade |
-| P3-6 | `.env.example` ada, `.env` tidak ter-track | ✅ aman; tidak ada API key hardcoded (diverifikasi regex) |
+| `rss_collector.py:101` | **bukan** penelanan — pola coba-format-tanggal-berikutnya | `logger.debug` |
+| `client.py:123` | benar-benar menelan error body HTTP | `logger.debug(..., exc_info=True)` |
+| `registry.py:90` | import `dotenv` opsional | `logger.debug` |
+| `eulerpool.py:54` | import `dotenv` opsional | `logger.debug` |
+
+Alasan `debug` dan bukan `warning`: keempatnya jalur normal, bukan kegagalan.
+Yang diperbaiki adalah **tidak adanya jejak**, bukan level log-nya.
 
 ---
 
@@ -449,11 +487,16 @@ Sudah dimitigasi untuk FOMC (default CPU, `FOMC_DEVICE=cuda` untuk memaksa), tet
 | **P1-6** | `conftest.py` bersama | Kecil | Mengurangi duplikasi | ✅ |
 | **P2-1** | Auth/rate limit API | Kecil | Keamanan saat dipublikasikan | ⬜ |
 | **P2-2** | Test kolektor API berbayar | Sedang | Kuota & parsing error | ⬜ |
-| **P2-3** | Hapus duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci` | Kecil | Satu sumber kebenaran metrik | ⬜ |
-| **P2-4** | Perbarui `AGENTS.md` | Kecil | Info basi berbiaya tinggi | ⬜ |
+| **P2-3** | Hapus duplikasi `compute_mcnemar_test` / `compute_bootstrap_ci` | Kecil | Satu sumber kebenaran metrik | ✅ |
+| **P2-4** | Perbarui `AGENTS.md` | Kecil | Info basi berbiaya tinggi | ✅ |
 | **P2-5** | Keluarkan `.graphify/` dari git atau beri batas ukuran | Kecil | Repo membengkak, diff berisik | ⬜ |
-| **P2-6** | Isolasi test `test_protokol_terpenuhi` dari VRAM | Kecil | Test gagal karena lingkungan, bukan logika | ⬜ |
-| **P3-*** | `utcnow`, `except: pass`, kebersihan lain (6 item) | Kecil | Kebersihan | ⬜ |
+| **P2-6** | Isolasi test `test_protokol_terpenuhi` dari VRAM | Kecil | Test gagal karena lingkungan, bukan logika | ✅ |
+| **P3-1** | `datetime.utcnow()` deprecated | Kecil | Peringatan deprecation Python 3.12+ | ✅ |
+| **P3-2** | `except: pass` tanpa jejak | Kecil | Error hilang tanpa log | ✅ |
+| **P3-3** | Tidak ada TODO/FIXME | — | Observasi, bukan cacat | n/a |
+| **P3-4** | `dataset/` + `research/papers/` di-track | Kecil | Repo membengkak | ⬜ |
+| **P3-5** | Tidak ada migrasi/seed DB | Sedang | Skema tanpa jalur upgrade | ⬜ |
+| **P3-6** | Secret tidak ter-track | — | ✅ aman, tidak perlu tindakan | ✅ |
 
 **Urutan pengerjaan P1** (dari yang paling murah dan berdampak) — ✅ **selesai dijalankan**:
 

@@ -1,6 +1,6 @@
 """Data contracts and validation models (SCHEMA v0.6.0)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -156,7 +156,7 @@ class TargetImpact(BaseModel):
     route_score: Optional[float] = None
     universe_version: str = "2026-10-12-core3"
     schema_version: str = "0.5.0"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @model_validator(mode="after")
     def validate_basis_confidence_and_evidence(self) -> "TargetImpact":
@@ -255,7 +255,7 @@ class AllocationSuggestion(BaseModel):
     profile_id: str  # conservative | moderate | aggressive | custom
     lines: list[AllocationLine]
     params_version: str = "2026-10-09"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     disclaimer: str = "Simulasi analitis. Bukan nasihat investasi."
 
     @model_validator(mode="after")
