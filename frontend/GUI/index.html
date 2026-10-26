@@ -14,11 +14,8 @@
 <link rel="stylesheet" href="src/css/layout.css">
 <link rel="stylesheet" href="src/css/splash.css">
 <script>
-  window.SPLASH_CONFIG = { reloadMode: "skeleton", waitForApp: true };
-  try {
-    if (sessionStorage.getItem("arcas_splash_seen") === "1" && window.SPLASH_CONFIG.reloadMode === "none")
-      document.documentElement.classList.add("splash-skip");
-  } catch (e) {}
+  /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
+  window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
 </script>
 </head>
 <body>
