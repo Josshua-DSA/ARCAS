@@ -171,8 +171,8 @@ window.ARCAS = window.ARCAS || {};
       var arrow = d > 0.005 ? "▲" : d < -0.005 ? "▼" : "●";
       var wBase = Math.max(0, Math.min(100, Number(l.baseline_pct || 0)));
       var wNew = Math.max(0, Math.min(100, Number(l.new_pct || 0)));
-      return "<div class='alloc-row'><div class='lbl'><span>" + esc(CLASS_LABEL[l.alloc_class] || l.alloc_class) +
-        "</span><span class='" + cls + "'>" + esc(wBase.toFixed(1)) + "% " + arrow + " " + fmt(d, 2) + " pp : " + esc(wNew.toFixed(1)) + "%</span></div>" +
+      return "<div class='alloc-row'><div class='lbl'><span class='alloc-name'>" + esc(CLASS_LABEL[l.alloc_class] || l.alloc_class) +
+        "</span><span class='alloc-val " + cls + "'>" + esc(wNew.toFixed(1)) + "% <span class='alloc-delta'>" + arrow + " " + fmt(d, 2) + " pp</span></span></div>" +
         "<div class='bar' role='img' aria-label='" + esc(l.alloc_class) + " baseline " + esc(wBase.toFixed(1)) + " persen, baru " + esc(wNew.toFixed(1)) + " persen'>" +
         "<div class='base' style='width:" + wBase + "%'></div><div class='tilt' style='width:" + wNew + "%;opacity:.85'></div></div></div>";
     }).join("");
