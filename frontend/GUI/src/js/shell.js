@@ -81,8 +81,6 @@ window.ARCAS = window.ARCAS || {};
   function setStatus(mode, text) {
     var badge = $("dataBadge");
     if (badge) badge.textContent = text;
-    var src = $("srcMeta");
-    if (src) src.textContent = "Sumber: " + (A.state.apiOk ? (A.state.apiBase === "" ? "API relatif" : A.state.apiBase) : "ilustrasi lokal (API tidak terjangkau)");
   }
   function splashStatus(text) {
     if (window.Splash && typeof window.Splash.status === "function") window.Splash.status(text);
@@ -92,36 +90,15 @@ window.ARCAS = window.ARCAS || {};
   }
   A.setStatus = setStatus;
 
-  /* Data Provenance Bar (UI-01): mode live/empty/demo selalu terbaca teks. */
-  A.renderProvenance = function (meta) {
-    var box = $("provenance");
-    if (!box) return;
-    if (!meta) {
-      $("provMode").textContent = "demo : ilustrasi lokal (API tidak terjangkau)";
-      box.querySelector(".prov-item").classList.add("warn");
-      ["provUniverse", "provSchema", "provModel", "provArticles", "provNews", "provFresh"]
-        .forEach(function (id) { $(id).textContent = "ilustrasi"; });
-      return;
-    }
-    box.querySelector(".prov-item").classList.remove("warn");
-    $("provMode").textContent = "mode : " + meta.mode;
-    $("provUniverse").textContent = meta.universe_version || "n/a";
-    $("provSchema").textContent = meta.schema_version || "n/a";
-    $("provModel").textContent = (meta.model_version || "n/a") + (meta.calibrated ? " (terkalibrasi)" : " (belum kalibrasi)");
-    $("provArticles").textContent = String(meta.coverage.articles);
-    $("provNews").textContent = String(meta.coverage.days_with_news);
-    var fresh = meta.coverage.last_price_date || meta.coverage.last_news_date;
-    $("provFresh").textContent = fresh ? "harga " + fresh : "belum ada deret";
-  };
+  /* Metadata disimpan di state untuk halaman yang butuh (kualitas data,
+     versi di Simulations). Bar provenance visual sudah dihapus. */
   A.loadMeta = function () {
     splashStatus("MEMUAT METADATA");
     return A.api("/api/meta").then(function (meta) {
       A.state.meta = meta;
-      A.renderProvenance(meta);
       return meta;
     }).catch(function () {
       A.state.meta = null;
-      A.renderProvenance(null);
       return null;
     });
   };

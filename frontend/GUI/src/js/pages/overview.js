@@ -23,8 +23,6 @@
     var scores = dates.map(function (d) { var v = byDate[d].score; return v == null ? null : Math.round(v * 1000) / 1000; });
     var gapCount = scores.filter(function (v) { return v === null; }).length;
 
-    A.$("targetMeta").textContent = "Target: " + A.state.target + " : " + info.name + " (" + info.ticker + ")";
-    A.$("rangeMeta").textContent = "Rentang: " + A.state.days + " hari terakhir";
     A.$("lgPrice").style.background = info.color;
 
     if (!chart) { A.showState("chartState", "Pustaka grafik lokal belum termuat (src/js/echarts.min.js). Periksa path file."); return; }
