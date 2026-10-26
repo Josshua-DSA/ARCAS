@@ -22,15 +22,6 @@ from backend.src.schema import Article, ArticleSentiment, Direction, Lang, Model
 from backend.src.store.db import Database
 
 
-@pytest.fixture()
-def temp_db(tmp_path: Path) -> Database:
-    """Database SQLite sementara dengan skema lengkap."""
-    db_file = tmp_path / "test_fomc_pipeline.db"
-    db = Database(db_file)
-    db.init_schema()
-    return db
-
-
 def _create_sample_article(
     article_id: str,
     title: str,

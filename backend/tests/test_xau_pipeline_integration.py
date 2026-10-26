@@ -30,15 +30,6 @@ from model.common.sentiment_config import FALLBACK, neutral_band
 XAU_WEIGHTS_DIR = Path("model/xau/weights/finbert_gold")
 
 
-@pytest.fixture()
-def temp_db(tmp_path: Path) -> Database:
-    """Database SQLite sementara dengan skema lengkap."""
-    db_file = tmp_path / "test_xau_pipeline.db"
-    db = Database(db_file)
-    db.init_schema()
-    return db
-
-
 def _create_article(
     article_id: str,
     title: str,
