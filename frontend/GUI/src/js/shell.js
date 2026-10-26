@@ -76,15 +76,11 @@ window.ARCAS = window.ARCAS || {};
     return "<span class='chip hold'>● HOLD " + dots + "</span>";
   };
 
-  /* Status API + splash: teks hanya muncul untuk tahap yang benar-benar terjadi.
-     mode: "loading" (spinner) | "ok" (hijau + ping) | "err" (merah) | "warn". */
+  /* Status data: teks tampil di strip disclaimer (badge terpisah dihapus).
+     Teks hanya muncul untuk tahap yang benar-benar terjadi; aria-live tetap. */
   function setStatus(mode, text) {
-    var dot = $("statusDot");
-    var known = { loading: 1, ok: 1, err: 1, warn: 1 };
-    if (dot) dot.className = "dot" + (known[mode] ? " " + mode : "");
-    if (dot && dot.parentNode) dot.parentNode.setAttribute("aria-busy", mode === "loading" ? "true" : "false");
-    var sText = $("statusText"); if (sText) sText.textContent = text;
-    var badge = $("dataBadge"); if (badge) badge.textContent = text;
+    var badge = $("dataBadge");
+    if (badge) badge.textContent = text;
     var src = $("srcMeta");
     if (src) src.textContent = "Sumber: " + (A.state.apiOk ? (A.state.apiBase === "" ? "API relatif" : A.state.apiBase) : "ilustrasi lokal (API tidak terjangkau)");
   }
