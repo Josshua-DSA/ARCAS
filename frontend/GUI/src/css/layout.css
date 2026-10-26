@@ -28,13 +28,14 @@ header.brand{background:var(--base)}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
-   tiga garis bertumpuk dalam satu layar. */
+   tiga garis bertumpuk dalam satu layar.
+   Halaman aktif ditandai tebal + warna tinta penuh, bukan garis bawah. */
 nav.sections{background:var(--base);border-bottom:1px solid var(--border-subtle)}
 nav.sections .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 20px}
-nav.sections a{font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--text-primary);
-  text-decoration:none;padding:12px 14px;border-bottom:3px solid transparent;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
-nav.sections a[aria-current="page"]{border-bottom-color:var(--accent);color:var(--text-primary)}
-nav.sections a:hover{background:var(--bg-sunken)}
+nav.sections a{font-family:var(--font-sans);font-size:14px;font-weight:400;color:var(--text-secondary);
+  text-decoration:none;padding:12px 14px;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
+nav.sections a[aria-current="page"]{font-weight:600;color:var(--text-primary)}
+nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 
 /* Tab target: satu aksen oranye hanya di tab aktif (anti overuse) */
 .target-bar{background:var(--bg-sunken)}
