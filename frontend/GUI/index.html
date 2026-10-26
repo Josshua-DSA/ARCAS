@@ -95,23 +95,6 @@
       </div>
     </section>
 
-    <section class="panel dark" id="statistik" aria-labelledby="statTitle">
-      <div class="panel-head">
-        <h2 id="statTitle">Keterkaitan sentimen dan pasar</h2>
-        <span class="hint">asosiasi, bukan bukti sebab</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="statState" hidden></div>
-        <div id="statTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n = jumlah observasi.
-        </p>
-        <a class="btn small" href="research.html" data-page="research.html">Meja kerja + periode uji di Research Lab</a>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid flip">
     <section class="panel light" id="alokasi" aria-labelledby="allocTitle">
       <div class="panel-head"><h2 id="allocTitle">Strip alokasi profil aktif</h2><span class="hint">total wajib 100%</span></div>
       <div class="panel-body">
@@ -121,16 +104,19 @@
         <a class="btn small" href="simulations.html" data-page="simulations.html">Ganti profil dan lihat persona di Simulations</a>
       </div>
     </section>
-
-    <section class="panel dark" id="ringkasBerita" aria-labelledby="topTitle">
-      <div class="panel-head"><h2 id="topTitle">Berita berdampak teratas</h2><span class="hint" id="topKick">memuat...</span></div>
-      <div class="panel-body">
-        <div class="state" id="topState" hidden></div>
-        <div id="topList"></div>
-        <a class="btn small" href="evidence.html" data-page="evidence.html">Bukti kutipan + persona di Evidence</a>
-      </div>
-    </section>
   </div>
+
+  <section class="panel light" id="berita" aria-labelledby="newsTitle">
+    <div class="panel-head">
+      <h2 id="newsTitle">Berita yang berhasil dikumpulkan</h2>
+      <span class="hint" id="newsKick">memuat...</span>
+    </div>
+    <div class="panel-body">
+      <div class="state" id="newsState" hidden></div>
+      <div id="newsList"></div>
+      <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
+    </div>
+  </section>
 </main>
 
 <footer>
