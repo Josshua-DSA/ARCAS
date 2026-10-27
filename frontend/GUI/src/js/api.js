@@ -25,6 +25,26 @@ window.ARCAS = window.ARCAS || {};
     basePromise = chain.catch(function () { A.state.apiBase = ""; A.state.apiReachable = false; return ""; });
     return basePromise;
   }
+  /* Lupakan hasil deteksi supaya panggilan berikutnya memeriksa ulang.
+     Tanpa ini, sekali API mati saat halaman dibuka (mis. backend belum siap),
+     apiReachable=false terkunci selamanya: halaman terus menampilkan ilustrasi
+     sampai di-reload manual, termasuk setelah backend hidup kembali. */
+  function resetBase() {
+    A.state.apiReachable = null;
+    A.state.apiBase = "";
+    basePromise = null;
+  }
+  A.resetBase = resetBase;
+
+  /* Tanggal lokal YYYY-MM-DD. toISOString() memakai UTC, sehingga pengguna
+     WIB (UTC+7) sebelum 07.00 melihat "hari ini" versi UTC = kemarin dan
+     rentang bergeser satu hari. */
+  function localISO(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+  }
+  A.localISO = localISO;
+
   function api(path) {
     return detectBase().then(function (base) {
       return fetch(base + path, { cache: "no-store" }).then(function (r) {
