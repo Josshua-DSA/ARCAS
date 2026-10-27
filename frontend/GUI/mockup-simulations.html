@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCAS : Simulations (mockup dua fase)</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --base:#F6F4F4; --bg-card:#FFFFFF; --bg-sunken:#EDEAEA;
+    --text:#2C2727; --text-secondary:#5E5757; --text-muted:#6B6464;
+    --border-subtle:#DDD8D8; --border-strong:#8C8585;
+    --accent:#FF7517; --accent-hover:#FF8A3D; --accent-subtle:#FFE9DB; --accent-text:#C2410C;
+    --up:#1F7A44; --down:#B3261E; --hold:#6B6464;
+    --surface-deep:#2C2727;
+    --font-sans:"Inter",system-ui,-apple-system,sans-serif;
+    --font-serif:"Newsreader",Georgia,serif;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--base);color:var(--text);font-family:var(--font-sans);
+       -webkit-font-smoothing:antialiased;}
+
+  /* ---------- bilah atas ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+          padding:14px 22px;border-bottom:1px solid var(--border-subtle);background:var(--base)}
+  .brand{font-family:var(--font-serif);font-size:16px;letter-spacing:.02em}
+  .brand b{font-weight:600}
+  .topbar .meta{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+
+  .wrap{max-width:860px;margin:0 auto;padding:0 22px}
+
+  /* ---------- FASE 1: pusat, lapang ---------- */
+  .stage{min-height:calc(100vh - 52px);display:flex;flex-direction:column;
+         align-items:center;justify-content:center;padding-bottom:8vh}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:var(--bg-sunken);
+         color:var(--text-secondary);font-family:var(--font-mono);font-size:11px;
+         padding:5px 11px;border-radius:999px;margin-bottom:26px}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .greet{font-family:var(--font-serif);font-size:30px;font-weight:400;
+         text-align:center;margin:0 0 8px;line-height:1.25}
+  .greet em{font-style:italic}
+  .sub{text-align:center;color:var(--text-secondary);font-size:13.5px;
+       margin:0 0 30px;max-width:52ch;line-height:1.6}
+
+  /* kartu input */
+  .composer{width:100%;max-width:660px;background:var(--bg-card);
+            border:1px solid var(--border-subtle);border-radius:16px;
+            box-shadow:0 1px 2px rgba(44,39,39,.04),0 8px 24px -12px rgba(44,39,39,.14);
+            padding:14px 14px 10px;transition:border-color .15s,box-shadow .15s}
+  .composer:focus-within{border-color:var(--accent);
+            box-shadow:0 0 0 3px var(--accent-subtle),0 8px 24px -12px rgba(44,39,39,.18)}
+  .composer label{display:block;font-family:var(--font-mono);font-size:10.5px;
+                  text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);
+                  margin:0 0 7px 2px}
+  textarea{width:100%;border:0;background:transparent;resize:none;color:var(--text);
+           font-family:var(--font-sans);font-size:14.5px;line-height:1.55;
+           min-height:52px;outline:none;padding:0 2px}
+  textarea::placeholder{color:#8C8585}
+  .composer-foot{display:flex;align-items:center;justify-content:space-between;
+                 gap:12px;margin-top:8px;padding-top:9px;border-top:1px solid var(--border-subtle)}
+  .ctx{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);display:flex;
+       align-items:center;gap:6px;flex-wrap:wrap}
+  .ctx select{border:1px solid var(--border-subtle);background:var(--bg-card);
+              font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);
+              border-radius:6px;padding:3px 5px}
+  .send{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;
+        border:0;border-radius:9px;padding:8px 15px;font-size:13px;font-weight:500;
+        cursor:pointer;font-family:var(--font-sans)}
+  .send:hover{background:var(--accent-hover)}
+  .send:disabled{background:#D9D2D2;color:#8C8585;cursor:not-allowed}
+
+  /* chip contoh */
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px;max-width:660px}
+  .chip{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:999px;
+        padding:7px 13px;font-size:12px;color:var(--text-secondary);cursor:pointer;
+        transition:background .13s,border-color .13s,color .13s}
+  .chip:hover{border-color:var(--accent);color:var(--accent-text);background:var(--accent-subtle)}
+  .chip .k{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-right:5px}
+
+  .foot-note{margin-top:34px;font-size:11.5px;color:var(--text-secondary);text-align:center;
+             font-family:var(--font-mono);max-width:56ch;line-height:1.7}
+
+  /* ---------- FASE 2: percakapan ---------- */
+  .conv{padding:22px 0 150px;display:none}
+  .conv.on{display:block}
+  .stage.off{display:none}
+
+  .msg-user{display:flex;justify-content:flex-end;margin:0 0 22px}
+  .msg-user .bubble{background:var(--bg-sunken);color:var(--text);border-radius:14px 14px 4px 14px;
+        padding:11px 15px;font-size:13.5px;max-width:78%;line-height:1.6}
+  .msg-user .bubble .lbl{display:block;font-family:var(--font-mono);font-size:10px;
+        text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:5px}
+
+  .answer{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:14px;
+          padding:0;overflow:hidden;box-shadow:0 1px 2px rgba(44,39,39,.04)}
+  .answer-head{padding:16px 18px 13px;border-bottom:1px solid var(--border-subtle)}
+  .answer-head h2{font-family:var(--font-serif);font-size:17px;font-weight:500;margin:0 0 9px;line-height:1.4}
+  .tags{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .tag{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:5px;
+       background:var(--bg-sunken);color:var(--text-secondary)}
+  .tag.up{background:#E4F3EA;color:var(--up)}
+  .tag.down{background:#FBE7E5;color:var(--down)}
+  .tag.hold{background:#EFEBEB;color:var(--hold)}
+  .metric{display:flex;gap:18px;margin-top:11px;font-family:var(--font-mono);font-size:11px;
+          color:var(--text-secondary);flex-wrap:wrap}
+  .metric b{color:var(--text);font-weight:600}
+
+  .answer-body{padding:15px 18px 17px}
+  .answer-body p{margin:0 0 11px;font-size:13.5px;line-height:1.68;color:var(--text-secondary)}
+  .answer-body p:last-child{margin-bottom:0}
+  .answer-body strong{color:var(--text);font-weight:600}
+
+  .stance-title{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;
+       letter-spacing:.09em;color:var(--text-muted);margin:20px 0 10px}
+  .stance-list{display:flex;flex-direction:column;gap:1px;border:1px solid var(--border-subtle);
+       border-radius:10px;overflow:hidden;background:var(--border-subtle)}
+  .stance{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;
+          background:var(--bg-card);padding:11px 14px}
+  .stance .who{font-size:13px;color:var(--text);font-weight:500}
+  .stance .why{grid-column:1/-1;font-size:11.5px;color:var(--text-muted);margin-top:-4px;line-height:1.5}
+  .pill{font-family:var(--font-mono);font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:5px;min-width:52px;text-align:center}
+  .pill.up{background:#E4F3EA;color:var(--up)}
+  .pill.down{background:#FBE7E5;color:var(--down)}
+  .pill.hold{background:#EFEBEB;color:var(--hold)}
+  .str{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);min-width:38px;text-align:right}
+
+  .disclaimer{margin:16px 0 0;padding:11px 13px;background:var(--accent-subtle);
+       border-radius:9px;font-size:11.5px;color:var(--accent-text);line-height:1.6}
+
+  .answer-foot{display:flex;gap:9px;padding:0 18px 16px;flex-wrap:wrap}
+  .ghost{background:transparent;border:1px solid var(--border-subtle);color:var(--text-secondary);
+       border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:var(--font-sans)}
+  .ghost:hover{border-color:var(--border-strong);color:var(--text)}
+
+  /* input melayang di bawah */
+  .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 22px 18px;
+        background:linear-gradient(to top,var(--base) 55%,rgba(246,244,244,0));display:none}
+  .dock.on{display:block}
+  .dock .inner{max-width:860px;margin:0 auto}
+  .dock .composer{max-width:none}
+
+  .toggle{position:fixed;right:18px;bottom:18px;z-index:50;background:var(--surface-deep);
+    color:#F6F4F4;border:0;border-radius:999px;padding:9px 15px;font-family:var(--font-mono);
+    font-size:11px;cursor:pointer;box-shadow:0 6px 18px -6px rgba(44,39,39,.5)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">ARCAS <b>: Simulations</b></div>
+  <div class="meta">mockup · bukan halaman asli</div>
+</div>
+
+<!-- ================= FASE 1 ================= -->
+<div class="stage" id="stage">
+  <div class="wrap" style="display:flex;flex-direction:column;align-items:center">
+    <span class="badge"><span class="dot"></span>siap · model termuat</span>
+    <h1 class="greet">Berita apa yang ingin <em>kamu</em> uji?</h1>
+    <p class="sub">Tempel judul atau isi berita. Sistem mencocokkannya dengan dampak yang
+      sudah dihitung, lalu menampilkan sudut pandang lima persona.</p>
+
+    <div class="composer">
+      <label for="news">Berita</label>
+      <textarea id="news" rows="2" placeholder="Tempel judul berita di sini, mis. “IMF expects at least one more 25 bps ECB rate hike in 2026”"></textarea>
+      <div class="composer-foot">
+        <div class="ctx">
+          <span>target</span>
+          <select><option>XAU</option><option>SPX</option><option>RATE_UST</option></select>
+          <span>·</span><span>profil</span>
+          <select><option>balanced</option><option>konservatif</option><option>agresif</option></select>
+        </div>
+        <button class="send" id="send">Uji berita →</button>
+      </div>
+    </div>
+
+    <div class="chips">
+      <button class="chip" data-fill="IMF expects at least one more 25 bps ECB rate hike in 2026"><span class="k">contoh</span>ECB rate hike</button>
+      <button class="chip" data-fill="Gold steadies as dollar retreats from two-week high"><span class="k">contoh</span>Gold steady</button>
+      <button class="chip" data-fill="Fed officials signal patience on further easing"><span class="k">contoh</span>Fed patience</button>
+    </div>
+
+    <p class="foot-note">Hasil berupa simulasi sudut pandang, bukan nasihat investasi.<br>
+      Angka diambil dari dampak yang tersimpan di basis data.</p>
+  </div>
+</div>
+
+<!-- ================= FASE 2 ================= -->
+<div class="conv" id="conv">
+  <div class="wrap">
+    <div class="msg-user">
+      <div class="bubble"><span class="lbl">berita yang diuji</span>
+        IMF expects at least one more 25 bps ECB rate hike in 2026</div>
+    </div>
+
+    <article class="answer">
+      <div class="answer-head">
+        <h2>Kenaikan suku bunga ECB menekan harga emas jangka pendek</h2>
+        <div class="tags">
+          <span class="tag up">arah naik</span>
+          <span class="tag">horizon pendek</span>
+          <span class="tag">XAU</span>
+          <span class="tag">23 artikel terkait</span>
+        </div>
+        <div class="metric">
+          <span>skor <b>+0,42</b></span>
+          <span>keyakinan <b>0,78</b></span>
+          <span>dampak <b>+1,8%</b></span>
+        </div>
+      </div>
+
+      <div class="answer-body">
+        <p>Berita ini dibaca sebagai <strong>tekanan naik</strong> untuk XAU dengan horizon
+          pendek. Sinyal positifnya cukup kuat (skor +0,42) dan keyakinan model 0,78,
+          sehingga tiga dari lima persona mengambil posisi <strong>beli</strong>.</p>
+        <p>Dua persona yang menahan diri melakukannya karena alasan berbeda: satu membatasi
+          risiko lewat batas keyakinan minimum, satu lagi memakai horizon panjang yang
+          tidak cocok dengan berita berdurasi pendek ini.</p>
+
+        <div class="stance-title">Sudut pandang lima persona</div>
+        <div class="stance-list">
+          <div class="stance">
+            <span class="who">Retail Investor</span>
+            <span class="pill up">BELI</span><span class="str">0,58</span>
+            <span class="why">Intensitas sinyal melewati ambang profil; horizon cocok.</span>
+          </div>
+          <div class="stance">
+            <span class="who">Day Trader</span>
+            <span class="pill up">BELI</span><span class="str">0,71</span>
+            <span class="why">Sinyal kuat pada horizon pendek, sesuai gaya transaksi.</span>
+          </div>
+          <div class="stance">
+            <span class="who">Fund Manager</span>
+            <span class="pill hold">TAHAN</span><span class="str">0,34</span>
+            <span class="why">Keyakinan 0,78 di bawah batas minimum profil (0,80).</span>
+          </div>
+          <div class="stance">
+            <span class="who">Long-term / Pension</span>
+            <span class="pill hold">TAHAN</span><span class="str">0,21</span>
+            <span class="why">Horizon berita pendek tidak cocok dengan horizon profil.</span>
+          </div>
+          <div class="stance">
+            <span class="who">Risk Manager / Hedger</span>
+            <span class="pill up">BELI</span><span class="str">0,47</span>
+            <span class="why">Membuka lindung nilai terhadap risiko suku bunga.</span>
+          </div>
+        </div>
+
+        <p class="disclaimer">Simulasi sudut pandang. Bukan nasihat investasi.</p>
+      </div>
+
+      <div class="answer-foot">
+        <button class="ghost">Lihat artikel sumber</button>
+        <button class="ghost">Uji berita lain</button>
+        <button class="ghost">Ekspor ringkasan</button>
+      </div>
+    </article>
+  </div>
+</div>
+
+<!-- input melayang saat fase 2 -->
+<div class="dock" id="dock">
+  <div class="inner">
+    <div class="composer">
+      <textarea rows="1" placeholder="Uji berita lain…"></textarea>
+      <div class="composer-foot">
+        <div class="ctx"><span>target</span><select><option>XAU</option><option>SPX</option></select></div>
+        <button class="send">Uji →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="toggle" id="toggle">lihat fase 2 →</button>
+
+<script>
+  var stage = document.getElementById('stage');
+  var conv  = document.getElementById('conv');
+  var dock  = document.getElementById('dock');
+  var toggle= document.getElementById('toggle');
+  var phase = 1;
+
+  function setPhase(p){
+    phase = p;
+    stage.classList.toggle('off', p === 2);
+    conv.classList.toggle('on', p === 2);
+    dock.classList.toggle('on', p === 2);
+    toggle.textContent = p === 1 ? 'lihat fase 2 →' : '← kembali ke fase 1';
+    if (p === 2) window.scrollTo({top:0}); else window.scrollTo({top:0});
+  }
+
+  toggle.onclick = function(){ setPhase(phase === 1 ? 2 : 1); };
+
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.onclick = function(){
+      document.getElementById('news').value = c.getAttribute('data-fill');
+      document.getElementById('news').focus();
+    };
+  });
+
+  document.getElementById('send').onclick = function(){ setPhase(2); };
+  document.querySelectorAll('.ghost').forEach(function(b){
+    b.onclick = function(){ if (b.textContent.indexOf('Uji berita lain') >= 0) setPhase(1); };
+  });
+</script>
+</body>
+</html>

@@ -136,6 +136,41 @@ uvicorn backend.src.serve.app:create_app --factory --host 0.0.0.0 --port 8000 --
 
 Buka dokumentasi Swagger interaktif di `http://localhost:8000/docs`.
 
+#### Preload berita otomatis (07:00 WIB)
+
+Server menyalakan penjadwal latar yang menarik berita dari eulerpool sekali
+sehari pada **07:00 WIB**, lalu menjalankan rantai penuh
+`eulerpool -> raw_articles -> articles -> impacts`. Tanpa ini, halaman hanya
+berisi data lama sampai seseorang ingat menjalankan CLI.
+
+Perilaku yang perlu diketahui:
+
+| Situasi | Yang terjadi |
+| --- | --- |
+| Aplikasi hidup melewati 07:00 | Preload berjalan pada tick berikutnya (≤30 detik). |
+| Aplikasi dinyalakan pukul 09:00 | Slot 07:00 yang terlewat **dikejar segera** (`trigger=startup_catchup`). |
+| Aplikasi dinyalakan pukul 05:00 | Tidak mengejar apa pun; menunggu 07:00. |
+| Restart berulang di hari yang sama | **Tidak** menarik ulang bila slot sudah `ok`/`no_new`. |
+| Tarikan gagal | Status `failed`/`partial`; boleh dicoba lagi pada startup berikutnya. |
+| Tidak ada berita baru | Status `no_new` — tetap dianggap selesai, tidak diulang. |
+
+Karena `--reload` menyalakan proses berkali-kali, matikan penjadwal saat
+pengembangan:
+
+```bash
+ARCAS_DISABLE_SCHEDULER=1 uvicorn backend.src.serve.app:create_app --factory --reload
+```
+
+Riwayat setiap run tersimpan di tabel `ingest_runs` dan bisa dibaca lewat:
+
+```bash
+curl http://localhost:8000/api/preload/status
+```
+
+Endpoint itu juga dipakai GUI untuk menampilkan cap "preload terakhir
+&lt;tanggal&gt;", sehingga pengguna tahu seberapa tua data yang dilihat alih-alih
+disuguhi berita karangan saat API mati.
+
 ---
 
 ## 🔒 Aturan Desain & Integritas Kuantitatif

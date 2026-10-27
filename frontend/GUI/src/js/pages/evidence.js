@@ -111,7 +111,11 @@
     var t = A.state.target;
     A.showState("newsState", "Memuat dampak berita " + t + "...");
     A.api("/api/impacts/" + t + "?limit=50").then(renderImpacts)
-      .catch(function () { renderImpacts(A.demoImpacts(t)); });
+      .catch(function () {
+        /* Tanpa berita karangan. Bedakan "API mati" dari "belum ada dampak". */
+        renderImpacts([]);
+        A.showState("newsState", "API dampak berita tidak terjangkau : tidak ada data untuk ditampilkan (bukan ilustrasi).");
+      });
   }
 
   A.$("newsFilter").addEventListener("input", applyNewsFilter);

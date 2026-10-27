@@ -1,5 +1,8 @@
 """FastAPI REST application for FinNews."""
 
+import logging
+import os
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -12,8 +15,25 @@ from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
     NewsHorizon,
 )
+from backend.src.serve.sim_input import InputKind, InputRejected
+from backend.src.serve.sim_service import SimulationService
+from pydantic import BaseModel, Field
+
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
+
+
+class SimulateRequest(BaseModel):
+    """Badan permintaan /api/simulate.
+
+    `kind` sengaja tanpa nilai bawaan. Kalau punya bawaan, pengirim yang lupa
+    mengisi jenis input akan diam-diam dianggap mengirim berita.
+    """
+
+    text: str = Field(..., min_length=1, max_length=20000)
+    kind: InputKind
+    source: Optional[str] = Field(default=None, max_length=200)
+    target: str = Field(default="XAU", max_length=20)
 
 
 def _latest_scores(db: Database) -> tuple[dict[str, tuple[float, float]], dict[str, str]]:
@@ -56,10 +76,54 @@ def _latest_scores(db: Database) -> tuple[dict[str, tuple[float, float]], dict[s
 
 def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     """Creates and configures the FastAPI application."""
+    logger = logging.getLogger(__name__)
+
+    # Status preload terakhir dibaca dari DB agar endpoint bisa menjawab
+    # bahkan ketika scheduler dimatikan (mis. saat uji).
+    _scheduler_holder: dict[str, object] = {}
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Nyalakan penjadwal preload 07:00 WIB saat server hidup.
+
+        Dimatikan bila ARCAS_DISABLE_SCHEDULER=1: penting untuk uji dan untuk
+        `--reload` yang menyalakan proses berkali-kali (kalau tidak, setiap
+        reload akan menembak eulerpool dan menghabiskan kuota).
+        """
+        if os.getenv("ARCAS_DISABLE_SCHEDULER", "").strip() in ("1", "true", "yes"):
+            logger.info("Scheduler preload dimatikan lewat ARCAS_DISABLE_SCHEDULER")
+        else:
+            from backend.src.serve.ingest_scheduler import (
+                IngestScheduler,
+                next_slot,
+                seconds_until,
+            )
+            from backend.src.serve.news_preload import make_job
+
+            sched = IngestScheduler(
+                make_job(db_path=db_path),
+                slot_done=Database(db_path=db_path).has_run_for_slot,
+            )
+            sched.start(catch_up=True)
+            _scheduler_holder["scheduler"] = sched
+            logger.info("Preload berikutnya dalam %.0f detik",
+                        seconds_until(next_slot(sched._clock())))
+        try:
+            yield
+        finally:
+            sched = _scheduler_holder.pop("scheduler", None)
+            if sched is not None:
+                sched.stop()  # type: ignore[attr-defined]
+
+    # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
+    # request. Pemuatan tetap lambat (lazy) saat request pertama.
+    sim_service = SimulationService(db_path=db_path)
+
     app = FastAPI(
         title="FinNews API",
         version="0.5.0",
         description="REST API for Financial News Sentiment and Market Association System",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -79,6 +143,26 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     @app.get("/health")
     def health_check() -> dict:
         return {"status": "ok", "version": "0.5.0", "universe_count": 3}
+
+    @app.get("/api/preload/status")
+    def preload_status() -> dict:
+        """Status preload berita terakhir (job 07:00 WIB).
+
+        GUI memakainya untuk menyatakan "data per <waktu>" saat API berita
+        tidak terjangkau -- supaya pengguna tahu seberapa tua data yang
+        sedang dilihat, bukan disuguhi berita karangan.
+        """
+        last = db.last_ingest_run()
+        if not last:
+            return {"status": "never", "last": None,
+                    "message": "Preload berita belum pernah berjalan."}
+        return {
+            "status": "ok",
+            "last": last,
+            "message": f"Preload terakhir: {last.get('finished_at')} "
+                       f"({last.get('status')}, {last.get('raw_new')} berita baru).",
+            "trigger": last.get("trigger"),
+        }
 
     @app.get("/api/meta")
     def get_meta() -> dict:
@@ -268,5 +352,62 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         # S-2: persist supaya reproducible & bisa diperiksa ulang.
         db.save_persona_views(views)
         return [v.model_dump() for v in views]
+
+    # -- simulasi sudut pandang dari berita/rumor -------------------------
+    @app.post("/api/simulate")
+    def simulate(payload: SimulateRequest) -> dict:
+        """Analisis satu teks berita/rumor menjadi skor, arah, dan 5 stance.
+
+        Hanya menerima berita atau rumor. Obrolan, pertanyaan, dan teks yang
+        bukan laporan peristiwa ditolak dengan 422 dan pesan yang menjelaskan
+        alasannya -- bukan dijawab dengan angka.
+
+        `kind` wajib diisi dan tidak ditebak: menebak jenis input akan membuat
+        sistem diam-diam memperlakukan pertanyaan sebagai berita.
+        """
+        try:
+            hasil = sim_service.analyze(
+                text=payload.text,
+                kind=payload.kind,
+                source=payload.source,
+                target=payload.target,
+            )
+        except InputRejected as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "kode": exc.code,
+                    "pesan": exc.message,
+                    "contoh": exc.contoh,
+                },
+            ) from exc
+        return {
+            "input_kind": hasil.input_kind,
+            "is_rumor": hasil.is_rumor,
+            "source": hasil.source,
+            "target": hasil.target,
+            "tone": hasil.tone,
+            "score": hasil.score,
+            "confidence": hasil.confidence,
+            "confidence_raw": hasil.confidence_raw,
+            "penalty": hasil.penalty,
+            "direction": hasil.direction,
+            "horizon": hasil.horizon,
+            "model_version": hasil.model_version,
+            "summary": hasil.summary,
+            "warnings": hasil.warnings,
+            "degraded": hasil.degraded,
+            "disclaimer": hasil.disclaimer,
+            "stances": [
+                {
+                    "persona_id": s.persona_id,
+                    "persona_name": s.persona_name,
+                    "stance": s.stance,
+                    "strength": s.strength,
+                    "rationale": s.rationale,
+                }
+                for s in hasil.stances
+            ],
+        }
 
     return app
