@@ -1,5 +1,8 @@
 """FastAPI REST application for FinNews."""
 
+import logging
+import os
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -12,6 +15,8 @@ from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
     NewsHorizon,
 )
+from pydantic import BaseModel, Field
+
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
 
@@ -56,10 +61,50 @@ def _latest_scores(db: Database) -> tuple[dict[str, tuple[float, float]], dict[s
 
 def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     """Creates and configures the FastAPI application."""
+    logger = logging.getLogger(__name__)
+
+    # Status preload terakhir dibaca dari DB agar endpoint bisa menjawab
+    # bahkan ketika scheduler dimatikan (mis. saat uji).
+    _scheduler_holder: dict[str, object] = {}
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Nyalakan penjadwal preload 07:00 WIB saat server hidup.
+
+        Dimatikan bila ARCAS_DISABLE_SCHEDULER=1: penting untuk uji dan untuk
+        `--reload` yang menyalakan proses berkali-kali (kalau tidak, setiap
+        reload akan menembak eulerpool dan menghabiskan kuota).
+        """
+        if os.getenv("ARCAS_DISABLE_SCHEDULER", "").strip() in ("1", "true", "yes"):
+            logger.info("Scheduler preload dimatikan lewat ARCAS_DISABLE_SCHEDULER")
+        else:
+            from backend.src.serve.ingest_scheduler import (
+                IngestScheduler,
+                next_slot,
+                seconds_until,
+            )
+            from backend.src.serve.news_preload import make_job
+
+            sched = IngestScheduler(
+                make_job(db_path=db_path),
+                slot_done=Database(db_path=db_path).has_run_for_slot,
+            )
+            sched.start(catch_up=True)
+            _scheduler_holder["scheduler"] = sched
+            logger.info("Preload berikutnya dalam %.0f detik",
+                        seconds_until(next_slot(sched._clock())))
+        try:
+            yield
+        finally:
+            sched = _scheduler_holder.pop("scheduler", None)
+            if sched is not None:
+                sched.stop()  # type: ignore[attr-defined]
+
     app = FastAPI(
         title="FinNews API",
         version="0.5.0",
         description="REST API for Financial News Sentiment and Market Association System",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -79,6 +124,26 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     @app.get("/health")
     def health_check() -> dict:
         return {"status": "ok", "version": "0.5.0", "universe_count": 3}
+
+    @app.get("/api/preload/status")
+    def preload_status() -> dict:
+        """Status preload berita terakhir (job 07:00 WIB).
+
+        GUI memakainya untuk menyatakan "data per <waktu>" saat API berita
+        tidak terjangkau -- supaya pengguna tahu seberapa tua data yang
+        sedang dilihat, bukan disuguhi berita karangan.
+        """
+        last = db.last_ingest_run()
+        if not last:
+            return {"status": "never", "last": None,
+                    "message": "Preload berita belum pernah berjalan."}
+        return {
+            "status": "ok",
+            "last": last,
+            "message": f"Preload terakhir: {last.get('finished_at')} "
+                       f"({last.get('status')}, {last.get('raw_new')} berita baru).",
+            "trigger": last.get("trigger"),
+        }
 
     @app.get("/api/meta")
     def get_meta() -> dict:
