@@ -85,6 +85,50 @@
     </div>
   </div>
 
+  <!-- ================= FASE 2 ================= -->
+  <div class="s-conv" id="simConv">
+    <div class="s-wrap">
+      <div class="s-msg-user">
+        <div class="s-bubble"><span class="s-lbl" id="simUkuran">berita yang diuji</span>
+          <span id="simTeksUser"></span></div>
+      </div>
+
+      <article class="s-answer">
+        <div class="s-head">
+          <h2 id="simJudul">&mdash;</h2>
+          <div class="s-tags" id="simTags"></div>
+          <div class="s-metric" id="simMetrik"></div>
+        </div>
+
+        <div class="s-body">
+          <div id="simParagraf"></div>
+
+          <div class="s-stance-title">Sudut pandang lima persona</div>
+          <div class="s-stance-list" id="simStances"></div>
+
+          <div class="s-disc" id="simPeringatan" hidden></div>
+        </div>
+
+        <div class="s-answer-foot">
+          <button class="s-ghost" id="simUlang" type="button">Uji berita lain</button>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- input melayang saat fase 2 -->
+  <div class="s-dock" id="simDock">
+    <div class="s-inner">
+      <div class="s-composer">
+        <textarea id="simNewsDock" rows="1" placeholder="Uji berita lain&hellip;"></textarea>
+        <div class="s-foot">
+          <div class="s-ctx"><span>target</span><span id="simTargetDock">XAU</span></div>
+          <button class="s-send" id="simSendDock" type="button">Uji &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <footer>
