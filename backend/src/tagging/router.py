@@ -121,6 +121,31 @@ class TargetRouter:
             return sentiment_score
         return sentiment_score * self._stance_sign(asset_id)
 
+    def direction_for_target(
+        self,
+        asset_id: str,
+        sentiment_score: float,
+        score_space: str = "price",
+    ) -> str:
+        """Arah satu aset dari skor, tanpa perlu artikel menyebut aset itu.
+
+        Dipakai saat teks tidak menyebut nama aset (mis. "The Fed may cut
+        rates"), sehingga `route_article` tidak menghasilkan dampak apa pun.
+        Arah tetap dapat ditentukan karena `stance_direction` di
+        `sentiment_config.yaml` sudah memetakan stance The Fed ke tiap aset.
+
+        Mengembalikan "bullish" / "bearish" / "netral".
+        """
+        effective = self._directional_score(
+            asset_id, sentiment_score, score_space == "stance"
+        )
+        threshold = self.routing["direction_threshold"]
+        if effective > threshold:
+            return "bullish"
+        if effective < -threshold:
+            return "bearish"
+        return "netral"
+
     def resolve_horizon(self, text: str, basis: Basis) -> NewsHorizon:
         """Horizon berita untuk satu dampak (S-5 / FR-23).
 

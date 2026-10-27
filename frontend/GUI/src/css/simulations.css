@@ -1,0 +1,389 @@
+/* Simulations -- alur dua fase, mengikuti mockup-simulations.html.
+
+   Semua kelas diberi awalan `s-` dan di-scope ke #simRoot. Alasan: theme.css
+   sudah memakai .chip/.tag untuk komponen lain, jadi memakai nama yang sama
+   di sini akan saling menimpa. Awalan membuat gaya halaman ini tidak bocor ke
+   halaman lain, dan sebaliknya. */
+
+#simRoot {
+  --up: #1F7A44;
+  --down: #B3261E;
+  --hold: #6B6464;
+}
+
+#simRoot * { box-sizing: border-box; }
+
+/* ---------- FASE 1: pusat, lapang ---------- */
+#simRoot .s-stage {
+  min-height: calc(100vh - 300px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 22px 8vh;
+}
+#simRoot .s-stage.s-off { display: none; }
+
+#simRoot .s-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 22px;
+  width: 100%;
+}
+
+#simRoot .s-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  margin-bottom: 26px;
+}
+#simRoot .s-badge .s-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+#simRoot .s-badge.s-off .s-dot { background: var(--border-strong); }
+
+#simRoot .s-greet {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 400;
+  text-align: center;
+  margin: 0 0 8px;
+  line-height: 1.25;
+  color: var(--text);
+}
+#simRoot .s-greet em { font-style: italic; }
+
+#simRoot .s-sub {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin: 0 0 30px;
+  max-width: 52ch;
+  line-height: 1.6;
+}
+
+/* ---------- kartu input ---------- */
+#simRoot .s-composer {
+  width: 100%;
+  max-width: 660px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(44, 39, 39, .04), 0 8px 24px -12px rgba(44, 39, 39, .14);
+  padding: 14px 14px 10px;
+  transition: border-color .15s, box-shadow .15s;
+}
+#simRoot .s-composer:focus-within {
+  /* Tanpa penanda fokus berwarna: border oranye + cincin 3px terasa terlalu
+     tebal. Cukup bayangan halus supaya kotak tetap terasa aktif. */
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 6px rgba(44, 39, 39, .06);
+}
+#simRoot .s-composer > label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-muted);
+  margin: 0 0 7px 2px;
+}
+#simRoot .s-composer textarea {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  resize: none;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.55;
+  min-height: 52px;
+  outline: none;
+  padding: 0 2px;
+}
+#simRoot .s-composer textarea::placeholder { color: #8C8585; }
+
+/* theme.css punya aturan global `:focus-visible { box-shadow: 0 0 0 4px
+   var(--accent) }` yang membuat cincin oranye tebal pada textarea. Di sini
+   cincin itu dimatikan, diganti garis tipis netral supaya fokus tetap terlihat
+   tanpa terasa berat. */
+#simRoot .s-composer textarea:focus,
+#simRoot .s-composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+#simRoot .s-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+#simRoot .s-ctx {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#simRoot .s-ctx select {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 3px 5px;
+}
+#simRoot .s-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 15px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+#simRoot .s-send:hover { background: var(--accent-hover); }
+#simRoot .s-send:disabled { background: #D9D2D2; color: #8C8585; cursor: not-allowed; }
+
+/* ---------- chip contoh ---------- */
+#simRoot .s-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 16px;
+  max-width: 660px;
+}
+#simRoot .s-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .13s, border-color .13s, color .13s;
+  font-family: var(--font-sans);
+}
+#simRoot .s-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-subtle);
+}
+#simRoot .s-chip .s-k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 5px;
+}
+
+#simRoot .s-note {
+  margin-top: 34px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-family: var(--font-mono);
+  max-width: 56ch;
+  line-height: 1.7;
+}
+
+/* ---------- FASE 2: percakapan ---------- */
+#simRoot .s-conv { padding: 22px 0 150px; display: none; }
+#simRoot .s-conv.s-on { display: block; }
+
+#simRoot .s-msg-user { display: flex; justify-content: flex-end; margin: 0 0 22px; }
+#simRoot .s-msg-user .s-bubble {
+  background: var(--bg-sunken);
+  color: var(--text);
+  border-radius: 14px 14px 4px 14px;
+  padding: 11px 15px;
+  font-size: 13.5px;
+  max-width: 78%;
+  line-height: 1.6;
+}
+#simRoot .s-msg-user .s-lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+#simRoot .s-answer {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(44, 39, 39, .04);
+}
+#simRoot .s-head { padding: 16px 18px 13px; border-bottom: 1px solid var(--border-subtle); }
+#simRoot .s-head h2 {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0 0 9px;
+  line-height: 1.4;
+  color: var(--text);
+}
+#simRoot .s-tags { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+#simRoot .s-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+}
+#simRoot .s-tag.s-up { background: #E4F3EA; color: var(--up); }
+#simRoot .s-tag.s-down { background: #FBE7E5; color: var(--down); }
+#simRoot .s-tag.s-hold { background: #EFEBEB; color: var(--hold); }
+#simRoot .s-metric {
+  display: flex;
+  gap: 18px;
+  margin-top: 11px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+#simRoot .s-metric b { color: var(--text); font-weight: 600; }
+
+#simRoot .s-body { padding: 15px 18px 17px; }
+#simRoot .s-body p {
+  margin: 0 0 11px;
+  font-size: 13.5px;
+  line-height: 1.68;
+  color: var(--text-secondary);
+}
+#simRoot .s-body p:last-child { margin-bottom: 0; }
+#simRoot .s-body strong { color: var(--text); font-weight: 600; }
+#simRoot .s-body p.s-src { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 13px; }
+
+#simRoot .s-stance-title {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-muted);
+  margin: 20px 0 10px;
+}
+#simRoot .s-stance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--border-subtle);
+}
+#simRoot .s-stance {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--bg-card);
+  padding: 11px 14px;
+}
+#simRoot .s-stance .s-who { font-size: 13px; color: var(--text); font-weight: 500; }
+#simRoot .s-stance .s-why {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: -4px;
+  line-height: 1.5;
+}
+#simRoot .s-pill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  min-width: 52px;
+  text-align: center;
+}
+#simRoot .s-pill.s-up { background: #E4F3EA; color: var(--up); }
+#simRoot .s-pill.s-down { background: #FBE7E5; color: var(--down); }
+#simRoot .s-pill.s-hold { background: #EFEBEB; color: var(--hold); }
+#simRoot .s-str {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  min-width: 38px;
+  text-align: right;
+}
+
+#simRoot .s-disc {
+  margin: 16px 0 0;
+  padding: 11px 13px;
+  background: var(--accent-subtle);
+  border-radius: 9px;
+  font-size: 11.5px;
+  color: var(--accent-text);
+  line-height: 1.6;
+}
+#simRoot .s-disc ul { margin: 6px 0 0; padding-left: 18px; }
+
+#simRoot .s-answer-foot {
+  display: flex;
+  gap: 9px;
+  padding: 0 18px 16px;
+  flex-wrap: wrap;
+}
+#simRoot .s-ghost {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+#simRoot .s-ghost:hover { border-color: var(--border-strong); color: var(--text); }
+
+/* ---------- dock melayang ---------- */
+#simRoot .s-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 22px 18px;
+  background: linear-gradient(to top, var(--base) 55%, rgba(246, 244, 244, 0));
+  display: none;
+  z-index: 40;
+}
+#simRoot .s-dock.s-on { display: block; }
+#simRoot .s-dock .s-inner { max-width: 860px; margin: 0 auto; }
+#simRoot .s-dock .s-composer { max-width: none; }
+#simRoot .s-dock textarea { min-height: 22px; }
+
+@media (max-width: 640px) {
+  #simRoot .s-greet { font-size: 24px; }
+  #simRoot .s-stage { padding-top: 24px; }
+  #simRoot .s-msg-user .s-bubble { max-width: 100%; }
+}

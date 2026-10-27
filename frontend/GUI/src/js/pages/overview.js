@@ -23,7 +23,11 @@
     var scores = dates.map(function (d) { var v = byDate[d].score; return v == null ? null : Math.round(v * 1000) / 1000; });
     var gapCount = scores.filter(function (v) { return v === null; }).length;
 
-    A.$("lgPrice").style.background = info.color;
+    /* Elemen legenda bisa tidak ada (mis. halaman lain memuat skrip ini).
+       Tanpa penjaga, renderChart melempar TypeError dan grafik tidak pernah
+       digambar sama sekali. */
+    var lg = A.$("lgPrice");
+    if (lg) lg.style.background = info.color;
 
     if (!chart) { A.showState("chartState", "Pustaka grafik lokal belum termuat (src/js/echarts.min.js). Periksa path file."); return; }
     if (!dates.length) { A.showState("chartState", "Belum ada deret untuk target ini pada rentang terpilih."); chart.clear(); return; }
@@ -51,7 +55,8 @@
     }, true);
   }
 
-  function isoDaysAgo(n) { return new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10); }
+  /* Tanggal lokal, bukan UTC: lihat catatan A.localISO di api.js. */
+  function isoDaysAgo(n) { return A.localISO(new Date(Date.now() - (n - 1) * 86400000)); }
 
   /* Daftar berita + paginasi 5 per halaman. Halaman disimpan di memori;
      mengubah target/rentang mengembalikan ke halaman 1. */
@@ -59,28 +64,10 @@
   var newsRows = [];
   var NEWS_PER_PAGE = 5;
 
-  /* Ilustrasi berlabel: dipakai hanya saat API mengirim kurang dari 5 berita,
-     supaya daftar tidak tampil kosong. Tidak pernah dicampur dengan data API. */
-  var NEWS_DEMO = [
-    { article_id: "ilustrasi-01", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-12",
-      title: "The Fed memberi sinyal pemangkasan suku bunga pada kuartal berikutnya",
-      rationale: "Nada dovish menekan imbal hasil obligasi dan menopang emas sebagai aset lindung nilai." },
-    { article_id: "ilustrasi-02", direction: "bearish", source: "Contoh Redaksi", published_at: "2026-10-11",
-      title: "Inflasi inti Amerika bertahan di atas target dua persen",
-      rationale: "Data panas menunda ekspektasi pelonggaran, sehingga yield tenor panjang kembali naik." },
-    { article_id: "ilustrasi-03", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-10",
-      title: "Laba emiten teknologi melampaui perkiraan analis",
-      rationale: "Hasil kuartalan yang kuat mengangkat indeks acuan dan memperbaiki selera risiko." },
-    { article_id: "ilustrasi-04", direction: "bearish", source: "Contoh Redaksi", published_at: "2026-10-09",
-      title: "Ketegangan dagang kembali memunculkan kekhawatiran perlambatan",
-      rationale: "Kekhawatiran pertumbuhan mendorong arus dana keluar dari aset berisiko menuju obligasi pemerintah." },
-    { article_id: "ilustrasi-05", direction: "neutral", source: "Contoh Redaksi", published_at: "2026-10-08",
-      title: "Pasar menanti rilis data tenaga kerja akhir pekan ini",
-      rationale: "Belum ada kejutan berarti, pelaku pasar memilih menahan posisi sampai angka utama keluar." },
-    { article_id: "ilustrasi-06", direction: "bullish", source: "Contoh Redaksi", published_at: "2026-10-07",
-      title: "Bank sentral menambah cadangan emas untuk kuartal ketiga berturut-turut",
-      rationale: "Permintaan bank sentral menjadi penopang struktural harga emas di tengah suku bunga tinggi." }
-  ];
+  /* Tidak ada lagi berita ilustrasi. Dulu NEWS_DEMO mengisi kekurangan data
+     API dengan berita karangan; itu bertabrakan dengan prinsip halaman lain
+     yang selalu melabeli data palsu. Berita sekarang hanya dari API -- kalau
+     kosong, tampilkan pesan apa adanya. */
 
   function newsItem(t) {
     var d = String(t.direction || "neutral").toLowerCase();
@@ -92,11 +79,16 @@
     if (t.source) meta.push("<span>" + esc(t.source) + "</span>");
     var when = A.fmtDate(t.published_at);
     if (when) meta.push("<span>" + esc(when) + "</span>");
+    /* Judul menjadi tautan ke sumber asli bila URL tersedia. rel noopener
+       wajib: tanpa itu halaman tujuan bisa mengakses window.opener. */
+    var head = t.url
+      ? "<a href='" + esc(t.url) + "' target='_blank' rel='noopener noreferrer' class='news-link'>" + esc(title) + "</a>"
+      : esc(title);
     return "<article class='news-item'>" +
-      "<h3>" + esc(title) + "</h3>" +
+      "<h3>" + head + "</h3>" +
       (t.rationale ? "<p class='news-note'>" + esc(t.rationale) + "</p>" : "") +
       "<div class='news-top'><span class='chip " + cls + "'>" + arrow + " " + label + "</span>" +
-      (t._demo ? "<span class='chip hold'>Ilustrasi</span>" : "") +
+      (Number(t.headline_only) === 1 ? "<span class='chip hold'>Headline saja</span>" : "") +
       (meta.length ? "<span class='news-src'>" + meta.join(" · ") + "</span>" : "") +
       "</div></article>";
   }
@@ -135,24 +127,21 @@
     renderPager();
   }
 
-  function renderNews(rows) {
-    var real = rows || [];
-    if (real.length < NEWS_PER_PAGE) {
-      var pad = NEWS_DEMO.slice(0, NEWS_PER_PAGE - real.length).map(function (d) {
-        d._demo = true;
-        return d;
-      });
-      newsRows = real.concat(pad);
-      newsPage = 1;
-      renderNewsPage();
-      A.showState("newsState", "API hanya mengirim " + real.length +
-        " berita : sisanya ilustrasi berlabel.");
-      return;
-    }
-    newsRows = real;
+  /* Berita murni dari API. Tidak ada padding karangan: bila API mengirim
+     sedikit, tampilkan sedikit; bila kosong, katakan kosong. `isError`
+     membedakan "API mati" dari "API hidup tapi belum ada berita" -- dua
+     hal berbeda yang dulu sama-sama diisi NEWS_DEMO. */
+  function renderNews(rows, isError) {
+    newsRows = rows || [];
     newsPage = 1;
-    A.showState("newsState", "");
     renderNewsPage();
+    if (isError) {
+      A.showState("newsState", "API berita tidak terjangkau : tidak ada berita untuk ditampilkan (bukan ilustrasi).");
+    } else if (!newsRows.length) {
+      A.showState("newsState", "Belum ada berita untuk target ini. Jalankan pipeline ingest/analyze dulu.");
+    } else {
+      A.showState("newsState", "");
+    }
   }
 
   function bindPager() {
@@ -168,39 +157,85 @@
     });
   }
 
+  /* Penjaga urutan + pembatalan (race condition). renderAll dipanggil ulang
+     setiap target/rentang/profil berubah. Tanpa ini, ganti target cepat
+     (XAU -> SPX -> RATE_UST) membuat tiga set request berjalan bersamaan dan
+     respons yang tiba TERAKHIR menang -- bisa XAU menimpa grafik RATE_UST.
+     Dua lapis: AbortController membatalkan request lama, dan `seq` memastikan
+     respons yang sudah terlanjur masuk tidak menyentuh DOM. */
+  var seq = 0;
+  var inFlight = null;
+
+  /* Cap waktu preload terakhir: menjawab "data ini setua apa?" tanpa
+     mengarang. Sumbernya /api/preload/status (tabel ingest_runs). */
+  function renderPreloadStamp(info) {
+    var el = A.$("preloadStamp");
+    if (!el) return;
+    var last = info && info.last;
+    if (!last) { el.textContent = ""; return; }
+    var when = A.fmtDate(last.finished_at);
+    var n = Number(last.raw_new) || 0;
+    el.textContent = when
+      ? "preload terakhir " + when + " · " + n + " berita baru"
+      : "";
+  }
+
+  function loadPreloadStamp(signal, live) {
+    A.api("/api/preload/status", signal).then(function (info) {
+      if (!live()) return;
+      renderPreloadStamp(info);
+    }).catch(function (err) {
+      if ((err && err.name === "AbortError") || !live()) return;
+      var el = A.$("preloadStamp");
+      if (el) el.textContent = "";
+    });
+  }
+
   function renderAll() {
     var t = A.state.target;
-    var end = new Date().toISOString().slice(0, 10);
+    var end = A.localISO(new Date());
     var start = isoDaysAgo(A.state.days);
+
+    if (inFlight) inFlight.abort();
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    inFlight = ctrl;
+    var mySeq = ++seq;
+    var signal = ctrl ? { signal: ctrl.signal } : undefined;
+    /* Masih render terbaru? Dipakai sebelum menyentuh DOM mana pun. */
+    var live = function () { return mySeq === seq; };
+
     A.showState("chartState", "Memuat deret " + t + "...");
     A.showState("allocState", "Memuat strip alokasi...");
     A.showState("newsState", "Memuat berita...");
 
-    A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end).then(function (payload) {
+    A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal).then(function (payload) {
+      if (!live()) return;
       A.state.apiOk = true; A.state.apiReachable = true; A.setStatus("ok", "terhubung ke API");
       renderChart(payload);
-    }).catch(function () {
+    }).catch(function (err) {
+      if (!live() || (err && err.name === "AbortError")) return;
       A.state.apiOk = false; A.setStatus("err", "API tidak terjangkau : ilustrasi");
       renderChart(A.demoSeries(t, A.state.days));
     });
 
-    A.api("/api/allocation?profile_id=" + A.state.profile + "&article_id=current_market").then(A.renderAllocation)
-      .catch(function () {
-        A.renderAllocation({ lines: [
-          { alloc_class: "bond", baseline_pct: 40, new_pct: 42, delta_pp: 2, confidence: 0.7 },
-          { alloc_class: "mutual_fund", baseline_pct: 15, new_pct: 15, delta_pp: 0, confidence: 0.5 },
-          { alloc_class: "stock", baseline_pct: 15, new_pct: 14, delta_pp: -1, confidence: 0.65 },
-          { alloc_class: "etf", baseline_pct: 20, new_pct: 19, delta_pp: -1, confidence: 0.8 },
-          { alloc_class: "gold", baseline_pct: 5, new_pct: 5, delta_pp: 0, confidence: 0.7 }
-        ]});
-        A.showState("allocState", "API alokasi tidak terjangkau, ilustrasi berlabel (total tetap 100%).");
-      });
+    A.api("/api/allocation?profile_id=" + A.state.profile + "&article_id=current_market", signal).then(function (payload) {
+      if (!live()) return;
+      A.renderAllocation(payload);
+    }).catch(function (err) {
+      if (!live() || (err && err.name === "AbortError")) return;
+      /* Tidak ada alokasi karangan: strip kosong + pesan apa adanya. */
+      A.renderAllocation({ lines: [] });
+      A.showState("allocState", "API alokasi tidak terjangkau : tidak ada angka alokasi untuk ditampilkan (bukan ilustrasi).");
+    });
 
-    A.api("/api/impacts/" + t + "?limit=60").then(renderNews)
-      .catch(function () {
-        renderNews(A.demoImpacts(t));
-        A.showState("newsState", "API berita tidak terjangkau : daftar ini ilustrasi berlabel.");
-      });
+    loadPreloadStamp(signal, live);
+    A.api("/api/impacts/" + t + "?limit=60", signal).then(function (rows) {
+      if (!live()) return;
+      renderNews(rows, false);
+    }).catch(function (err) {
+      if (!live() || (err && err.name === "AbortError")) return;
+      renderNews([], true);
+    });
   }
 
   bindPager();

@@ -1,78 +1,236 @@
-/* Simulations (Upgrade.md 3): Allocation Tilt interactif, Persona POV, dan
-   parameter/versi yang dipakai simulasi. Halaman ini hanya fetch dan render:
-   widget alokasi dan modal persona hidup di shell.js. */
+/* Simulations: alur dua fase mengikuti mockup-simulations.html.
+
+   Fase 1 = composer di tengah. Fase 2 = percakapan + kartu jawaban.
+   Semua angka berasal dari POST /api/simulate. Tidak ada angka contoh:
+   kalau API tidak menjawab, halaman mengatakannya. */
 (function (A) {
   "use strict";
-  var esc = A.esc;
-  function chipArah(direction) { return A.dirChip(direction); }
-  function fmtSkor(score) { return A.fmt(score); }
 
-  var impacts = [];
-  function renderPersonaCards(rows) {
-    impacts = rows || [];
-    var box = A.$("personaCards");
-    if (!impacts.length) {
-      box.innerHTML = "";
-      A.showState("personaCardsState", "Belum ada dampak berita untuk memanggil persona.");
+  var esc = A.esc;
+  var sedangKirim = false;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* Nilai 0..1 (keyakinan, penalti) diformat tanpa tanda plus. */
+  function nilai01(v) {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return "n/a";
+    return Number(v).toFixed(2);
+  }
+  function kelasArah(d) {
+    if (d === "bullish") return "s-up";
+    if (d === "bearish") return "s-down";
+    return "s-hold";
+  }
+  function labelArah(d) {
+    if (d === "bullish") return "BULLISH";
+    if (d === "bearish") return "BEARISH";
+    return "NETRAL";
+  }
+  function labelStance(s) {
+    if (s === "buy") return "BUY";
+    if (s === "sell") return "SELL";
+    return "HOLD";
+  }
+  function kelasStance(s) {
+    if (s === "buy") return "s-up";
+    if (s === "sell") return "s-down";
+    return "s-hold";
+  }
+
+  /* ---------------- fase ---------------- */
+  function setFase(n) {
+    $("simStage").classList.toggle("s-off", n !== 1);
+    $("simConv").classList.toggle("s-on", n === 2);
+    $("simDock").classList.toggle("s-on", n === 2);
+    if (n === 1) {
+      var ta = $("simNews");
+      if (ta) ta.focus();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* ---------------- status badge ---------------- */
+  function setBadge(ok, teks) {
+    var b = $("simBadge");
+    if (!b) return;
+    b.classList.toggle("s-off", !ok);
+    $("simBadgeText").textContent = teks;
+  }
+
+  /* ---------------- render jawaban ---------------- */
+  function renderJawaban(teksAsli, j) {
+    $("simTeksUser").textContent = teksAsli;
+    $("simUkuran").textContent = (j.input_kind === "rumor" ? "rumor yang diuji" : "berita yang diuji");
+
+    /* Judul: kalimat ringkas dari server, bukan disusun ulang di klien. */
+    $("simJudul").textContent = j.summary.split(". ")[0] + ".";
+
+    var tags =
+      "<span class='s-tag " + kelasArah(j.direction) + "'>" + labelArah(j.direction) + "</span>" +
+      "<span class='s-tag'>" + esc(j.target) + "</span>" +
+      "<span class='s-tag'>" + esc(j.input_kind) + "</span>" +
+      "<span class='s-tag'>horizon " + esc(j.horizon) + "</span>" +
+      (j.is_rumor ? "<span class='s-tag s-down'>keyakinan &times;0,60</span>" : "");
+    $("simTags").innerHTML = tags;
+
+    var metrik =
+      "<span>skor <b>" + esc(A.fmt(j.score)) + "</b></span>" +
+      "<span>keyakinan <b>" + esc(nilai01(j.confidence)) + "</b></span>" +
+      "<span>penalti <b>&times;" + esc(nilai01(j.penalty)) + "</b></span>" +
+      "<span>model <b>" + esc(j.model_version) + "</b></span>";
+    $("simMetrik").innerHTML = metrik;
+
+    /* Paragraf: ringkasan utuh, lalu catatan model bila ada.
+       `degraded` adalah LIST (kosong saat sehat), jadi list kosong berarti
+       tidak ada catatan -- jangan cek truthiness saja. */
+    var par = "<p>" + esc(j.summary) + "</p>";
+    if (Array.isArray(j.degraded) && j.degraded.length) {
+      par += "<p><strong>Catatan model:</strong> " + esc(j.degraded.join("; ")) + "</p>";
+    } else if (typeof j.degraded === "string" && j.degraded) {
+      par += "<p><strong>Catatan model:</strong> " + esc(j.degraded) + "</p>";
+    }
+    if (j.disclaimer) par += "<p class='s-src'>" + esc(j.disclaimer) + "</p>";
+    $("simParagraf").innerHTML = par;
+
+    /* Stance: baris + alasan apa adanya dari server. */
+    var rows = "";
+    for (var i = 0; i < j.stances.length; i++) {
+      var s = j.stances[i];
+      rows +=
+        "<div class='s-stance'>" +
+        "<span class='s-who'>" + esc(s.persona_name || s.persona_id) + "</span>" +
+        "<span class='s-pill " + kelasStance(s.stance) + "'>" + labelStance(s.stance) + "</span>" +
+        "<span class='s-str'>" + esc(A.fmt(s.strength)) + "</span>" +
+        (s.rationale ? "<span class='s-why'>" + esc(s.rationale) + "</span>" : "") +
+        "</div>";
+    }
+    $("simStances").innerHTML = rows;
+
+    /* Peringatan: semua ditampilkan, tidak ada yang disembunyikan. */
+    var per = $("simPeringatan");
+    if (j.warnings && j.warnings.length) {
+      var li = "";
+      for (var k = 0; k < j.warnings.length; k++) li += "<li>" + esc(j.warnings[k]) + "</li>";
+      per.innerHTML = "<strong>Perlu dibaca.</strong><ul>" + li + "</ul>";
+      per.hidden = false;
+    } else {
+      per.hidden = true;
+      per.innerHTML = "";
+    }
+
+    setFase(2);
+  }
+
+  /* ---------------- kirim ---------------- */
+  function kirim(teks, sumber) {
+    if (sedangKirim) return;
+    teks = (teks || "").trim();
+    if (!teks) {
+      setBadge(false, "teks masih kosong");
       return;
     }
-    A.showState("personaCardsState", "");
-    box.innerHTML = "<table class='data'><thead><tr><th>Berita</th><th>Arah</th><th>Skor</th><th>Stance? Buka di POV</th></tr></thead><tbody>" +
-      impacts.slice(0, 5).map(function (it) {
-        var title = (it.title || it.article_id).slice(0, 48);
-        return "<tr><td>" + esc(title) + "</td><td>" + chipArah(it.direction) + "</td><td>" + fmtSkor(it.score) +
-          "</td><td><button class='btn small' data-persona='" + esc(it.article_id) + "'>Lihat stance</button></td></tr>";
-      }).join("") + "</tbody></table>" +
-      "<p class='hint' style='font-family:var(--font-mono);font-size:11px;color:var(--text-muted)'>Stance lima persona dihitung dari skor dampak dan profil risiko. Sudut pandang simulasi, bukan saran jual-beli.</p>";
-    box.querySelectorAll("[data-persona]").forEach(function (b) {
-      b.onclick = function () {
-        var id = b.getAttribute("data-persona");
-        var fb = impacts.find(function (x) { return x.article_id === id; });
-        A.openPersona(id, fb);
-      };
+
+    var target = $("simTarget").value;
+    var kind = $("simKind").value;
+    sedangKirim = true;
+    $("simSend").disabled = true;
+    $("simSendDock").disabled = true;
+    setBadge(true, "menganalisis...");
+
+    A.api("/api/simulate", {
+      method: "POST",
+      body: JSON.stringify({ text: teks, kind: kind, target: target })
+    }).then(function (j) {
+      setBadge(true, "siap · " + j.model_version);
+      renderJawaban(teks, j);
+    }).catch(function (err) {
+      /* Penolakan gerbang (422): tampilkan alasan server apa adanya. */
+      var d = err && err.payload && err.payload.detail;
+      if (err && err.status === 422 && d && d.pesan) {
+        setBadge(false, "ditolak");
+        var isi = "<p>" + esc(d.pesan) + "</p>";
+        if (d.contoh && d.contoh.length) {
+          isi += "<p><strong>Contoh yang diterima:</strong> " + esc(d.contoh.slice(0, 2).join(" | ")) + "</p>";
+        }
+        $("simTeksUser").textContent = teks;
+        $("simUkuran").textContent = "ditolak";
+        $("simJudul").textContent = "Tidak dianalisis";
+        $("simTags").innerHTML = "<span class='s-tag s-hold'>DITOLAK</span>";
+        $("simMetrik").innerHTML = "";
+        $("simParagraf").innerHTML = isi;
+        $("simStances").innerHTML = "";
+        $("simPeringatan").hidden = true;
+        setFase(2);
+      } else {
+        setBadge(false, "API tidak menjawab");
+        $("simTeksUser").textContent = teks;
+        $("simUkuran").textContent = "gagal";
+        $("simJudul").textContent = "Tidak ada hasil";
+        $("simTags").innerHTML = "<span class='s-tag s-hold'>GAGAL</span>";
+        $("simMetrik").innerHTML = "";
+        $("simParagraf").innerHTML =
+          "<p>Analisis tidak dapat dijalankan karena API tidak menjawab. " +
+          "Halaman ini tidak menampilkan angka contoh.</p>";
+        $("simStances").innerHTML = "";
+        $("simPeringatan").hidden = true;
+        setFase(2);
+      }
+    }).then(function () {
+      sedangKirim = false;
+      $("simSend").disabled = false;
+      $("simSendDock").disabled = false;
     });
   }
 
-  function renderVersions(meta) {
-    var box = A.$("versionTables");
-    if (!box) return;
-    if (!meta) {
-      box.innerHTML = "<p class='hint' style='font-family:var(--font-mono);font-size:12px;color:var(--text-muted)'>Metadata tidak terjangkau; simulasi memakai data ilustrasi berlabel. Tidak ada versi palsu di sini.</p>";
-      return;
-    }
-    var rows = [
-      ["versi universe", meta.universe_version],
-      ["versi skema", meta.schema_version],
-      ["versi model", meta.model_version + (meta.calibrated ? " (terkalibrasi)" : " (belum kalibrasi)")],
-      ["versi params", meta.params_version || "-"],
-      ["profil aktif", A.state.profile],
-      ["mode data", meta.mode]
-    ];
-    box.innerHTML = "<table class='data'><tbody>" + rows.map(function (r) {
-      return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1] == null ? "n/a" : String(r[1])) + "</td></tr>";
-    }).join("") + "</tbody></table>";
-  }
+  /* ---------------- pemasangan ---------------- */
+  function pasang() {
+    var ta = $("simNews");
+    if (!ta) return; /* bukan halaman Simulations */
 
-  function renderAll() {
-    var t = A.state.target;
-    A.showState("allocState", "Memuat simulasi alokasi profil " + A.state.profile + "...");
-    A.api("/api/allocation?profile_id=" + A.state.profile + "&article_id=current_market&target=" + encodeURIComponent(t)).then(A.renderAllocation)
-      .catch(function () {
-        A.renderAllocation({ lines: [
-          { alloc_class: "bond", baseline_pct: 40, new_pct: 42, delta_pp: 2, confidence: 0.7 },
-          { alloc_class: "mutual_fund", baseline_pct: 15, new_pct: 15, delta_pp: 0, confidence: 0.5 },
-          { alloc_class: "stock", baseline_pct: 15, new_pct: 14, delta_pp: -1, confidence: 0.65 },
-          { alloc_class: "etf", baseline_pct: 20, new_pct: 19, delta_pp: -1, confidence: 0.8 },
-          { alloc_class: "btc", baseline_pct: 5, new_pct: 5, delta_pp: 0, confidence: 0.4 },
-          { alloc_class: "gold", baseline_pct: 5, new_pct: 5, delta_pp: 0, confidence: 0.7 }
-        ]});
-        A.showState("allocState", "API alokasi tidak terjangkau, ilustrasi berlabel (total tetap 100%).");
+    $("simSend").addEventListener("click", function () {
+      kirim(ta.value, null);
+    });
+    ta.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") kirim(ta.value, null);
+    });
+
+    $("simSendDock").addEventListener("click", function () {
+      kirim($("simNewsDock").value, null);
+    });
+    $("simNewsDock").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        kirim($("simNewsDock").value, null);
+      }
+    });
+
+    $("simUlang").addEventListener("click", function () {
+      setFase(1);
+    });
+
+    /* Chip contoh: isi textarea, jangan langsung kirim. */
+    var chips = document.querySelectorAll("#simRoot .s-chip");
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].addEventListener("click", function () {
+        ta.value = this.getAttribute("data-fill");
+        ta.focus();
       });
-    A.api("/api/impacts/" + t + "?limit=5").then(renderPersonaCards)
-      .catch(function () { renderPersonaCards(A.demoImpacts(t)); });
-    renderVersions(A.state.meta);
+    }
+
+    /* Target di dock mengikuti pilihan di fase 1. */
+    $("simTarget").addEventListener("change", function () {
+      $("simTargetDock").textContent = this.value;
+    });
+
+    setFase(1);
   }
 
-  A.renderPage = renderAll;
+  A.renderPage = function () {
+    /* Badge mengikuti hasil deteksi API yang sudah dilakukan A.boot(). */
+    setBadge(A.state.apiReachable !== false,
+      A.state.apiReachable === false ? "API tidak terjangkau" : "siap · model termuat");
+    pasang();
+  };
+
   A.boot();
 })(window.ARCAS);

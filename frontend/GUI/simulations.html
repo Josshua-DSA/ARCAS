@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
 <title>ARCAS : Simulations</title>
-<meta name="description" content="Allocation Tilt, Persona POV, dan parameter versi. Simulasi sudut pandang, bukan nasihat investasi.">
+<meta name="description" content="Uji satu berita atau rumor, lihat arah dan sudut pandang lima persona. Simulasi sudut pandang, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
 <link rel="stylesheet" href="src/css/layout.css">
 <link rel="stylesheet" href="src/css/splash.css">
+<link rel="stylesheet" href="src/css/simulations.css">
 <script>
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
   window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
@@ -42,78 +43,93 @@
   </nav>
 </header>
 
-<div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
-  <div class="wrap">
-    <div id="targetTabs">
-      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <img class="ticon" src="src/assets/gold.svg" alt="">
-        <span class="tick">Emas</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-        <span class="tick">Suku Bunga</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <img class="ticon" src="src/assets/spx.svg" alt="">
-        <span class="tick">S&amp;P 500</span>
-      </button>
+<main id="simRoot">
+
+  <!-- ================= FASE 1 ================= -->
+  <div class="s-stage" id="simStage">
+    <div class="s-wrap" style="display:flex;flex-direction:column;align-items:center">
+      <span class="s-badge" id="simBadge"><span class="s-dot"></span><span id="simBadgeText">menghubungi API</span></span>
+      <h1 class="s-greet">Berita apa yang ingin <em>kamu</em> uji?</h1>
+      <p class="s-sub">Tempel judul atau isi berita. Sistem membaca arahnya untuk target yang
+        kamu pilih, lalu menampilkan sudut pandang lima persona.</p>
+
+      <div class="s-composer">
+        <label for="simNews">Berita</label>
+        <textarea id="simNews" rows="2" placeholder="Tempel judul berita di sini, mis. &ldquo;Gold steadies as dollar retreats from two-week high&rdquo;"></textarea>
+        <div class="s-foot">
+          <div class="s-ctx">
+            <span>target</span>
+            <select id="simTarget">
+              <option value="XAU">XAU</option>
+              <option value="SPX">SPX</option>
+              <option value="RATE_UST">RATE_UST</option>
+            </select>
+            <span>&middot;</span><span>jenis</span>
+            <select id="simKind">
+              <option value="berita">berita</option>
+              <option value="rumor">rumor</option>
+            </select>
+          </div>
+          <button class="s-send" id="simSend" type="button">Uji berita &rarr;</button>
+        </div>
+      </div>
+
+      <div class="s-chips">
+        <button class="s-chip" type="button" data-fill="Gold steadies as dollar retreats from two-week high"><span class="s-k">contoh</span>Gold steady</button>
+        <button class="s-chip" type="button" data-fill="Fed officials signal patience on further easing"><span class="s-k">contoh</span>Fed patience</button>
+        <button class="s-chip" type="button" data-fill="Gold surged 3.2% to a record high as investors rushed into bullion"><span class="s-k">contoh</span>Gold surge</button>
+      </div>
+
+      <p class="s-note">Hasil berupa simulasi sudut pandang, bukan nasihat investasi.<br>
+        Angka diambil dari model dan bobot yang tersimpan, bukan dikarang.</p>
     </div>
-    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-  </div>
-</div>
-
-<main class="wrap">
-  <section class="hero" aria-labelledby="simTitle">
-    <h1 id="simTitle">Geseran terbatas, total dikunci 100%, stance tiga warna.</h1>
-    <p class="lead">Alokasi bergerak dalam batas, tidak pernah melewati 100%. Profil risiko menentukan titik awal, sentimen menggeser sedikit, dan lima persona membaca satu berita dari sudut pandang berbeda. Ini simulasi edukatif, bukan perintah transaksi.</p>
-  </section>
-
-  <div class="grid">
-    <section class="panel light" id="alokasi" aria-labelledby="allocTitle">
-      <div class="panel-head"><h2 id="allocTitle">Allocation Tilt</h2></div>
-      <div class="panel-body">
-        <div class="profile-row" role="group" aria-label="Profil risiko">
-          <button class="profile-btn" data-profile="conservative" aria-pressed="false">Konservatif</button>
-          <button class="profile-btn" data-profile="moderate" aria-pressed="true">Moderat</button>
-          <button class="profile-btn" data-profile="aggressive" aria-pressed="false">Agresif</button>
-        </div>
-        <div class="state" id="allocState" hidden></div>
-        <div id="allocBars"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">Baseline profil ditambah tilt kecil terbatas. Simulasi sudut pandang, bukan rekomendasi personal.</p>
-      </div>
-    </section>
-
-    <section class="panel dark" id="versions" aria-labelledby="verTitle">
-      <div class="panel-head"><h2 id="verTitle">Parameter dan versi</h2><span class="hint">satu tabel denomiasi simulasi</span></div>
-      <div class="panel-body">
-        <div id="versionTables">
-          <p class="hint" style="font-family:var(--font-mono);font-size:12px;color:var(--on-dark-muted)">memuat metadata...</p>
-        </div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">Nilai diambil dari /api/meta saat halaman dibuka, bukan diketik manual.</p>
-      </div>
-    </section>
   </div>
 
-  <section id="persona" aria-labelledby="perTitle">
-    <h2 id="perTitle" style="font-family:var(--font-serif);font-weight:300;font-size:30px;margin:0">Pilih dampak berita, lihat stance lima persona</h2>
-    <div class="state" id="personaCardsState" hidden style="border-color:var(--border-strong);color:var(--text-secondary)"></div>
-    <div id="personaCards"></div>
-  </section>
+  <!-- ================= FASE 2 ================= -->
+  <div class="s-conv" id="simConv">
+    <div class="s-wrap">
+      <div class="s-msg-user">
+        <div class="s-bubble"><span class="s-lbl" id="simUkuran">berita yang diuji</span>
+          <span id="simTeksUser"></span></div>
+      </div>
+
+      <article class="s-answer">
+        <div class="s-head">
+          <h2 id="simJudul">&mdash;</h2>
+          <div class="s-tags" id="simTags"></div>
+          <div class="s-metric" id="simMetrik"></div>
+        </div>
+
+        <div class="s-body">
+          <div id="simParagraf"></div>
+
+          <div class="s-stance-title">Sudut pandang lima persona</div>
+          <div class="s-stance-list" id="simStances"></div>
+
+          <div class="s-disc" id="simPeringatan" hidden></div>
+        </div>
+
+        <div class="s-answer-foot">
+          <button class="s-ghost" id="simUlang" type="button">Uji berita lain</button>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- input melayang saat fase 2 -->
+  <div class="s-dock" id="simDock">
+    <div class="s-inner">
+      <div class="s-composer">
+        <textarea id="simNewsDock" rows="1" placeholder="Uji berita lain&hellip;"></textarea>
+        <div class="s-foot">
+          <div class="s-ctx"><span>target</span><span id="simTargetDock">XAU</span></div>
+          <button class="s-send" id="simSendDock" type="button">Uji &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
-
-<dialog id="personaModal" aria-labelledby="personaTitle">
-  <div class="modal-head">
-    <div>
-      <h3 id="personaTitle">Stance lima persona</h3>
-    </div>
-    <button class="btn small" id="personaClose">Tutup</button>
-  </div>
-  <div class="modal-body">
-    <div class="state" id="personaState" hidden style="border-color:var(--border-strong);color:var(--text-secondary)"></div>
-    <div id="personaList"></div>
-  </div>
-  <div class="modal-foot">Hijau BUY, merah SELL, abu HOLD, selalu plus ikon dan teks. Bukan nasihat investasi.</div>
-</dialog>
 
 <footer>
   <div class="wrap">

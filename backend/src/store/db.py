@@ -209,6 +209,26 @@ CREATE INDEX IF NOT EXISTS idx_impacts_asset ON impacts(asset_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_daily_asset_date ON daily_sentiment(asset_id, date);
 CREATE INDEX IF NOT EXISTS idx_prices_asset_date ON prices(asset_id, date);
 
+-- Status preload berita (job 07:00 WIB). Menyimpan jejak setiap tarikan
+-- terjadwal supaya:
+--   1. GUI bisa menyatakan "data per <waktu>" saat API mati (tidak mengarang).
+--   2. Job yang terlewat (aplikasi mati semalaman) bisa "mengejar" sekali saat
+--      startup, lalu lanjut jadwal normal -- dibedakan lewat status.
+CREATE TABLE IF NOT EXISTS ingest_runs (
+  run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trigger TEXT NOT NULL,              -- 'schedule' | 'startup_catchup' | 'manual'
+  status TEXT NOT NULL,               -- 'running' | 'ok' | 'partial' | 'failed'
+  started_at TIMESTAMP NOT NULL,
+  finished_at TIMESTAMP,
+  scheduled_for TIMESTAMP,            -- slot 07:00 WIB yang diwakili run ini
+  raw_new INTEGER NOT NULL DEFAULT 0,
+  articles_clean INTEGER NOT NULL DEFAULT 0,
+  impacts_new INTEGER NOT NULL DEFAULT 0,
+  detail TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingest_runs_finished ON ingest_runs(finished_at);
+
 -- T-3: riwayat kesehatan sumber. Satu baris per (sumber, pemeriksaan).
 -- `is_failure` sengaja disimpan sebagai kolom agar query alert tidak perlu
 -- mengulang logika "status apa saja yang dianggap gagal" di banyak tempat.
@@ -269,6 +289,83 @@ class Database:
         ):
             if name not in cols:
                 conn.execute(f"ALTER TABLE impacts ADD COLUMN {name} {ddl};")
+
+    # --- Status preload berita (job 07:00 WIB) ------------------------------
+    def start_ingest_run(
+        self,
+        trigger: str,
+        scheduled_for: str | None = None,
+    ) -> int:
+        """Catat awal satu run preload; kembalikan run_id untuk diakhiri nanti."""
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO ingest_runs (trigger, status, started_at, scheduled_for)
+                VALUES (?, 'running', ?, ?);
+                """,
+                (trigger, datetime.now().isoformat(), scheduled_for),
+            )
+            return int(cur.lastrowid or 0)
+
+    def finish_ingest_run(
+        self,
+        run_id: int,
+        status: str,
+        *,
+        raw_new: int = 0,
+        articles_clean: int = 0,
+        impacts_new: int = 0,
+        detail: str | None = None,
+    ) -> None:
+        """Tutup run preload. status: 'ok' | 'partial' | 'failed'."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE ingest_runs
+                   SET status = ?, finished_at = ?, raw_new = ?,
+                       articles_clean = ?, impacts_new = ?, detail = ?
+                 WHERE run_id = ?;
+                """,
+                (status, datetime.now().isoformat(), raw_new, articles_clean,
+                 impacts_new, detail, run_id),
+            )
+
+    def has_run_for_slot(self, scheduled_for: str) -> bool:
+        """True bila slot ini sudah punya run yang membawa data (ok/no_new).
+
+        Dipakai scheduler saat startup: tanpa ini, setiap restart aplikasi
+        akan mengulang tarikan untuk slot yang sama dan membakar kuota harian
+        eulerpool. Run 'failed'/'partial' sengaja TIDAK dihitung, supaya
+        kegagalan tetap bisa dicoba ulang.
+        """
+        with self.get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT 1 FROM ingest_runs
+                 WHERE scheduled_for = ?
+                   AND status IN ('ok', 'no_new')
+                 LIMIT 1;
+                """,
+                (scheduled_for,),
+            ).fetchone()
+            return row is not None
+
+    def last_ingest_run(self) -> dict | None:
+        """Run terakhir yang selesai (status != 'running'), untuk cap waktu GUI.
+
+        Mengembalikan None bila belum pernah ada preload. GUI memakai ini untuk
+        menyatakan "data per <waktu>", bukan mengarang saat API mati.
+        """
+        with self.get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM ingest_runs
+                 WHERE status != 'running'
+                 ORDER BY finished_at DESC
+                 LIMIT 1;
+                """
+            ).fetchone()
+            return dict(row) if row else None
 
     def seed_asset_master(self, csv_path: Path | str = Path("data/universe/asset_master.csv")) -> int:
         """Seeds the 3 core locked assets from asset_master.csv."""
