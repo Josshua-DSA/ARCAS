@@ -89,13 +89,18 @@
     });
   }
 
-  /* Kualitas data (UI-06): MODE MOCKUP SEMENTARA dari api.js demoQuality().
-     Angka hard-coded dan selalu berlabel; renderer tidak berubah saat backend
-     menyediakan endpoint, hanya penyedianya yang ditukar. */
+  /* Kualitas data (UI-06): dulu diisi demoQuality() hard-coded. Sekarang hanya
+     dari API. Bila backend belum menyediakan endpoint-nya, panel menyatakan
+     belum tersedia -- bukan menampilkan angka karangan. */
   function pct(part, total) { return A.pct(part, total); }
   function renderQuality(q) {
     var box = A.$("qualityTables");
-    if (!q) { box.innerHTML = ""; A.showState("qualityState", ""); return; }
+    if (!box) return;
+    if (!q) {
+      box.innerHTML = "";
+      A.showState("qualityState", "Belum ada artefak kualitas data (endpoint belum tersedia). Panel ini kosong dengan sengaja, bukan ilustrasi.");
+      return;
+    }
     A.showState("qualityState", "");
     var num = A.num, esc = A.esc;
     var t = q.totals || {}, c = q.completeness || {};
@@ -142,15 +147,16 @@
     A.showState("statState", "Memuat uji statistik...");
     A.showState("wbState", "Memuat meja kerja...");
     A.api("/api/stats/" + t).then(function (rows) {
-      storedRows = A.renderStats(rows, "Belum ada hasil uji untuk target ini. Jalankan pipeline analyze dulu.");
+      storedRows = A.renderStats(rows, "Belum ada hasil uji untuk target ini. Jalankan `cli stats` dulu agar tabel terisi.");
       updateWorkbenchControls(storedRows);
     }).catch(function () {
-      var fallback = [{ test: "spearman", market_metric: "return", lag: 1, estimate: 0.18, p_value: 0.04, p_adjusted: 0.09, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "ols", market_metric: "return", lag: 1, estimate: 0.11, p_value: 0.07, p_adjusted: 0.12, n_obs: 62, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "granger", market_metric: "return", lag: 2, estimate: 3.4, p_value: 0.06, p_adjusted: 0.11, n_obs: 60, period_start: "2026-07-15", period_end: "2026-10-12" }, { test: "event_study", market_metric: "abnormal_return", lag: 0, estimate: 0.006, p_value: 0.03, p_adjusted: 0.08, n_obs: 18, period_start: "2026-08-01", period_end: "2026-10-12" }];
-      storedRows = A.renderStats(fallback);
-      /* Setelah renderStats dan updateWorkbench, bukan sebelum: keduanya mengosongkan state. */
+      /* Tidak ada tabel karangan. Kosongkan dan katakan apa adanya: data uji
+         statistik harus nyata atau tidak ditampilkan sama sekali. */
+      storedRows = [];
+      A.showState("statState", "API statistik tidak terjangkau : tidak ada hasil uji untuk ditampilkan.");
+      A.showState("wbState", "API statistik tidak terjangkau : meja kerja kosong.");
+      A.renderStats([], "API statistik tidak terjangkau.");
       updateWorkbenchControls(storedRows);
-      A.showState("statState", "API statistik tidak terjangkau : tabel ini ilustrasi berlabel, bukan hasil uji nyata.");
-      A.showState("wbState", "API statistik tidak terjangkau : meja kerja menampilkan data tersimpan berlabel.");
     });
   }
 
@@ -158,5 +164,5 @@
   A.$("wbRun").addEventListener("click", runWorkbench);
   A.renderPage = renderAll;
   A.boot();
-  renderQuality(A.demoQuality()); /* stats boot akan dipanggil: kualitas mock tetap satu kali */
+  renderQuality(null); /* tidak ada angka karangan: panel kosong sampai backend menyediakan artefak */
 })(window.ARCAS);

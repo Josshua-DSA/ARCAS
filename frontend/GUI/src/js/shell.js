@@ -119,7 +119,7 @@ window.ARCAS = window.ARCAS || {};
     var box = $("ticker");
     if (!box) return Promise.resolve();
     var ids = Object.keys(TARGET_INFO);
-    var start = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
+    var start = A.localISO(new Date(Date.now() - 20 * 86400000));
     var jobs = ids.map(function (id) {
       if (A.state.apiReachable === false) return Promise.resolve({ id: id, prices: [] });
       return A.api("/api/series/" + id + "?start_date=" + start).then(function (payload) {
