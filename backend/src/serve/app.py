@@ -15,10 +15,25 @@ from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
     NewsHorizon,
 )
+from backend.src.serve.sim_input import InputKind, InputRejected
+from backend.src.serve.sim_service import SimulationService
 from pydantic import BaseModel, Field
 
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
+
+
+class SimulateRequest(BaseModel):
+    """Badan permintaan /api/simulate.
+
+    `kind` sengaja tanpa nilai bawaan. Kalau punya bawaan, pengirim yang lupa
+    mengisi jenis input akan diam-diam dianggap mengirim berita.
+    """
+
+    text: str = Field(..., min_length=1, max_length=20000)
+    kind: InputKind
+    source: Optional[str] = Field(default=None, max_length=200)
+    target: str = Field(default="XAU", max_length=20)
 
 
 def _latest_scores(db: Database) -> tuple[dict[str, tuple[float, float]], dict[str, str]]:
@@ -99,6 +114,10 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             sched = _scheduler_holder.pop("scheduler", None)
             if sched is not None:
                 sched.stop()  # type: ignore[attr-defined]
+
+    # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
+    # request. Pemuatan tetap lambat (lazy) saat request pertama.
+    sim_service = SimulationService(db_path=db_path)
 
     app = FastAPI(
         title="FinNews API",
@@ -333,5 +352,62 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         # S-2: persist supaya reproducible & bisa diperiksa ulang.
         db.save_persona_views(views)
         return [v.model_dump() for v in views]
+
+    # -- simulasi sudut pandang dari berita/rumor -------------------------
+    @app.post("/api/simulate")
+    def simulate(payload: SimulateRequest) -> dict:
+        """Analisis satu teks berita/rumor menjadi skor, arah, dan 5 stance.
+
+        Hanya menerima berita atau rumor. Obrolan, pertanyaan, dan teks yang
+        bukan laporan peristiwa ditolak dengan 422 dan pesan yang menjelaskan
+        alasannya -- bukan dijawab dengan angka.
+
+        `kind` wajib diisi dan tidak ditebak: menebak jenis input akan membuat
+        sistem diam-diam memperlakukan pertanyaan sebagai berita.
+        """
+        try:
+            hasil = sim_service.analyze(
+                text=payload.text,
+                kind=payload.kind,
+                source=payload.source,
+                target=payload.target,
+            )
+        except InputRejected as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "kode": exc.code,
+                    "pesan": exc.message,
+                    "contoh": exc.contoh,
+                },
+            ) from exc
+        return {
+            "input_kind": hasil.input_kind,
+            "is_rumor": hasil.is_rumor,
+            "source": hasil.source,
+            "target": hasil.target,
+            "tone": hasil.tone,
+            "score": hasil.score,
+            "confidence": hasil.confidence,
+            "confidence_raw": hasil.confidence_raw,
+            "penalty": hasil.penalty,
+            "direction": hasil.direction,
+            "horizon": hasil.horizon,
+            "model_version": hasil.model_version,
+            "summary": hasil.summary,
+            "warnings": hasil.warnings,
+            "degraded": hasil.degraded,
+            "disclaimer": hasil.disclaimer,
+            "stances": [
+                {
+                    "persona_id": s.persona_id,
+                    "persona_name": s.persona_name,
+                    "stance": s.stance,
+                    "strength": s.strength,
+                    "rationale": s.rationale,
+                }
+                for s in hasil.stances
+            ],
+        }
 
     return app

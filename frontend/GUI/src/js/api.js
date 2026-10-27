@@ -48,14 +48,31 @@ window.ARCAS = window.ARCAS || {};
 
   function api(path, opts) {
     var signal = opts && opts.signal;
+    var method = (opts && opts.method) || "GET";
+    var body = opts && opts.body;
+    var init = { cache: "no-store", signal: signal, method: method };
+    if (body !== undefined) {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = body;
+    }
     return detectBase().then(function (base) {
-      return fetch(base + path, { cache: "no-store", signal: signal }).then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status + " untuk " + path);
+      return fetch(base + path, init).then(function (r) {
+        if (!r.ok) {
+          /* Baca badan galat supaya pesan penolakan (mis. "bukan berita")
+             sampai ke pengguna, bukan tertelan jadi "HTTP 422". */
+          return r.json().catch(function () { return null; }).then(function (j) {
+            var err = new Error("HTTP " + r.status + " untuk " + path);
+            err.status = r.status;
+            err.payload = j;
+            throw err;
+          });
+        }
         return r.json();
       });
     }).catch(function (err) {
       /* Pembatalan bukan kegagalan API: jangan tandai mati, jangan reset base. */
       if (err && err.name === "AbortError") throw err;
+      if (err && err.status) throw err;
       resetBase();
       throw err;
     });
