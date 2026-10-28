@@ -113,7 +113,15 @@ def run_preload(
     db = Database(db_file)
     db.init_schema()
 
-    run_id = db.start_ingest_run(trigger, scheduled_for=slot.isoformat())
+    run_id = db.claim_ingest_slot(trigger, scheduled_for=slot.isoformat())
+    if run_id is None:
+        # Proses lain sudah memegang slot ini. JANGAN menembak eulerpool:
+        # itulah inti perbaikan P1-8 -- kuota harian tidak boleh terbakar dua
+        # kali hanya karena ada dua worker atau proses lama yang belum mati.
+        LOGGER.info(
+            "Slot %s sudah diklaim proses lain; preload dilewati.", slot.isoformat()
+        )
+        return True  # slot dianggap tertangani, bukan gagal
     raw_new = 0
     catatan: list[str] = []
 
