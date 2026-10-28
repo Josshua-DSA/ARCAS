@@ -230,7 +230,7 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
   background:var(--bg-card);color:var(--text-primary);text-decoration:none}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#2C2727}
 .btn.primary:hover{background:var(--accent-hover)}
-.btn.small{font-size:13px;padding:8px 12px;min-height:40px}
+.btn.small{font-size:13px;padding:8px 14px;min-height:44px}
 
 /* Status panel: loading, kosong, galat selalu tersedia (R-27) */
 .state{border:1px dashed var(--border-dark-strong);border-radius:8px;padding:14px;font-family:var(--font-mono);
