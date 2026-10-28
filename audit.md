@@ -428,8 +428,8 @@ jalur — bukan test yang hilang.
 
 ## 4. Temuan Ringan (P3)
 
-**Status per 2026-10-26: P3-1, P3-2 selesai.** **P3-5 selesai** (ditutup di
-sesi ini). P3-3 (tidak ada TODO/FIXME) adalah observasi, bukan cacat.
+**Status per 2026-10-28: P3-1, P3-2, P3-5 selesai.** P3-5 ditutup lewat PR #32
+(merge `a5efbdd`); lihat `context/SCHEMA.md` §6.1. P3-3 (tidak ada TODO/FIXME) adalah observasi, bukan cacat.
 P3-4 tetap terbuka.
 
 | # | Temuan | Bukti | Status |
