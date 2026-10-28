@@ -328,12 +328,63 @@ class Database:
                 conn.execute(f"ALTER TABLE impacts ADD COLUMN {name} {ddl};")
 
     # --- Status preload berita (job 07:00 WIB) ------------------------------
+    #: Batas waktu klaim slot (detik). Proses yang mati di tengah jalan tidak
+    #: boleh mengunci slot selamanya, jadi klaim yang lebih tua dari ini
+    #: dianggap kedaluwarsa dan boleh diambil alih.
+    CLAIM_TIMEOUT_SECONDS: int = 15 * 60
+
+    def claim_ingest_slot(
+        self,
+        trigger: str,
+        scheduled_for: str | None,
+        timeout_seconds: int | None = None,
+    ) -> int | None:
+        """Klaim satu slot secara ATOMIK; None bila slot sudah diklaim proses lain.
+
+        Kenapa perlu: `start_ingest_run` hanya INSERT, lalu `run_preload`
+        langsung menembak eulerpool. Dua proses (mis. uvicorn --workers 2, atau
+        proses lama yang belum mati saat restart) sama-sama INSERT berstatus
+        'running', sama-sama lanjut menarik data, dan kuota harian terbakar dua
+        kali. Kunci di level DB harus diambil SEBELUM panggilan jaringan.
+
+        Satu-satunya statement INSERT...SELECT di bawah berjalan atomik di
+        SQLite (satu transaksi tulis), sehingga hanya satu pemanggil yang bisa
+        menyisipkan baris untuk slot yang sama. Klaim yang lebih tua dari
+        `timeout_seconds` dianggap milik proses yang sudah mati dan boleh
+        diambil alih, supaya crash tidak mengunci slot selamanya.
+        """
+        batas_detik = (
+            self.CLAIM_TIMEOUT_SECONDS if timeout_seconds is None else int(timeout_seconds)
+        )
+        batas = (datetime.now() - timedelta(seconds=batas_detik)).isoformat()
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO ingest_runs (trigger, status, started_at, scheduled_for)
+                SELECT ?, 'running', ?, ?
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM ingest_runs
+                    WHERE scheduled_for IS ?
+                      AND status = 'running'
+                      AND started_at > ?
+                );
+                """,
+                (trigger, datetime.now().isoformat(), scheduled_for, scheduled_for, batas),
+            )
+            if cur.rowcount == 0:
+                return None
+            return int(cur.lastrowid or 0)
+
     def start_ingest_run(
         self,
         trigger: str,
         scheduled_for: str | None = None,
     ) -> int:
-        """Catat awal satu run preload; kembalikan run_id untuk diakhiri nanti."""
+        """Catat awal satu run preload; kembalikan run_id untuk diakhiri nanti.
+
+        Tidak mengklaim slot -- dipakai untuk run manual yang memang boleh
+        berjalan berdampingan. Untuk job terjadwal pakai `claim_ingest_slot`.
+        """
         with self.get_connection() as conn:
             cur = conn.execute(
                 """
