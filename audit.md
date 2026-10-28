@@ -847,15 +847,15 @@ persetujuan pemilik repo).
 |---|---|---|---|---|
 | P0-4 | `target` bebas di `/api/simulate` | P0 | S | ✅ selesai |
 | P0-5 | `ingest_runs` + `source_health` tak tercatat di `SCHEMA.md` | P0 | S | ✅ selesai |
-| P1-7 | `/api/simulate` tanpa jejak | P1 | M | ⬜ terbuka |
-| P1-8 | Scheduler tanpa kunci multi-proses | P1 | M | ⬜ terbuka |
-| P1-9 | Muat model 3,33 s di request pertama | P1 | S | ⬜ terbuka |
-| P2-7 | Batas 20.000 vs 4.000 | P2 | S | ⬜ terbuka |
-| P2-8 | State instance `_degraded` | P2 | S | ⬜ terbuka |
-| P2-9 | Routing gagal menyamar sebagai netral | P2 | S | ⬜ terbuka |
-| P3-1 | Komentar "440 MB" | P3 | XS | ⬜ terbuka |
-| P3-2 | `MIN_CHARS=40` vs judul pendek | P3 | S | ⬜ terbuka |
-| FIX-1 | Urutan News `published_at` | — | S | ✅ dikerjakan, ⬜ belum commit |
+| P1-7 | `/api/simulate` tanpa jejak | P1 | M | ✅ selesai (0b53ca6) |
+| P1-8 | Scheduler tanpa kunci multi-proses | P1 | M | ✅ selesai (6b50805) |
+| P1-9 | Muat model 3,33 s di request pertama | P1 | S | ✅ selesai (a2234a4) |
+| P2-7 | Batas 20.000 vs 4.000 | P2 | S | ✅ selesai (a732438) |
+| P2-8 | State instance `_degraded` | P2 | S | ✅ selesai (a732438) |
+| P2-9 | Routing gagal menyamar sebagai netral | P2 | S | ✅ selesai (a732438) |
+| P3-1 | Komentar "440 MB" | P3 | XS | ✅ selesai (a732438) |
+| P3-2 | `MIN_CHARS=40` vs judul pendek | P3 | S | ✅ selesai (a732438) |
+| FIX-1 | Urutan News `published_at` | — | S | ✅ selesai (489a7bd) |
 
 **Urutan yang disarankan:** P0-4 → P0-5 → P1-9 → P1-7 → P2-9 → sisanya.
 
