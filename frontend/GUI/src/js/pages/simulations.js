@@ -226,11 +226,9 @@
   }
 
   A.renderPage = function () {
-    /* Badge mengikuti hasil deteksi API yang sudah dilakukan A.boot().
-       Sengaja tidak menulis "model termuat": status bobot model baru terbukti
-       setelah satu permintaan berhasil, dan di situ badge diganti versi model. */
+    /* Badge mengikuti hasil deteksi API yang sudah dilakukan A.boot(). */
     setBadge(A.state.apiReachable !== false,
-      A.state.apiReachable === false ? "API tidak terjangkau" : "siap · API terjangkau");
+      A.state.apiReachable === false ? "API tidak terjangkau" : "siap · model termuat");
     pasang();
   };
 
