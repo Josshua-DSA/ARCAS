@@ -108,6 +108,15 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             _scheduler_holder["scheduler"] = sched
             logger.info("Preload berikutnya dalam %.0f detik",
                         seconds_until(next_slot(sched._clock())))
+        # P1-7: buang jejak simulasi yang lewat retensi. Aman dijalankan tiap
+        # startup karena idempoten; kegagalan di sini tidak boleh menghalangi
+        # server hidup.
+        try:
+            terhapus = Database(db_path=db_path).purge_sim_runs()
+            if terhapus:
+                logger.info("Retensi simulasi: %d jejak lama dihapus", terhapus)
+        except Exception as exc:  # pragma: no cover - DB belum ada
+            logger.warning("Gagal membersihkan jejak simulasi lama: %s", exc)
         try:
             yield
         finally:
@@ -381,7 +390,20 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                     "contoh": exc.contoh,
                 },
             ) from exc
+        # P1-7: simpan jejak supaya hasil bisa diperiksa ulang. Kegagalan
+        # menyimpan TIDAK boleh menggagalkan analisis yang sudah jadi -- hasil
+        # tetap dikembalikan, dan ketiadaan jejak dilaporkan di `warnings`
+        # supaya tidak diam-diam hilang.
+        run_id = None
+        try:
+            run_id = db.save_sim_run(hasil)
+        except Exception as exc:  # pragma: no cover - DB penuh/terkunci
+            logger.warning("Gagal menyimpan jejak simulasi: %s", exc)
+            hasil.warnings = list(hasil.warnings or []) + [
+                "jejak simulasi tidak tersimpan; hasil ini tidak bisa diperiksa ulang"
+            ]
         return {
+            "run_id": run_id,
             "input_kind": hasil.input_kind,
             "is_rumor": hasil.is_rumor,
             "source": hasil.source,
@@ -409,5 +431,28 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 for s in hasil.stances
             ],
         }
+
+    @app.get("/api/simulate/{run_id}")
+    def get_simulate(run_id: int):
+        """Baca kembali satu jejak simulasi (P1-7).
+
+        404 bila tidak ada atau sudah terhapus retensi. Yang dikembalikan
+        adalah angka yang TERSIMPAN, bukan hasil hitung ulang -- jadi ini
+        benar-benar memeriksa apa yang dulu ditampilkan.
+        """
+        jejak = db.get_sim_run(run_id)
+        if jejak is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "kode": "jejak_tidak_ada",
+                    "pesan": (
+                        f"Jejak simulasi {run_id} tidak ditemukan. "
+                        "Mungkin sudah terhapus karena retensi "
+                        f"{Database.RETAIN_DAYS} hari."
+                    ),
+                },
+            )
+        return jejak
 
     return app

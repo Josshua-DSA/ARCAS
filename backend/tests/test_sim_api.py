@@ -18,8 +18,20 @@ RUMOR = (
 
 
 @pytest.fixture(scope="module")
-def client():
-    return TestClient(create_app())
+def sim_db_path(tmp_path_factory):
+    """Satu jalur DB per modul tes, dipakai `client` dan tes yang buka langsung."""
+    return tmp_path_factory.mktemp("simdb") / "finews.db"
+
+
+@pytest.fixture(scope="module")
+def client(sim_db_path):
+    """App dengan DB SEMENTARA.
+
+    Penting: `create_app` menerima `db_path`, jadi tes tidak boleh memakai
+    bawaan `data/finews.db` -- jejak simulasi akan menumpuk di database
+    pengembangan dan membuat hasil tes bergantung pada isi DB nyata.
+    """
+    return TestClient(create_app(db_path=sim_db_path))
 
 
 def test_obrolan_ditolak_422_dengan_kode(client):
@@ -129,3 +141,60 @@ def test_target_bawaan_adalah_xau(client):
     r = client.post("/api/simulate", json={"text": BERITA, "kind": "berita"})
     assert r.status_code == 200
     assert r.json()["target"] == "XAU"
+
+
+# -- P1-7: jejak simulasi --------------------------------------------------
+
+
+def test_simulate_mengembalikan_run_id(client):
+    r = client.post("/api/simulate", json={"text": BERITA, "kind": "berita"})
+    assert r.status_code == 200
+    assert isinstance(r.json()["run_id"], int)
+    assert r.json()["run_id"] > 0
+
+
+def test_jejak_bisa_dibaca_ulang_dan_angkanya_identik(client):
+    """Yang dibaca kembali harus angka yang TERSIMPAN, bukan hitung ulang."""
+    pertama = client.post("/api/simulate", json={"text": BERITA, "kind": "berita"}).json()
+    r = client.get(f"/api/simulate/{pertama['run_id']}")
+    assert r.status_code == 200
+    jejak = r.json()
+    for kunci in ("target", "tone", "score", "confidence", "direction", "model_version"):
+        assert jejak[kunci] == pertama[kunci], kunci
+    assert jejak["text"] == BERITA
+    assert jejak["created_at"]
+
+
+def test_jejak_menyimpan_text_hash(client, sim_db_path):
+    """Hash harus deterministik dan tahan perbedaan spasi."""
+    import sqlite3
+
+    from backend.src.store.db import Database
+
+    j = client.post("/api/simulate", json={"text": BERITA, "kind": "berita"}).json()
+    with sqlite3.connect(sim_db_path) as c:
+        row = c.execute(
+            "SELECT text_hash FROM sim_runs WHERE run_id = ?", (j["run_id"],)
+        ).fetchone()
+    assert row is not None
+    assert row[0] == Database.hash_text(BERITA)
+    assert row[0] == Database.hash_text("  " + BERITA.replace(" ", "   ") + "  ")
+
+
+def test_jejak_tidak_ada_menghasilkan_404(client):
+    r = client.get("/api/simulate/99999999")
+    assert r.status_code == 404
+    assert r.json()["detail"]["kode"] == "jejak_tidak_ada"
+
+
+def test_jejak_ditolak_tidak_disimpan(client, sim_db_path):
+    """Input yang ditolak gerbang tidak boleh meninggalkan baris jejak."""
+    import sqlite3
+
+    with sqlite3.connect(sim_db_path) as c:
+        sebelum = c.execute("SELECT COUNT(*) FROM sim_runs").fetchone()[0]
+    r = client.post("/api/simulate", json={"text": "halo", "kind": "berita"})
+    assert r.status_code == 422
+    with sqlite3.connect(sim_db_path) as c:
+        sesudah = c.execute("SELECT COUNT(*) FROM sim_runs").fetchone()[0]
+    assert sesudah == sebelum

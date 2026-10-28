@@ -122,3 +122,51 @@ def test_init_tables_alias_is_gone():
     assert not hasattr(Database, "init_tables"), (
         "init_tables() adalah alias init_schema(); pakai init_schema() saja"
     )
+
+
+# -- P1-7: retensi jejak simulasi ------------------------------------------
+
+
+def test_sim_runs_purge_menghormati_batas_hari(temp_db):
+    """Jejak lebih tua dari retensi dihapus; yang baru dipertahankan."""
+    import sqlite3
+    from datetime import datetime, timedelta
+
+    class Hasil:
+        text = "Gold naik tajam"
+        input_kind = "berita"
+        is_rumor = False
+        source = None
+        target = "XAU"
+        tone = "positive"
+        score = 0.5
+        confidence = 0.5
+        confidence_raw = 0.5
+        penalty = 0.0
+        direction = "bullish"
+        horizon = "pendek"
+        model_version = "uji"
+        warnings: list = []
+        degraded: list = []
+
+    baru = temp_db.save_sim_run(Hasil())
+    lama = temp_db.save_sim_run(Hasil())
+    assert baru > 0 and lama > 0
+
+    # Mundurkan satu baris melewati batas retensi.
+    basi = (datetime.now() - timedelta(days=temp_db.RETAIN_DAYS + 1)).isoformat()
+    with sqlite3.connect(temp_db.db_path) as c:
+        c.execute("UPDATE sim_runs SET created_at = ? WHERE run_id = ?;", (basi, lama))
+
+    assert temp_db.purge_sim_runs() == 1
+    assert temp_db.get_sim_run(lama) is None
+    assert temp_db.get_sim_run(baru) is not None
+
+
+def test_sim_runs_purge_idempoten(temp_db):
+    assert temp_db.purge_sim_runs() == 0
+    assert temp_db.purge_sim_runs() == 0
+
+
+def test_get_sim_run_tidak_ada_mengembalikan_none(temp_db):
+    assert temp_db.get_sim_run(123456) is None

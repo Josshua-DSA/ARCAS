@@ -3,7 +3,7 @@
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Generator, Optional
 
@@ -246,6 +246,43 @@ CREATE TABLE IF NOT EXISTS source_health (
 
 CREATE INDEX IF NOT EXISTS idx_source_health_source
   ON source_health(source, checked_at);
+
+-- Jejak setiap /api/simulate (P1-7).
+--
+-- Tanpa ini, teks yang dianalisis, model yang terpilih, dan skor yang
+-- dihasilkan hanya hidup selama satu request. Kalau pengguna melaporkan
+-- "kemarin hasilnya bullish", tidak ada cara memeriksa ulang -- bahkan tidak
+-- bisa membuktikan teks masukannya sama. Itu melemahkan prinsip Explainable
+-- di halaman yang paling menonjol.
+--
+-- `text` disimpan lengkap (keputusan pemilik repo) agar analisis bisa
+-- dijalankan ULANG, bukan sekadar dikenali; `text_hash` disimpan berdampingan
+-- supaya duplikat bisa dicari tanpa membandingkan teks penuh. Retensi dibatasi
+-- RETAIN_DAYS lewat `purge_sim_runs`, jadi data pengguna tidak menumpuk
+-- selamanya.
+CREATE TABLE IF NOT EXISTS sim_runs (
+  run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TIMESTAMP NOT NULL,
+  text_hash TEXT NOT NULL,
+  text TEXT NOT NULL,
+  input_kind TEXT NOT NULL,
+  is_rumor BOOLEAN NOT NULL DEFAULT 0,
+  source TEXT,
+  target TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  score REAL NOT NULL,
+  confidence REAL NOT NULL,
+  confidence_raw REAL NOT NULL,
+  penalty REAL NOT NULL DEFAULT 0,
+  direction TEXT NOT NULL,
+  horizon TEXT,
+  model_version TEXT NOT NULL,
+  warnings TEXT,          -- JSON list
+  degraded TEXT           -- JSON list
+);
+
+CREATE INDEX IF NOT EXISTS idx_sim_runs_created ON sim_runs(created_at);
+CREATE INDEX IF NOT EXISTS idx_sim_runs_hash ON sim_runs(text_hash);
 """
 
 
@@ -1455,3 +1492,87 @@ class Database:
                 (int(threshold),),
             ).fetchall()
             return [dict(r) for r in rows]
+
+    # -- jejak simulasi (P1-7) -------------------------------------------
+    #: Retensi jejak simulasi. Teks yang dianalisis adalah data pengguna, jadi
+    #: umurnya dibatasi; angka ini dipakai `purge_sim_runs`.
+    RETAIN_DAYS: int = 90
+
+    @staticmethod
+    def hash_text(text: str | None) -> str:
+        """SHA-256 dari teks yang sudah dinormalkan spasi.
+
+        Dipakai sebagai kunci duplikat di `sim_runs`; normalkan spasi supaya
+        teks yang sama dengan spasi berbeda menghasilkan hash yang sama.
+        """
+        import hashlib
+
+        bersih = " ".join((text or "").split())
+        return hashlib.sha256(bersih.encode("utf-8")).hexdigest()
+
+    def save_sim_run(self, hasil) -> int:
+        """Simpan satu hasil `SimulationService.analyze` ke `sim_runs`.
+
+        NFR reproducibility: hasil yang hanya dikembalikan lewat API lalu
+        dibuang tidak bisa diperiksa ulang. Mengembalikan `run_id` supaya
+        pemanggil bisa merujuk baris yang sama.
+        """
+        rows = (
+            datetime.now().isoformat(),
+            self.hash_text(hasil.text),
+            hasil.text,
+            hasil.input_kind,
+            1 if hasil.is_rumor else 0,
+            hasil.source,
+            hasil.target,
+            hasil.tone,
+            float(hasil.score),
+            float(hasil.confidence),
+            float(hasil.confidence_raw),
+            float(hasil.penalty),
+            hasil.direction,
+            hasil.horizon,
+            hasil.model_version,
+            json.dumps(list(hasil.warnings or [])),
+            json.dumps(list(hasil.degraded or [])),
+        )
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO sim_runs (
+                    created_at, text_hash, text, input_kind, is_rumor, source,
+                    target, tone, score, confidence, confidence_raw, penalty,
+                    direction, horizon, model_version, warnings, degraded
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                """,
+                rows,
+            )
+            return int(cur.lastrowid or 0)
+
+    def get_sim_run(self, run_id: int) -> Optional[dict]:
+        """Ambil satu jejak simulasi. None bila tidak ada (bukan galat)."""
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM sim_runs WHERE run_id = ?;", (int(run_id),)
+            ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        for kolom in ("warnings", "degraded"):
+            try:
+                data[kolom] = json.loads(data[kolom] or "[]")
+            except (TypeError, ValueError):
+                data[kolom] = []
+        return data
+
+    def purge_sim_runs(self, days: int | None = None) -> int:
+        """Hapus jejak simulasi lebih tua dari `days`. Kembalikan jumlah baris.
+
+        Dipanggil dari lifespan saat startup. Idempoten: memanggil berulang
+        tidak menghapus apa pun yang belum kedaluwarsa.
+        """
+        batas_hari = self.RETAIN_DAYS if days is None else int(days)
+        batas = (datetime.now() - timedelta(days=batas_hari)).isoformat()
+        with self.get_connection() as conn:
+            cur = conn.execute("DELETE FROM sim_runs WHERE created_at < ?;", (batas,))
+            return int(cur.rowcount or 0)
