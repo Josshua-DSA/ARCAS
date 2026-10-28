@@ -205,9 +205,6 @@ CREATE TABLE IF NOT EXISTS persona_views (
   PRIMARY KEY (article_id, persona_id, target, params_version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_impacts_asset ON impacts(asset_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_daily_asset_date ON daily_sentiment(asset_id, date);
-CREATE INDEX IF NOT EXISTS idx_prices_asset_date ON prices(asset_id, date);
 
 -- Status preload berita (job 07:00 WIB). Menyimpan jejak setiap tarikan
 -- terjadwal supaya:
@@ -227,7 +224,6 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
   detail TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_ingest_runs_finished ON ingest_runs(finished_at);
 
 -- T-3: riwayat kesehatan sumber. Satu baris per (sumber, pemeriksaan).
 -- `is_failure` sengaja disimpan sebagai kolom agar query alert tidak perlu
@@ -244,8 +240,6 @@ CREATE TABLE IF NOT EXISTS source_health (
   consecutive_failures INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE INDEX IF NOT EXISTS idx_source_health_source
-  ON source_health(source, checked_at);
 
 -- Jejak setiap /api/simulate (P1-7).
 --
@@ -281,6 +275,25 @@ CREATE TABLE IF NOT EXISTS sim_runs (
   degraded TEXT           -- JSON list
 );
 
+"""
+
+# P3-5: indeks dibuat SETELAH migrasi kolom, bukan sebelumnya.
+#
+# Sebelumnya indeks berada di dalam DDL_SCHEMA yang dijalankan lebih dulu.
+# Pada DB lama, `CREATE INDEX ... ON ingest_runs(finished_at)` dievaluasi saat
+# kolom `finished_at` belum ada -> OperationalError sebelum migrasi sempat
+# berjalan. Akibatnya DB lama tidak bisa dinaikkan sama sekali: semua kolom
+# sudah ada di katalog, tapi proses migrasi belum pernah sampai ke sana.
+#
+# Dipisah ke sini supaya `init_schema` bisa memakai urutan yang benar:
+#   DDL tabel -> migrasi kolom -> DDL indeks -> seed
+DDL_INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_impacts_asset ON impacts(asset_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_daily_asset_date ON daily_sentiment(asset_id, date);
+CREATE INDEX IF NOT EXISTS idx_prices_asset_date ON prices(asset_id, date);
+CREATE INDEX IF NOT EXISTS idx_ingest_runs_finished ON ingest_runs(finished_at);
+CREATE INDEX IF NOT EXISTS idx_source_health_source
+  ON source_health(source, checked_at);
 CREATE INDEX IF NOT EXISTS idx_sim_runs_created ON sim_runs(created_at);
 CREATE INDEX IF NOT EXISTS idx_sim_runs_hash ON sim_runs(text_hash);
 """
@@ -308,24 +321,184 @@ class Database:
             conn.close()
 
     def init_schema(self) -> None:
-        """Initializes tables and indexes, lalu migrasi kolom yang menyusul."""
+        """Initializes tables and indexes, lalu migrasi kolom yang menyusul.
+
+        Urutannya penting dan sengaja tidak boleh ditukar:
+          1. DDL_SCHEMA  -- tabel baru muncul
+          2. _migrate    -- tabel LAMA dilengkapi kolomnya
+          3. DDL_INDEXES -- indeks dibuat, setelah kolomnya pasti ada
+          4. seed        -- baris wajib, tanpa menimpa data pengguna
+
+        Langkah 3 harus setelah 2: pada DB lama, indeks di atas kolom yang
+        belum dimigrasi akan menggagalkan seluruh proses.
+        """
         with self.get_connection() as conn:
             conn.executescript(DDL_SCHEMA)
             self._migrate(conn)
+            conn.executescript(DDL_INDEXES)
+            self._seed_schema_data(conn)
 
-    @staticmethod
-    def _migrate(conn: sqlite3.Connection) -> None:
-        """Menambah kolom baru pada DB lama. Idempoten dan aman diulang."""
-        cols = {r["name"] for r in conn.execute("PRAGMA table_info(impacts);").fetchall()}
-        for name, ddl in (
-            ("routed_from", "TEXT"),
-            ("route_score", "REAL"),
+    # -- P3-5: versi skema ---------------------------------------------------
+    #: Versi skema yang diharapkan kode ini. Naikkan setiap kali ada perubahan
+    #: struktur yang butuh migrasi, lalu tambahkan langkahnya di `MIGRATIONS`.
+    #: Tanpa angka ini, DB lama dan baru tidak bisa dibedakan sama sekali.
+    SCHEMA_VERSION: int = 1
+
+    # -- P3-5: deskripsi kolom yang WAJIB ada --------------------------------
+    #: Peta tabel -> {kolom: DDL}. Dipakai dua arah: `init_schema` melengkapi
+    #: kolom yang hilang, dan `skema_tidak_lengkap()` melaporkan selisih tanpa
+    #: mengubah apa pun (untuk `fi check-schema`).
+    #:
+    #: Sebelumnya hanya tabel `impacts` yang punya jalur upgrade, dan DDL-nya
+    #: ditulis ulang manual di `_migrate`. Akibatnya kolom baru pada tabel lain
+    #: tidak pernah masuk ke DB lama: `CREATE TABLE IF NOT EXISTS` tidak
+    #: menyentuh tabel yang sudah ada, jadi query-nya gagal saat runtime --
+    #: atau lebih buruk, berjalan dengan data yang tidak lengkap.
+    KOLOM_WAJIB: dict[str, dict[str, str]] = {
+        "impacts": {
+            "routed_from": "TEXT",
+            "route_score": "REAL",
             # S-5: horizon berita harus tersimpan agar bisa dibaca kembali,
             # bukan hanya hidup di memori selama satu pemanggilan.
-            ("news_horizon", "TEXT"),
-        ):
-            if name not in cols:
-                conn.execute(f"ALTER TABLE impacts ADD COLUMN {name} {ddl};")
+            "news_horizon": "TEXT",
+        },
+        "raw_articles": {
+            "query_target": "TEXT",
+            "vendor_sentiment": "REAL",
+            "payload_json": "TEXT",
+        },
+        "articles": {
+            "duplicate_of": "TEXT",
+            "market_relevant": "BOOLEAN",
+        },
+        # Tabel-tabel ini lahir belakangan; DB yang dibuat sebelum itu tidak
+        # memilikinya. `NOT NULL DEFAULT` dipakai bila DDL aslinya NOT NULL,
+        # supaya baris lama tetap valid setelah kolom ditambahkan.
+        # Nama kolom di bawah diambil langsung dari DDL_SCHEMA, bukan ditebak.
+        "ingest_runs": {
+            "finished_at": "TIMESTAMP",
+            "scheduled_for": "TIMESTAMP",
+            "raw_new": "INTEGER NOT NULL DEFAULT 0",
+            "articles_clean": "INTEGER NOT NULL DEFAULT 0",
+            "impacts_new": "INTEGER NOT NULL DEFAULT 0",
+            "detail": "TEXT",
+        },
+        "source_health": {
+            "status": "TEXT NOT NULL DEFAULT 'unknown'",
+            "is_failure": "BOOLEAN NOT NULL DEFAULT 0",
+            "usable": "BOOLEAN NOT NULL DEFAULT 0",
+            "latency_ms": "REAL",
+            "sample_size": "INTEGER NOT NULL DEFAULT 0",
+            "consecutive_failures": "INTEGER NOT NULL DEFAULT 0",
+        },
+        "sim_runs": {
+            "is_rumor": "BOOLEAN NOT NULL DEFAULT 0",
+            "warnings": "TEXT",
+            "degraded": "TEXT",
+        },
+    }
+
+    # -- P3-5: seed yang tidak boleh menimpa data -----------------------------
+    #: Universe terkunci yang harus selalu ada di `asset_master`.
+    #:
+    #: Nilainya diambil dari `data/universe/asset_master.csv` dan
+    #: `LOCKED_UNIVERSE` (XAU, RATE_UST, SPX) -- bukan dikarang. `price_ticker`
+    #: NOT NULL di DDL, jadi tidak boleh None.
+    #:
+    #: Hanya diisi bila BELUM ada (ON CONFLICT DO NOTHING), sehingga tidak
+    #: pernah menimpa nama/harga/status yang sudah diubah lewat seed CSV.
+    SEED_ASSET_MASTER: tuple[tuple, ...] = (
+        # (asset_id, asset_class, track, name, price_ticker, exchange,
+        #  country, sector, timezone, session_close, valid_from, valid_to,
+        #  active)
+        ("XAU", "commodity", "B", "Gold", "GC=F", "CME", "US", "",
+         "America/New_York", "17:00", "2026-10-12-core3", None, 1),
+        ("RATE_UST", "rate", "B", "US 10-Year Treasury Yield", "^TNX", "CBOE",
+         "US", "", "America/New_York", "15:00", "2026-10-12-core3", None, 1),
+        ("SPX", "index", "B", "S&P 500", "^GSPC", "SNP", "US", "",
+         "America/New_York", "16:00", "2026-10-12-core3", None, 1),
+    )
+
+    @classmethod
+    def versi_skema(cls, conn: sqlite3.Connection) -> int:
+        """Baca versi skema DB dari `PRAGMA user_version`.
+
+        Sengaja TIDAK menebak dari keberadaan tabel. Percobaan pertama saya
+        memakai `sqlite_master` untuk menilai "DB ini sudah v1", dan hasilnya
+        salah: DB lama yang semua tabelnya ada tetapi belum punya kolom susulan
+        dinilai v1 -- persis bug yang P3-5 perbaiki.
+        `user_version` disetel `_migrate` hanya SETELAH migrasi selesai, jadi
+        nol berarti "belum pernah dimigrasi oleh kode ini". Itu satu-satunya
+        sinyal yang tidak bisa menipu.
+        """
+        return int(conn.execute("PRAGMA user_version;").fetchone()[0])
+
+    @classmethod
+    def skema_tidak_lengkap(cls, conn: sqlite3.Connection) -> list[str]:
+        """Daftar kolom yang hilang, tanpa mengubah apa pun.
+
+        Dipakai `fi check-schema` supaya masalah ini bisa dideteksi SEBELUM
+        query gagal di produksi, bukan sesudahnya.
+        """
+        hilang: list[str] = []
+        for tabel, kolom in cls.KOLOM_WAJIB.items():
+            info = conn.execute(f"PRAGMA table_info({tabel});").fetchall()
+            if not info:
+                hilang.append(f"{tabel} (tabel tidak ada)")
+                continue
+            ada = {r["name"] for r in info}
+            for nama in kolom:
+                if nama not in ada:
+                    hilang.append(f"{tabel}.{nama}")
+        return hilang
+
+    @staticmethod
+    def _tambah_kolom(conn: sqlite3.Connection, tabel: str, kolom: str, ddl: str) -> bool:
+        """Tambahkan satu kolom bila belum ada. True bila benar-benar ditambah."""
+        info = conn.execute(f"PRAGMA table_info({tabel});").fetchall()
+        if not info:  # tabel belum ada; DDL akan membuatnya lengkap
+            return False
+        if kolom in {r["name"] for r in info}:
+            return False
+        conn.execute(f"ALTER TABLE {tabel} ADD COLUMN {kolom} {ddl};")
+        return True
+
+    @classmethod
+    def _migrate(cls, conn: sqlite3.Connection) -> None:
+        """Lengkapi kolom yang hilang pada tabel yang sudah ada.
+
+        Idempoten dan aman diulang. Mencakup SEMUA tabel di `KOLOM_WAJIB`,
+        bukan hanya `impacts` seperti sebelumnya.
+        """
+        for tabel, kolom in cls.KOLOM_WAJIB.items():
+            for nama, ddl in kolom.items():
+                cls._tambah_kolom(conn, tabel, nama, ddl)
+        conn.execute(f"PRAGMA user_version = {int(cls.SCHEMA_VERSION)};")
+
+    @classmethod
+    def _seed_schema_data(cls, conn: sqlite3.Connection) -> None:
+        """Isi baris wajib bila belum ada. Tidak pernah menimpa data pengguna."""
+        for baris in cls.SEED_ASSET_MASTER:
+            conn.execute(
+                """
+                INSERT INTO asset_master (
+                    asset_id, asset_class, track, name, price_ticker, exchange,
+                    country, sector, timezone, session_close, valid_from,
+                    valid_to, active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(asset_id) DO NOTHING;
+                """,
+                baris,
+            )
+
+    @staticmethod
+    def _migrate_versi_lama(conn: sqlite3.Connection) -> None:
+        """Placeholder: langkah migrasi per-versi ditambahkan di sini.
+
+        Disengaja kosong untuk v1. Saat `SCHEMA_VERSION` naik, tambahkan
+        langkah yang mengubah struktur (bukan sekadar menambah kolom) di sini,
+        lalu panggil dari `_migrate`.
+        """
 
     # --- Status preload berita (job 07:00 WIB) ------------------------------
     #: Batas waktu klaim slot (detik). Proses yang mati di tengah jalan tidak
