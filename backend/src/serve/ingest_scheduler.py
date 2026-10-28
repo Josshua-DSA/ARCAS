@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -79,7 +79,7 @@ class IngestScheduler:
 
     def __init__(
         self,
-        job: Callable[[datetime], bool],
+        job: Callable[..., bool],
         *,
         clock: Callable[[], datetime] | None = None,
         tick_seconds: int = TICK_SECONDS,

@@ -175,6 +175,7 @@ def test_seluruh_berita_di_basis_data_diterima():
     dipakai sama sekali untuk data yang sudah dimiliki.
     """
     from pathlib import Path
+
     from backend.src.store.db import Database
 
     db_file = Path("data/finews.db")

@@ -7,9 +7,7 @@ Fokus pada perilaku yang mudah salah dan mahal akibatnya:
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-
-import pytest
+from datetime import datetime
 
 from backend.src.serve.ingest_scheduler import (
     JAKARTA,
