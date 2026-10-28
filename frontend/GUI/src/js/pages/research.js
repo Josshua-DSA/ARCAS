@@ -221,9 +221,21 @@
       : "");
   }
 
-  /* ---------------- muat ---------------- */
+  /* ---------------- muat ----------------
+     Pola sama dengan overview.js: request lama dibatalkan dan hasilnya
+     diabaikan lewat nomor urut. Tanpa ini, ganti target cepat membuat berita
+     target sebelumnya menimpa target yang sedang dibuka. */
+  var inFlight = null, seq = 0;
+
   function loadData() {
     var t = A.state.target;
+    if (inFlight) inFlight.abort();
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    inFlight = ctrl;
+    var mySeq = ++seq;
+    var signal = ctrl ? { signal: ctrl.signal } : undefined;
+    var live = function () { return mySeq === seq; };
+
     A.showState("chartState", "Memuat deret harga...");
     A.showState("newsState", "Memuat berita...");
     A.showState("testState", "Memuat hasil uji...");
@@ -231,22 +243,27 @@
     var start = new Date(Date.now() - 89 * 86400000).toISOString().slice(0, 10);
     var end = new Date().toISOString().slice(0, 10);
 
+    function fail(err) {
+      if (err && err.name === "AbortError") throw err;
+    }
+
     return Promise.all([
-      A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end)
+      A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal)
         .then(function (p) { S.prices = (p && p.prices) || []; })
-        .catch(function () { S.prices = []; }),
-      A.api("/api/impacts/" + t + "?limit=40")
+        .catch(function (err) { fail(err); S.prices = []; }),
+      A.api("/api/impacts/" + t + "?limit=50", signal)
         .then(function (rows) {
           /* Urut terbaru dulu supaya berita yang baru masuk langsung terlihat. */
           S.news = (rows || []).slice().sort(function (a, b) {
             return String(b.published_at || "").localeCompare(String(a.published_at || ""));
           });
         })
-        .catch(function () { S.news = []; }),
-      A.api("/api/stats/" + t)
+        .catch(function (err) { fail(err); S.news = []; }),
+      A.api("/api/stats/" + t, signal)
         .then(function (rows) { S.tests = rows || []; })
-        .catch(function () { S.tests = []; })
+        .catch(function (err) { fail(err); S.tests = []; })
     ]).then(function () {
+      if (!live()) return;
       /* Indeks terpilih hanya bermakna di dalam satu target. Tanpa reset,
          pindah target bisa menunjuk kartu yang tidak ada. */
       S.selected = S.news.length ? 0 : null;
@@ -254,7 +271,7 @@
       renderSelected();
       renderTests();
       drawPriceChart();
-    });
+    }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ });
   }
 
   /* ---------------- kontrol ----------------
