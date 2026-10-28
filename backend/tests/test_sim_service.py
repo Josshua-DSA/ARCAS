@@ -99,6 +99,7 @@ RUMOR = (
 def test_rumor_menurunkan_keyakinan_dibanding_berita(service):
     berita = service.analyze(BERITA_KUAT_POS, "berita", target="XAU")
     rumor = service.analyze(RUMOR, "rumor", target="XAU")
+    assert berita.penalty == 1.0
     assert rumor.penalty == 0.60
     assert rumor.confidence < rumor.confidence_raw
     # Penurunan harus mengikuti faktor, bukan angka karangan. Toleransi 1e-3

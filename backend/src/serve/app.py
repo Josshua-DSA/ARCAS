@@ -9,6 +9,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from backend.src.alloc.engine import AllocationEngine
 from backend.src.persona.engine import PersonaEngine
@@ -17,8 +18,6 @@ from backend.src.schema import (
 )
 from backend.src.serve.sim_input import InputKind, InputRejected
 from backend.src.serve.sim_service import SimulationService
-from pydantic import BaseModel, Field
-
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
 

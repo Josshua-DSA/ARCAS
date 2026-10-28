@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo

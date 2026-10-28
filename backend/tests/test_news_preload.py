@@ -31,8 +31,9 @@ def _run(monkeypatch, db_path, *, raw_new, pipeline_ok):
                         _stub_collect(raw_new))
     monkeypatch.setattr(news_preload, "_run_pipeline",
                         _stub_pipeline(pipeline_ok))
-    from backend.src.serve.ingest_scheduler import slot_for
     from datetime import datetime
+
+    from backend.src.serve.ingest_scheduler import slot_for
     slot = slot_for(datetime.now().astimezone())
     return news_preload.run_preload(slot, db_path=db_path, trigger="schedule")
 
@@ -62,8 +63,9 @@ def test_tarik_gagal_tetapi_pipeline_jalan_dianggap_sebagian(monkeypatch, db_pat
 
     monkeypatch.setattr(news_preload, "_collect_via_eulerpool", boom)
     monkeypatch.setattr(news_preload, "_run_pipeline", _stub_pipeline(True))
-    from backend.src.serve.ingest_scheduler import slot_for
     from datetime import datetime
+
+    from backend.src.serve.ingest_scheduler import slot_for
     slot = slot_for(datetime.now().astimezone())
     assert news_preload.run_preload(slot, db_path=db_path) is False
     monkeypatch.setattr(news_preload, "_collect_via_eulerpool", old)
