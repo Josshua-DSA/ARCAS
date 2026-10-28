@@ -29,7 +29,7 @@
 | P0 — Kritis | 3 | ✅ **selesai semua** (2026-10-26) |
 | P1 — Penting | 6 | ✅ **selesai semua** (P1-5: 59 baris I/O belum bisa diuji offline) |
 | P2 — Sedang | 6 | 🟡 **3 selesai, 3 terbuka** (P2-1, P2-2, P2-5) |
-| P3 — Ringan | 6 | 🟡 **2 selesai, 2 terbuka, 2 bukan cacat** (P3-4, P3-5 terbuka) |
+| P3 — Ringan | 6 | 🟡 **3 selesai, 1 terbuka, 2 bukan cacat** (P3-4 terbuka) |
 
 
 **Kesimpulan satu baris:** fondasi backend solid dan teruji, tetapi **artefak model tidak dapat direproduksi** — tidak ada satu pun skrip yang bisa menghasilkan ulang angka di `benchmark_results.json` atau `metrics.json`.
@@ -428,8 +428,9 @@ jalur — bukan test yang hilang.
 
 ## 4. Temuan Ringan (P3)
 
-**Status per 2026-10-26: P3-1, P3-2 selesai.** P3-3 (tidak ada TODO/FIXME)
-adalah observasi, bukan cacat. P3-4, P3-5 tetap terbuka.
+**Status per 2026-10-26: P3-1, P3-2 selesai.** **P3-5 selesai** (ditutup di
+sesi ini). P3-3 (tidak ada TODO/FIXME) adalah observasi, bukan cacat.
+P3-4 tetap terbuka.
 
 | # | Temuan | Bukti | Status |
 |---|---|---|---|
@@ -437,7 +438,7 @@ adalah observasi, bukan cacat. P3-4, P3-5 tetap terbuka.
 | P3-2 | `except ... : pass` menelan error | 4 lokasi (lihat bawah) | ✅ semua diberi log DEBUG |
 | P3-3 | Tidak ada penanda TODO/FIXME | 0 kemunculan | observasi, bukan cacat |
 | P3-4 | `dataset/` + `research/papers/` di-track (PDF & parquet ±9 MB) | membesarkan repo | ⬜ terbuka |
-| P3-5 | Tidak ada migrasi/seed DB | skema dibuat di kode | ⬜ terbuka |
+| P3-5 | Tidak ada migrasi/seed DB | skema dibuat di kode | ✅ `user_version` + `KOLOM_WAJIB` per-tabel + seed idempoten + `fi check-schema` |
 | P3-6 | `.env.example` ada, `.env` tidak ter-track | ✅ aman | ✅ tidak ada API key hardcoded |
 
 **Rincian P3-2.** Penting dibedakan: 2 lokasi memang menelan error, 2 lokasi
@@ -495,7 +496,7 @@ Yang diperbaiki adalah **tidak adanya jejak**, bukan level log-nya.
 | **P3-2** | `except: pass` tanpa jejak | Kecil | Error hilang tanpa log | ✅ |
 | **P3-3** | Tidak ada TODO/FIXME | — | Observasi, bukan cacat | n/a |
 | **P3-4** | `dataset/` + `research/papers/` di-track | Kecil | Repo membengkak | ⬜ |
-| **P3-5** | Tidak ada migrasi/seed DB | Sedang | Skema tanpa jalur upgrade | ⬜ |
+| **P3-5** | Tidak ada migrasi/seed DB | Sedang | Skema tanpa jalur upgrade | ✅ |
 | **P3-6** | Secret tidak ter-track | — | ✅ aman, tidak perlu tindakan | ✅ |
 
 **Urutan pengerjaan P1** (dari yang paling murah dan berdampak) — ✅ **selesai dijalankan**:
