@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
 <title>ARCAS : Research Lab</title>
-<meta name="description" content="Meja kerja asosiasi, statistik lengkap, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
+<meta name="description" content="Peluruhan hubungan menurut lag, selang kepercayaan, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
 <link rel="stylesheet" href="src/css/layout.css">
@@ -14,6 +14,42 @@
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
   window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
 </script>
+<style>
+  /* Gaya khusus Research Lab. Tidak dimasukkan ke layout.css supaya file
+     bersama tetap ramping dan tidak bentrok dengan halaman lain. */
+  .rl-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .rl-tools label{font-family:var(--font-mono);font-size:11.5px;color:var(--on-dark-muted)}
+  .rl-tools select,.rl-tools button{font-family:var(--font-mono);font-size:12px;min-height:44px;
+    border-radius:8px;padding:0 12px;cursor:pointer}
+  .rl-tools select{background:var(--surface-dark);color:var(--on-dark-primary);border:1px solid var(--border)}
+  .rl-tools button{background:transparent;color:var(--on-dark-primary);border:1px solid var(--border-dark-strong)}
+  .rl-tools button:hover{background:rgba(255,255,255,.06)}
+  .rl-tools button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  #lagChart{width:100%;height:330px}
+  #forestChart{width:100%;height:220px}
+  .rl-summary{font-family:var(--font-sans);font-size:13px;line-height:1.55;
+    color:var(--on-dark-secondary);margin:10px 0 0}
+
+  .rl-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;
+    font-variant-numeric:tabular-nums;min-width:620px}
+  .rl-table th{text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--text-muted);border-bottom:1px solid var(--border-subtle);padding:8px 6px}
+  .rl-table td{padding:8px 6px;border-bottom:1px solid var(--border-subtle);color:var(--text-primary)}
+  .rl-num{text-align:right}
+  .rl-sig{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:5px;
+    border:1px solid var(--up);color:var(--up);font-size:10px}
+  .rl-wrap{overflow-x:auto}
+
+  @media (max-width:960px){
+    #lagChart{height:280px}
+    #forestChart{height:200px}
+  }
+  @media (max-width:600px){
+    .rl-table{min-width:520px}
+    .rl-table th:last-child,.rl-table td:last-child{display:none}
+  }
+</style>
 </head>
 <body>
 
@@ -64,45 +100,60 @@
 
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
-    <h1 id="resTitle">Uji asosiasi per lag, kualitas data, dan kejujuran model.</h1>
-    <p class="lead">Di sini angka berhenti jadi klaim. Uji asosiasi dibaca per lag dengan rentang kepercayaan dan koreksi lipat ganda, kualitas data ditimbang sebelum skor, dan panel model hanya bicara setelah artefaknya ada. Yang belum terbukti tetap ditulis belum terbukti.</p>
+    <h1 id="resTitle">Bukti di balik angka: bagaimana hubungan melemah menurut lag.</h1>
+    <p class="lead">Tabel menyembunyikan satu hal penting: hubungan tidak bertahan sama kuat di setiap lag. Grafik di bawah menunjukkan peluruhannya, forest plot menunjukkan mana yang selang kepercayaannya melewati nol, dan tabel menampilkan angka mentahnya. Yang belum tersedia ditulis belum tersedia.</p>
   </section>
 
   <div class="grid">
-    <section class="panel dark" id="statistik" aria-labelledby="statTitle">
+    <section class="panel dark" id="meja" aria-labelledby="lagTitle">
       <div class="panel-head">
-        <h2 id="statTitle">Hasil uji tersimpan</h2>
-        <span class="hint">asosiasi, bukan bukti sebab</span>
+        <h2 id="lagTitle">Peluruhan hubungan menurut lag</h2>
+        <span class="hint">hitung ulang dari data harian</span>
       </div>
       <div class="panel-body">
-        <div class="state" id="statState" hidden></div>
-        <div id="statTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n = jumlah observasi. Hari tanpa berita dibiarkan kosong (NaN), bukan nol. Bukan nasihat investasi.
-        </p>
+        <div class="rl-tools">
+          <label for="maxLag">lag maksimum</label>
+          <select id="maxLag" aria-label="Lag maksimum">
+            <option value="3">L0..L3</option>
+            <option value="5" selected>L0..L5</option>
+            <option value="8">L0..L8</option>
+          </select>
+          <button id="wbRun" type="button">Hitung ulang</button>
+          <button id="btnCSV" type="button">Unduh CSV</button>
+          <button id="btnJSON" type="button">Unduh JSON</button>
+        </div>
+        <div id="lagChart" role="img" aria-label="Grafik estimasi korelasi per lag"></div>
+        <p class="rl-summary" id="lagSummary">menunggu data...</p>
+        <div class="state" id="wbState" hidden></div>
+        <div class="state" id="exportState" hidden></div>
       </div>
     </section>
 
-    <section class="panel dark" id="meja" aria-labelledby="wbTitle">
+    <section class="panel dark" id="statistik" aria-labelledby="forestTitle">
       <div class="panel-head">
-        <h2 id="wbTitle">Meja kerja asosiasi</h2>
-        <span class="hint">arah berubah menurut lag</span>
+        <h2 id="forestTitle">Selang kepercayaan uji tersimpan</h2>
+        <span class="hint">apakah melewati nol?</span>
       </div>
       <div class="panel-body">
-        <div class="wb-controls" id="wbControls">
-          <label style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">Metrik pasar
-            <select id="wbMetric" aria-label="Filter metrik pasar"></select>
-          </label>
-          <button class="btn small" id="wbRun" type="button" title="Hitung ulang Spearman untuk lag 0 sampai 5 dari data harian lewat API">Hitung Spearman L0..L5</button>
-          <div class="state" id="wbState" hidden></div>
-        </div>
-        <div id="wbTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Rolling window belum ada di engine, jadi kontrolnya tidak dipajang palsu; menyusul bersama run model.
-        </p>
+        <div id="forestChart" role="img" aria-label="Forest plot estimasi dan interval kepercayaan"></div>
+        <p class="rl-summary" id="forestNote">menunggu data...</p>
+        <div class="state" id="statState" hidden></div>
       </div>
     </section>
   </div>
+
+  <section class="panel light" aria-labelledby="tableTitle">
+    <div class="panel-head">
+      <h2 id="tableTitle">Tabel lengkap hasil uji</h2>
+      <span class="hint">estimasi, interval, p terkoreksi, jumlah observasi</span>
+    </div>
+    <div class="panel-body">
+      <div class="rl-wrap" id="statTables"></div>
+      <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">
+        p_adj = p-value setelah koreksi Benjamini-Hochberg. Asosiasi historis, bukan bukti sebab. Bukan nasihat investasi.
+      </p>
+    </div>
+  </section>
 
   <div class="grid flip">
     <section class="panel dark" id="kualitas" aria-labelledby="qualityTitle">
@@ -137,6 +188,7 @@
   </div>
 </footer>
 
+<script src="src/js/echarts.min.js"></script>
 <script src="src/js/splash.js"></script>
 <script src="src/js/api.js"></script>
 <script src="src/js/state.js"></script>
