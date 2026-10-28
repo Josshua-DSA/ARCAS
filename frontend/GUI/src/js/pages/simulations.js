@@ -174,9 +174,26 @@
       setBadge(true, "siap · " + j.model_version);
       renderJawaban(teks, j);
     }).catch(function (err) {
-      /* Penolakan gerbang (422): tampilkan alasan server apa adanya. */
+      /* 422 punya dua arti yang sangat berbeda dan tidak boleh disamakan:
+         - kode "model_tidak_ada" : server tidak punya bobot, teksnya tidak salah
+         - kode lain              : teksnya memang bukan berita/rumor
+         Menyebut keduanya "DITOLAK" membuat pengguna mengira beritanya yang
+         salah padahal mesinnya yang belum siap. */
       var d = err && err.payload && err.payload.detail;
       if (err && err.status === 422 && d && d.pesan) {
+        if (d.kode === "model_tidak_ada") {
+          setBadge(false, "model tidak termuat");
+          tambahTurn(giliran(teks, "tidak dapat dianalisis", "Model belum termuat",
+            "<span class='s-tag s-hold'>MODEL TIDAK ADA</span>", "",
+            "<p>Server tidak menemukan bobot model, jadi teks ini belum bisa " +
+            "dinilai. Ini masalah pemasangan di server, bukan kesalahan teks yang " +
+            "kamu kirim.</p>" +
+            "<p class='s-src'>" + esc(d.pesan) + "</p>" +
+            "<p>Perbaikan di sisi server: jalankan <code>python scripts/fetch_weights.py</code> " +
+            "lalu mulai ulang API. Bobot tidak ikut repo karena dikecualikan " +
+            "<code>.gitignore</code>.</p>", "", ""));
+          return;
+        }
         setBadge(false, "ditolak");
         var isi = "<p>" + esc(d.pesan) + "</p>";
         if (d.contoh && d.contoh.length) {
