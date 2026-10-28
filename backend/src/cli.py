@@ -286,7 +286,10 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
         ols = StatEngine.compute_ols_hac(df, asset_id, max_lag=args.max_lag)
         granger = StatEngine.compute_granger(df, asset_id, max_lag=args.max_lag)
-        hasil = ols + granger
+        # CAR adalah FR-11 (P0). Sebelumnya fungsi ini ada tetapi tidak pernah
+        # dipanggil, sehingga tabel stat_results hanya terisi OLS dan Granger.
+        car = StatEngine.compute_car_event_study(df, asset_id)
+        hasil = ols + granger + car
 
         if not args.dry_run:
             for res in hasil:
@@ -294,12 +297,17 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
         total += len(hasil)
         if hasil:
-            print(f"  {asset_id:<9} {n_paired} hari berpasangan -> {len(ols)} OLS, {len(granger)} Granger")
+            print(f"  {asset_id:<9} {n_paired} hari berpasangan -> {len(ols)} OLS, {len(granger)} Granger, {len(car)} CAR")
             for res in hasil[: args.show]:
                 adj = f"{res.p_adjusted:.4f}" if res.p_adjusted is not None else "—"
+                ci = (
+                    f" CI=[{res.ci_low:+.4f},{res.ci_high:+.4f}]"
+                    if res.ci_low is not None and res.ci_high is not None
+                    else " CI=—"
+                )
                 print(
-                    f"      {res.test:<8} lag={res.lag} est={res.estimate:+.5f} "
-                    f"p={res.p_value:.4f} p_adj={adj} n={res.n_obs}"
+                    f"      {res.test:<12} lag={res.lag} est={res.estimate:+.5f} "
+                    f"p={res.p_value:.4f} p_adj={adj} n={res.n_obs}{ci}"
                 )
         else:
             print(
