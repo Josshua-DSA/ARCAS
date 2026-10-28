@@ -32,3 +32,17 @@ def temp_db(tmp_path: Path) -> Database:
     db = Database(tmp_path / "test.db")
     db.init_schema()
     return db
+
+
+@pytest.fixture(autouse=True)
+def _tanpa_scheduler_dan_warmup(monkeypatch):
+    """Jangan pernah menyalakan scheduler atau memuat bobot 440 MB saat tes.
+
+    Sebelum ini, `ARCAS_DISABLE_SCHEDULER` hanya diandalkan dari lingkungan
+    pemanggil: kalau lupa di-set, setiap `TestClient(create_app(...))` akan
+    menyalakan penjadwal -- yang bisa menembak eulerpool sungguhan -- dan
+    sekarang juga akan menunggu warm-up model. Autouse membuat keduanya
+    mustahil terjadi karena kelalaian.
+    """
+    monkeypatch.setenv("ARCAS_DISABLE_SCHEDULER", "1")
+    monkeypatch.setenv("ARCAS_DISABLE_WARMUP", "1")

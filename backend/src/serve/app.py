@@ -1,5 +1,6 @@
 """FastAPI REST application for FinNews."""
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -82,6 +83,16 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     # bahkan ketika scheduler dimatikan (mis. saat uji).
     _scheduler_holder: dict[str, object] = {}
 
+    # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
+    # request. Didefinisikan di sini (bukan setelah lifespan) supaya bisa
+    # dipanaskan di lifespan.
+    sim_service = SimulationService(db_path=db_path)
+
+    #: Batas tunggu warm-up (detik). Startup tidak boleh menggantung tanpa
+    #: batas kalau bobot rusak atau disk lambat; bila lewat, server tetap
+    #: hidup dan endpoint menjawab 503 dengan alasan jelas.
+    _warmup_timeout = float(os.getenv("ARCAS_WARMUP_TIMEOUT", "60"))
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         """Nyalakan penjadwal preload 07:00 WIB saat server hidup.
@@ -117,6 +128,24 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 logger.info("Retensi simulasi: %d jejak lama dihapus", terhapus)
         except Exception as exc:  # pragma: no cover - DB belum ada
             logger.warning("Gagal membersihkan jejak simulasi lama: %s", exc)
+        # P1-9: panaskan model di thread agar loop event tidak diblokir, dengan
+        # batas tunggu. Bila lewat batas, server tetap hidup; model dimuat
+        # lazy pada request pertama seperti sebelumnya.
+        #
+        # ARCAS_DISABLE_WARMUP=1 mematikan ini untuk uji yang tidak butuh bobot
+        # 440 MB; tanpa itu, setiap TestClient akan menunggu warm-up.
+        if os.getenv("ARCAS_DISABLE_WARMUP", "").strip() not in ("1", "true", "yes"):
+            try:
+                await asyncio.wait_for(
+                    asyncio.to_thread(sim_service.warm_up), timeout=_warmup_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Warm-up model lewat %.0f detik; lanjut dengan pemuatan lazy",
+                    _warmup_timeout,
+                )
+            except Exception as exc:  # pragma: no cover - warm_up tidak melempar
+                logger.warning("Warm-up model gagal: %s", exc)
         try:
             yield
         finally:
@@ -125,15 +154,17 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 sched.stop()  # type: ignore[attr-defined]
 
     # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
-    # request. Pemuatan tetap lambat (lazy) saat request pertama.
-    sim_service = SimulationService(db_path=db_path)
-
+    # request. Sejak P1-9 dimuat di lifespan (dengan batas tunggu) supaya
+    # request pertama tidak menanggung 3,33 detik pemuatan.
     app = FastAPI(
         title="FinNews API",
         version="0.5.0",
         description="REST API for Financial News Sentiment and Market Association System",
         lifespan=lifespan,
     )
+    # Diekspos agar tes bisa memeriksa/mensimulasikan status kesiapan model
+    # tanpa memuat bobot 440 MB.
+    app.state.sim_service = sim_service
 
     app.add_middleware(
         CORSMiddleware,
@@ -364,7 +395,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
 
     # -- simulasi sudut pandang dari berita/rumor -------------------------
     @app.post("/api/simulate")
-    def simulate(payload: SimulateRequest) -> dict:
+    def simulate(payload: SimulateRequest):
         """Analisis satu teks berita/rumor menjadi skor, arah, dan 5 stance.
 
         Hanya menerima berita atau rumor. Obrolan, pertanyaan, dan teks yang
@@ -373,7 +404,25 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
 
         `kind` wajib diisi dan tidak ditebak: menebak jenis input akan membuat
         sistem diam-diam memperlakukan pertanyaan sebagai berita.
+
+        Menjawab 503 bila model gagal dimuat (P1-9), dengan Retry-After.
         """
+        if sim_service.siap is False:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "kode": "model_belum_siap",
+                    "pesan": (
+                        "Model belum selesai dimuat. Coba lagi sebentar lagi."
+                        + (
+                            f" Penyebab: {sim_service.alasan_belum_siap}"
+                            if sim_service.alasan_belum_siap
+                            else ""
+                        )
+                    ),
+                },
+                headers={"Retry-After": "30"},
+            )
         try:
             hasil = sim_service.analyze(
                 text=payload.text,

@@ -165,6 +165,70 @@ class SimulationService:
         self._cache: dict[str, Any] = {}
         self._model_router = None
         self._degraded: list[str] = []
+        # P1-9: status kesiapan model. `None` = belum dicoba, True = siap,
+        # False = pemuatan gagal. Dipakai endpoint untuk menjawab 503 alih-alih
+        # menggantung 3,33 detik pada request pertama.
+        self._siap: bool | None = None
+        self._alasan_belum_siap: str | None = None
+
+    # -- kesiapan model (P1-9) ------------------------------------------
+    @property
+    def siap(self) -> bool | None:
+        """True/False bila sudah dicoba dimuat, None bila belum."""
+        return self._siap
+
+    @property
+    def alasan_belum_siap(self) -> str | None:
+        return self._alasan_belum_siap
+
+    def warm_up(self) -> bool:
+        """Muat model yang tersedia tanpa memproses teks apa pun.
+
+        Dipanggil dari lifespan supaya request pertama tidak menanggung 3,33
+        detik pemuatan bobot 440 MB. Konkurensi aman: `_cache` diisi sebelum
+        `_siap` disetel, dan pemanggil yang datang bersamaan tetap mendapat
+        jalur lambat yang benar (memuat sendiri) bila belum siap.
+
+        Tidak pernah melempar: kegagalan dicatat sebagai `_siap=False` sehingga
+        API bisa menjawab 503 dengan alasan yang jelas, bukan 500.
+        """
+        from backend.src.tagging.model_router import ModelRouter
+
+        try:
+            if self._model_router is None:
+                self._model_router = ModelRouter()
+            dimuat: list[str] = []
+            gagal: list[str] = []
+            for nama, pemuat, _space in self.PRIORITAS:
+                if self._cache.get(nama) is not None:
+                    dimuat.append(nama)
+                    continue
+                try:
+                    model = getattr(self, pemuat)()
+                except Exception as exc:
+                    gagal.append(f"{nama}: {type(exc).__name__}: {exc}")
+                    continue
+                if model is None:
+                    gagal.append(f"{nama}: bobot tidak ditemukan")
+                    continue
+                self._cache[nama] = model
+                dimuat.append(nama)
+            if not dimuat:
+                self._siap = False
+                self._alasan_belum_siap = (
+                    "tidak ada model yang bisa dimuat: " + "; ".join(gagal)
+                )
+                logger.warning("Warm-up model gagal: %s", self._alasan_belum_siap)
+                return False
+            self._siap = True
+            self._degraded = gagal
+            logger.info("Warm-up model selesai; siap: %s", ", ".join(dimuat))
+            return True
+        except Exception as exc:  # pragma: no cover - router rusak
+            self._siap = False
+            self._alasan_belum_siap = f"{type(exc).__name__}: {exc}"
+            logger.warning("Warm-up model gagal: %s", exc)
+            return False
 
     #: Urutan prioritas sama dengan pipeline (MODEL_PRIORITY di runner.py).
     #: Kolom: (nama router, method pemuat, score_space).
@@ -296,6 +360,10 @@ class SimulationService:
 
         # 2. Pilih model untuk teks INI, lalu skor.
         model, score_space, catatan = self._pilih_model(v.text)
+        # Jalur lambat berhasil: model sudah termuat, jadi permintaan berikutnya
+        # tidak perlu ditolak 503 lagi.
+        self._siap = True
+        self._alasan_belum_siap = None
         self._degraded = catatan
         self._score_space = score_space
         sentiment = model.score_article("input-pengguna", v.text)
