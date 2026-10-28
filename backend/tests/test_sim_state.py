@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import threading
 
-import pytest
-
 from backend.src.serve.sim_service import SimulationService
 
 BERITA = "Gold surged 3.2% to a record high as the dollar weakened sharply."

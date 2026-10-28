@@ -106,7 +106,6 @@ def _susun_ringkasan(
     Tidak ada LLM di sini: kalimat disusun dari templat supaya tidak mungkin
     memunculkan fakta atau angka yang tidak ada di data.
     """
-    arah = {"positive": "naik", "negative": "turun", "neutral": "netral"}.get(tone, tone)
     jumlah_beli = sum(1 for s in stances if s.stance == "buy")
     jumlah_jual = sum(1 for s in stances if s.stance == "sell")
     jumlah_tahan = sum(1 for s in stances if s.stance == "hold")
@@ -160,10 +159,11 @@ class SimulationService:
         self.db_path = Path(db_path)
         self.model_path = model_path
         self.xau_model_path = xau_model_path
-        self._model = None
-        self._router = None
+        self._model: Any = None
+        self._router: Any = None
         self._cache: dict[str, Any] = {}
-        self._model_router = None
+        # Anotasi `: Any` dari origin/main (mypy) dipertahankan.
+        self._model_router: Any = None
         self._degraded: list[str] = []  # catatan warm-up, bukan per-request
         # P1-9: status kesiapan model. `None` = belum dicoba, True = siap,
         # False = pemuatan gagal. Dipakai endpoint untuk menjawab 503 alih-alih
@@ -389,7 +389,6 @@ class SimulationService:
 
         # 4. Arah untuk target lewat router yang sudah dipakai pipeline.
         arah = "netral"
-        conf_router: Optional[float] = None
         # P2-9: bedakan "netral karena analisis" dari "netral karena routing
         # gagal". Sebelumnya keduanya menghasilkan direction="netral" yang
         # identik, sehingga kegagalan teknis terbaca sebagai kesimpulan pasar.
@@ -417,7 +416,6 @@ class SimulationService:
                 # Nama field-nya `asset_id` (TargetImpact), bukan `target`.
                 if str(getattr(imp, "asset_id", "")).upper() == target_resmi:
                     arah = getattr(imp.direction, "value", str(imp.direction))
-                    conf_router = float(imp.confidence)
                     break
             else:
                 # Router tidak menghasilkan dampak karena teks tidak menyebut

@@ -6,10 +6,11 @@ import os
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from backend.src.alloc.engine import AllocationEngine
 from backend.src.persona.engine import PersonaEngine
@@ -18,8 +19,6 @@ from backend.src.schema import (
 )
 from backend.src.serve.sim_input import MAX_CHARS, InputKind, InputRejected
 from backend.src.serve.sim_service import SimulationService
-from pydantic import BaseModel, Field
-
 from backend.src.stats.engine import StatEngine
 from backend.src.store.db import Database
 
@@ -81,7 +80,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
 
     # Status preload terakhir dibaca dari DB agar endpoint bisa menjawab
     # bahkan ketika scheduler dimatikan (mis. saat uji).
-    _scheduler_holder: dict[str, object] = {}
+    _scheduler_holder: dict[str, Any] = {}
 
     # Satu service per aplikasi: bobot model tidak boleh dimuat ulang tiap
     # request (FinBERT-EMAS (440 MB) dan FOMC-RoBERTa (1,42 GB/berkas)).
@@ -150,9 +149,9 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         try:
             yield
         finally:
-            sched = _scheduler_holder.pop("scheduler", None)
-            if sched is not None:
-                sched.stop()  # type: ignore[attr-defined]
+            active_sched = _scheduler_holder.pop("scheduler", None)
+            if active_sched is not None:
+                active_sched.stop()
 
     # Sejak P1-9 model dimuat di lifespan (dengan batas tunggu) supaya
     # request pertama tidak menanggung pemuatan bobot.
