@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
 <title>ARCAS : Research Lab</title>
-<meta name="description" content="Pilih berita dan lihat titiknya di grafik pasar, empat uji statistik, peluruhan lag, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
+<meta name="description" content="Pilih berita dan lihat titiknya di grafik pasar, lalu baca uji statistik yang tersimpan. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
 <link rel="stylesheet" href="src/css/layout.css">
@@ -40,21 +40,7 @@
   .rl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
   .rl-src{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted)}
 
-  /* --- kontrol alat uji --- */
-  .rl-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-  .rl-tools label{font-family:var(--font-mono);font-size:11.5px;color:var(--on-dark-muted)}
-  .rl-tools select,.rl-tools button{font-family:var(--font-mono);font-size:12px;min-height:44px;
-    border-radius:8px;padding:0 12px;cursor:pointer}
-  .rl-tools select{background:var(--surface-dark);color:var(--on-dark-primary);border:1px solid var(--border)}
-  .rl-tools button{background:transparent;color:var(--on-dark-primary);border:1px solid var(--border-dark-strong)}
-  .rl-tools button:hover{background:rgba(255,255,255,.06)}
-  .rl-tools button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
   #priceChart{width:100%;height:340px}
-  #lagChart{width:100%;height:330px}
-  #forestChart{width:100%;height:220px}
-  .rl-summary{font-family:var(--font-sans);font-size:13px;line-height:1.55;
-    color:var(--on-dark-secondary);margin:10px 0 0}
 
   /* --- detail berita terpilih --- */
   .rl-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;
@@ -78,23 +64,9 @@
   .rl-sig{display:inline-block;padding:1px 5px;border-radius:5px;
     border:1px solid #56D364;color:#56D364;font-family:var(--font-mono);font-size:10px}
 
-  .rl-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;
-    font-variant-numeric:tabular-nums;min-width:620px}
-  .rl-table th{text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
-    color:var(--text-muted);border-bottom:1px solid var(--border-subtle);padding:8px 6px}
-  .rl-table td{padding:8px 6px;border-bottom:1px solid var(--border-subtle);color:var(--text-primary)}
-  .rl-num{text-align:right}
-  .rl-wrap{overflow-x:auto}
-
   @media (max-width:960px){
     #priceChart{height:300px}
-    #lagChart{height:280px}
-    #forestChart{height:200px}
     .rl-item{flex:0 0 220px}
-  }
-  @media (max-width:600px){
-    .rl-table{min-width:520px}
-    .rl-table th:last-child,.rl-table td:last-child{display:none}
   }
 </style>
 </head>
@@ -148,7 +120,7 @@
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
     <h1 id="resTitle">Pilih berita, lihat ia jatuh di titik mana pada grafik harga.</h1>
-    <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Di sebelah grafik tampil uji statistik yang benar-benar tersimpan untuk target ini. Di bawahnya, peluruhan hubungan menurut lag dan selang kepercayaan tiap uji. Yang belum tersedia ditulis belum tersedia.</p>
+    <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Di sebelah grafik tampil uji statistik yang benar-benar tersimpan untuk target ini. Yang belum tersedia ditulis belum tersedia.</p>
   </section>
 
   <!-- ============ 1. Pilih berita ============ -->
@@ -161,7 +133,7 @@
     <div id="newsPicker" role="group" aria-label="Daftar berita"></div>
   </section>
 
-  <!-- ============ 2. Grafik pasar + 4 uji ============ -->
+  <!-- ============ 2. Grafik pasar + uji ============ -->
   <div class="grid">
     <section class="panel dark" aria-labelledby="chartTitle">
       <div class="panel-head">
@@ -187,85 +159,6 @@
           Asosiasi historis, bukan bukti sebab. p_adj sudah dikoreksi Benjamini-Hochberg.
           Bukan nasihat investasi.
         </p>
-      </div>
-    </section>
-  </div>
-
-  <!-- ============ 3. Peluruhan lag + forest plot ============ -->
-  <div class="grid">
-    <section class="panel dark" aria-labelledby="lagTitle">
-      <div class="panel-head">
-        <h2 id="lagTitle">Peluruhan hubungan menurut lag</h2>
-        <span class="hint">hitung ulang dari data harian</span>
-      </div>
-      <div class="panel-body">
-        <div class="rl-tools">
-          <label for="maxLag">lag maksimum</label>
-          <select id="maxLag" aria-label="Lag maksimum">
-            <option value="3">L0..L3</option>
-            <option value="5" selected>L0..L5</option>
-            <option value="8">L0..L8</option>
-          </select>
-          <button id="wbRun" type="button">Hitung ulang</button>
-          <button id="btnCSV" type="button">Unduh CSV</button>
-          <button id="btnJSON" type="button">Unduh JSON</button>
-        </div>
-        <div id="lagChart" role="img" aria-label="Grafik estimasi korelasi per lag"></div>
-        <p class="rl-summary" id="lagSummary">menunggu data...</p>
-        <div class="state" id="wbState" hidden></div>
-        <div class="state" id="exportState" hidden></div>
-      </div>
-    </section>
-
-    <section class="panel dark" aria-labelledby="forestTitle">
-      <div class="panel-head">
-        <h2 id="forestTitle">Selang kepercayaan uji tersimpan</h2>
-        <span class="hint">apakah melewati nol?</span>
-      </div>
-      <div class="panel-body">
-        <div id="forestChart" role="img" aria-label="Forest plot estimasi dan interval kepercayaan"></div>
-        <p class="rl-summary" id="forestNote">menunggu data...</p>
-        <div class="state" id="statState" hidden></div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ============ 4. Tabel lengkap ============ -->
-  <section class="panel light" aria-labelledby="tableTitle">
-    <div class="panel-head">
-      <h2 id="tableTitle">Tabel lengkap hasil uji</h2>
-      <span class="hint">estimasi, interval, p terkoreksi, jumlah observasi</span>
-    </div>
-    <div class="panel-body">
-      <div class="rl-wrap" id="statTables"></div>
-      <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">
-        p_adj = p-value setelah koreksi Benjamini-Hochberg. Asosiasi historis, bukan bukti sebab. Bukan nasihat investasi.
-      </p>
-    </div>
-  </section>
-
-  <!-- ============ 5. Kualitas data + model ============ -->
-  <div class="grid flip">
-    <section class="panel dark" id="kualitas" aria-labelledby="qualityTitle">
-      <div class="panel-head">
-        <h2 id="qualityTitle">Kualitas data</h2>
-        <span class="hint">denominator sebelum skor</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="qualityState" hidden></div>
-        <div id="qualityTables"></div>
-      </div>
-    </section>
-
-    <section class="panel dark" id="kualitas-model" aria-labelledby="mqTitle">
-      <div class="panel-head">
-        <h2 id="mqTitle">Kualitas model (UI-04)</h2>
-        <span class="hint">menunggu artefak evaluasi</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="mqState">
-          Belum ada artefak evaluasi model (F1, kappa, confusion matrix, ECE). Panel ini akan terisi ketika run model dan evaluasinya tersedia di backend. Tidak ada angka penggantinya di sini, agar dasbor ini boleh dipergunakan oleh analis.
-        </div>
       </div>
     </section>
   </div>
