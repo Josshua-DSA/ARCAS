@@ -620,7 +620,7 @@ menunjukkan jalur lama menghasilkan angka salah diam-diam.
 | `analyze(target="")` | **diterima** |
 | `analyze(target="xau")` vs `"XAU"` | sama (`bullish`) — pencocokan case-insensitive sudah benar |
 | `Dockerfile` CMD uvicorn | tanpa `--workers` → 1 proses (P1-8 laten) |
-| `grep gui_preload_status context/SCHEMA.md` | **0 hasil** |
+| tabel `db.py` vs `SCHEMA.md` | 2 hilang: `ingest_runs`, `source_health` |
 
 ## II.2 Temuan P0
 
@@ -654,13 +654,24 @@ Bandingkan disiplin di tempat lain — `kind` sengaja tanpa nilai bawaan
 tolak **422** dengan menyebut aset yang dikenali. Pertahankan normalisasi
 huruf besar/kecil (sudah bekerja). Tes: target di luar tiga aset → 422.
 
-### P0-5 — `SCHEMA.md` tidak mencatat tabel `gui_preload_status`
+### P0-5 — `SCHEMA.md` tidak mencatat tabel `ingest_runs` dan `source_health`
 
-Tabel baru ada di `db.py:212` dan dipakai untuk provenance ("data per &lt;waktu&gt;"),
-tetapi `SCHEMA.md` tidak menyebutnya sama sekali:
+> **Koreksi (2026-10-28):** versi pertama temuan ini menyebut tabel
+> `gui_preload_status`. **Nama itu tidak ada di kode** — saya salah membacanya.
+> Tabel yang sebenarnya adalah `ingest_runs` dan `source_health`, dan masalahnya
+> **dua tabel**, bukan satu. Klaim intinya tetap berdiri; rinciannya diperbaiki
+> setelah diverifikasi ulang per tabel.
+
+Kedua tabel ada di `db.py` dan dipakai untuk provenance serta alert, tetapi
+`SCHEMA.md` tidak menyebutnya sama sekali. Diperiksa satu per satu terhadap
+16 tabel di `db.py`:
 
 ```
-grep "gui_preload_status\|preload" context/SCHEMA.md  → kosong
+HILANG   ingest_runs
+HILANG   source_health
+ADA      alloc_profiles, alloc_suggestions, articles, article_targets,
+         asset_aliases, asset_master, daily_sentiment, impacts, labels,
+         persona_views, prices, raw_articles, sentiments, stat_results
 ```
 
 `SCHEMA.md:3` mewajibkan: *"Ubah skema → naikkan `schema_version` + catat
@@ -668,14 +679,18 @@ Changelog."* `schema_version` masih `0.7.0`, dan tidak satu pun berkas
 `context/` diperbarui di PR #28/#29 (`git diff --name-only` hanya menunjukkan
 penghapusan `context/AUDIT.md`).
 
-**Dampak.** Siapa pun yang membangun ulang DB dari `SCHEMA.md` kehilangan tabel
-preload, lalu `/api/preload/status` gagal atau selamanya menjawab "belum pernah
-preload". RULES menetapkan dokumen yang menang saat konflik, jadi ini kontrak
-yang dilanggar oleh kode — bukan cacat kosmetik.
+**Dampak.** Siapa pun yang membangun ulang DB dari `SCHEMA.md` kehilangan
+`ingest_runs` — lalu `has_run_for_slot` gagal, sehingga scheduler tidak bisa
+membedakan "slot ini sudah ditarik" dari "belum", dan setiap restart aplikasi
+mengulang tarikan serta membakar kuota harian eulerpool. `source_health` yang
+hilang membuat query alert dan `consecutive_failures` tidak punya sumber.
+RULES menetapkan dokumen yang menang saat konflik, jadi ini kontrak yang
+dilanggar oleh kode — bukan cacat kosmetik.
 
-**Perbaikan.** Tambahkan DDL `gui_preload_status` + Changelog, naikkan
-`schema_version`. Sekalian catat `POST /api/simulate` di `PRD.md` /
-`ARCHITECTURE.md`: endpoint itu belum ada di dokumen mana pun.
+**Perbaikan.** ✅ **SELESAI** — DDL kedua tabel ditambahkan di `SCHEMA.md` §6.1
+(persis sesuai kode), `schema_version` dinaikkan ke `0.8.0`, Changelog diisi.
+Sisa yang belum: `POST /api/simulate` belum tercatat di `PRD.md` /
+`ARCHITECTURE.md`.
 
 ## II.3 Temuan P1
 
@@ -715,8 +730,9 @@ bersamaan dan membakar kuota — persis kekhawatiran yang sudah ditulis sendiri
 di komentar `app.py:89-91` untuk kasus `--reload`, tetapi tidak dijaga untuk
 kasus multi-worker.
 
-**Perbaikan.** Kunci di level DB sudah cukup karena `gui_preload_status`
-menyimpan `slot` (`INSERT ... ON CONFLICT DO NOTHING`). Alternatif: berkas kunci
+**Perbaikan.** Kunci di level DB sudah cukup karena `ingest_runs` menyimpan
+`scheduled_for` (unik per slot), sehingga `INSERT ... ON CONFLICT DO NOTHING`
+dapat mencegah dua proses mengklaim slot yang sama. Alternatif: berkas kunci
 di direktori data. Tambahkan catatan di README bahwa worker tunggal adalah
 syarat, agar asumsinya tidak implisit.
 
@@ -829,8 +845,8 @@ persetujuan pemilik repo).
 
 | ID | Temuan | Tingkat | Usaha | Status |
 |---|---|---|---|---|
-| P0-4 | `target` bebas di `/api/simulate` | P0 | S | ⬜ terbuka |
-| P0-5 | `gui_preload_status` tak tercatat di `SCHEMA.md` | P0 | S | ⬜ terbuka |
+| P0-4 | `target` bebas di `/api/simulate` | P0 | S | ✅ selesai |
+| P0-5 | `ingest_runs` + `source_health` tak tercatat di `SCHEMA.md` | P0 | S | ✅ selesai |
 | P1-7 | `/api/simulate` tanpa jejak | P1 | M | ⬜ terbuka |
 | P1-8 | Scheduler tanpa kunci multi-proses | P1 | M | ⬜ terbuka |
 | P1-9 | Muat model 3,33 s di request pertama | P1 | S | ⬜ terbuka |
@@ -909,7 +925,10 @@ r=s.analyze(text=a,kind='berita',target='BANANA')
 print(r.target, r.direction, r.warnings)"
 
 # P0-5: tabel tak tercatat di dokumen
-grep -c "gui_preload_status" context/SCHEMA.md      # → 0
+# P0-5: tabel yang hilang dari dokumen
+for t in $(grep -oE "CREATE TABLE IF NOT EXISTS [a-z_]+" backend/src/store/db.py | sed "s/.*EXISTS //"); do
+  grep -q "\b$t\b" context/SCHEMA.md || echo "HILANG $t"
+done   # → HILANG ingest_runs / HILANG source_health
 
 # P1-8: satu proses
 grep -n "uvicorn" Dockerfile                        # → tanpa --workers

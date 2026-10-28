@@ -1,7 +1,7 @@
 # SCHEMA — Data Contracts
 
 > Sumber kebenaran struktur data. Ubah skema → naikkan `schema_version` + catat Changelog.
-> `schema_version: 0.7.0`
+> `schema_version: 0.8.0`
 
 ## 1. Enum
 
@@ -261,6 +261,58 @@ CREATE INDEX idx_daily_asset_date ON daily_sentiment(asset_id, date);
 
 Parquet dipakai untuk dump besar (`raw/`, `processed/`) dan dataset pelatihan.
 
+### 6.1 Operasional Ingest & Kesehatan Sumber (v0.8.0)
+
+Dua tabel ini ditambahkan bersama job preload berita 07:00 WIB, tetapi baru
+dicatat di sini pada v0.8.0. Keduanya bersifat **operasional** — tidak menyentuh
+skor atau analisis — namun wajib ada karena dipakai untuk provenance dan alert.
+
+```sql
+-- Jejak setiap tarikan berita terjadwal. Tujuannya:
+--   1. GUI bisa menyatakan "data per <waktu>" saat API mati (tidak mengarang).
+--   2. Job yang terlewat (aplikasi mati semalaman) bisa "mengejar" sekali saat
+--      startup, lalu lanjut jadwal normal -- dibedakan lewat `trigger`.
+CREATE TABLE ingest_runs (
+  run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trigger TEXT NOT NULL,              -- 'schedule' | 'startup_catchup' | 'manual'
+  status TEXT NOT NULL,               -- 'running' | 'ok' | 'partial' | 'failed'
+  started_at TIMESTAMP NOT NULL,
+  finished_at TIMESTAMP,
+  scheduled_for TIMESTAMP,            -- slot 07:00 WIB yang diwakili run ini
+  raw_new INTEGER NOT NULL DEFAULT 0,
+  articles_clean INTEGER NOT NULL DEFAULT 0,
+  impacts_new INTEGER NOT NULL DEFAULT 0,
+  detail TEXT
+);
+CREATE INDEX idx_ingest_runs_finished ON ingest_runs(finished_at);
+
+-- Riwayat kesehatan sumber. Satu baris per (sumber, pemeriksaan).
+-- `is_failure` sengaja berupa kolom agar query alert tidak perlu mengulang
+-- logika "status apa saja yang dianggap gagal" di banyak tempat.
+CREATE TABLE source_health (
+  source TEXT NOT NULL,
+  checked_at TIMESTAMP NOT NULL,
+  status TEXT NOT NULL,
+  is_failure BOOLEAN NOT NULL DEFAULT 0,
+  usable BOOLEAN NOT NULL DEFAULT 0,
+  latency_ms REAL,
+  detail TEXT,
+  sample_size INTEGER NOT NULL DEFAULT 0,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_source_health_source ON source_health(source, checked_at);
+```
+
+**Invarian operasional:**
+
+- `status` pada `ingest_runs` menentukan apakah slot boleh diulang. Hanya `ok`
+  dan `no_new` yang dianggap "sudah membawa data"; `failed`/`partial` sengaja
+  **tidak** dihitung supaya kegagalan tetap bisa dicoba ulang. Lihat
+  `Database.has_run_for_slot`.
+- `scheduled_for` adalah slot 07:00 WIB (Asia/Jakarta), bukan waktu UTC.
+- `source_health` bersifat append-only per pemeriksaan; `consecutive_failures`
+  adalah turunan yang dipakai untuk alert, bukan sumber kebenaran.
+
 ## 7. Invarian (wajib dijaga validator)
 
 1. `asset_id` ∈ `asset_master` pada `universe_version` yang dipakai.
@@ -359,6 +411,7 @@ ML → `ArticleSentiment {tone, score=p_pos-p_neg, probs[], translation_used}`. 
 
 ## 9. Changelog
 
+- 0.8.0-operasional — Catat dua tabel yang sudah ada di kode tetapi belum pernah didokumentasikan: `ingest_runs` (jejak tarikan terjadwal, dipakai `has_run_for_slot` untuk mencegah tarikan ganda saat restart) dan `source_health` (riwayat kesehatan sumber + `consecutive_failures` untuk alert). Keduanya operasional; tidak ada perubahan pada skor, enum, atau kontrak analisis. Ditemukan lewat audit v2 (P0-5).
 - 0.7.0-core3 — Pin Tools: `STOCK`→`SPX`, `ETF`→`SPX`, kelas alokasi `BTC` dibekukan (`no_change`); seed nonaktifkan aset pensiun; tanpa perubahan struktur tabel (schema_version tetap 0.5.0).
 - 0.7.0 — Supervised 3 (`XAU/RATE_UST/SPX`); Track A mati; `ModelProbs` tanpa indobert/finbert_mt; dataset gold+FOMC lokal.
 - 0.6.1 — PhraseBank dihapus (bukan makro); `dataset/` kosong.
