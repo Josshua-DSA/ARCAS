@@ -26,7 +26,11 @@
   .ev-picker-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
   .ev-picker-head h2{font-family:var(--font-sans);font-size:17px;font-weight:700;margin:0;color:var(--text-primary)}
   .ev-picker-head .ev-hint{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted)}
-  #newsPicker{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity}
+  #newsPicker{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity;
+    scrollbar-width:none;-ms-overflow-style:none}
+  /* Scrollbar disembunyikan: bar abu setebal 10px di bawah kartu terlihat seperti
+     kesalahan layout. Gulir tetap bisa lewat geser/trackpad/panah keyboard. */
+  #newsPicker::-webkit-scrollbar{height:0;display:none}
   .ev-item{flex:0 0 260px;scroll-snap-align:start;text-align:left;cursor:pointer;
     display:flex;flex-direction:column;gap:6px;padding:12px 14px;
     background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;
