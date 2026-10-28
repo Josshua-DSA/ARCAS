@@ -28,6 +28,7 @@ from backend.src.serve.sim_input import (
     confidence_penalty,
     validate,
 )
+from backend.src.tagging.router import LOCKED_UNIVERSE
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,27 @@ class SimulationService:
         source: Optional[str] = None,
         target: str = "XAU",
     ) -> SimResult:
+        # 0. Target harus salah satu aset terkunci.
+        #
+        # Tanpa ini, target yang tidak dikenal (mis. "GOLD", nama yang wajar
+        # bagi pengguna) lolos sampai ke routing, tidak cocok dengan apa pun,
+        # lalu keluar sebagai direction="netral" TANPA peringatan. Pengguna
+        # membaca "netral" sebagai hasil analisis, padahal artinya targetnya
+        # tidak dikenali. Itu kegagalan yang menyamar sebagai jawaban.
+        #
+        # Normalisasi huruf besar/kecil dipertahankan: "xau" tetap diterima,
+        # dan yang dikembalikan adalah ejaan resmi supaya klien tidak perlu
+        # menormalkan sendiri.
+        target_resmi = (target or "").strip().upper()
+        if target_resmi not in LOCKED_UNIVERSE:
+            raise InputRejected(
+                f"Target {target!r} tidak dikenal. Pilih salah satu: "
+                + ", ".join(sorted(LOCKED_UNIVERSE))
+                + ".",
+                code="target_tidak_dikenal",
+                contoh=sorted(LOCKED_UNIVERSE),
+            )
+
         # 1. Gerbang: hanya berita/rumor.
         v = validate(text, kind, source)
 
@@ -313,7 +335,7 @@ class SimulationService:
             )
             for imp in impacts:
                 # Nama field-nya `asset_id` (TargetImpact), bukan `target`.
-                if str(getattr(imp, "asset_id", "")).upper() == target.upper():
+                if str(getattr(imp, "asset_id", "")).upper() == target_resmi:
                     arah = getattr(imp.direction, "value", str(imp.direction))
                     conf_router = float(imp.confidence)
                     break
@@ -324,13 +346,13 @@ class SimulationService:
                 # sentiment_config.yaml -- sumber yang sama, bukan tebakan.
                 if self._score_space == "stance":
                     arah = router.direction_for_target(
-                        target, skor, score_space="stance"
+                        target_resmi, skor, score_space="stance"
                     )
         except Exception as exc:  # pragma: no cover - routing opsional
             logger.warning("Routing target gagal: %s", exc)
 
         # 5. Stance persona.
-        stances = self._stances(v.text, skor, confidence, target)
+        stances = self._stances(v.text, skor, confidence, target_resmi)
 
         peringatan: list[str] = []
         if v.is_rumor:
@@ -359,7 +381,7 @@ class SimulationService:
             is_rumor=v.is_rumor,
             source=v.source,
             text=v.text,
-            target=target,
+            target=target_resmi,
             tone=tone,
             score=round(skor, 4),
             confidence=confidence,
@@ -369,7 +391,7 @@ class SimulationService:
             direction=arah,
             model_version=model.model_version,
             stances=stances,
-            summary=_susun_ringkasan(v, target, tone, arah, skor, confidence, penalti, stances),
+            summary=_susun_ringkasan(v, target_resmi, tone, arah, skor, confidence, penalti, stances),
             warnings=peringatan,
             degraded=list(self._degraded),
         )

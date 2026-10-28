@@ -86,3 +86,46 @@ def test_sumber_diteruskan_dan_menghapus_peringatan(client):
 def test_teks_kosong_ditolak(client):
     r = client.post("/api/simulate", json={"text": "", "kind": "berita"})
     assert r.status_code == 422
+
+
+def test_target_tidak_dikenal_ditolak_422(client):
+    """Target di luar 3 aset terkunci harus DITOLAK, bukan jadi "netral".
+
+    Regresi: sebelumnya `target` hanya `str` tanpa validasi, sehingga "GOLD"
+    (nama yang wajar bagi pengguna) lolos ke routing, tidak cocok dengan apa
+    pun, lalu keluar sebagai direction="netral" tanpa peringatan. Pengguna
+    membaca "netral" sebagai hasil analisis padahal targetnya tidak dikenali.
+    """
+    r = client.post(
+        "/api/simulate", json={"text": BERITA, "kind": "berita", "target": "GOLD"}
+    )
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail["kode"] == "target_tidak_dikenal"
+    # Pesan harus menyebut pilihan yang sah, bukan sekadar "invalid".
+    assert "XAU" in detail["pesan"] and "SPX" in detail["pesan"]
+    assert set(detail["contoh"]) == {"XAU", "RATE_UST", "SPX"}
+
+
+def test_target_tidak_dikenal_kosong_maupun_spasi_ditolak(client):
+    for t in ("", "   ", "BANANA", "xau_usd"):
+        r = client.post(
+            "/api/simulate", json={"text": BERITA, "kind": "berita", "target": t}
+        )
+        assert r.status_code == 422, t
+        assert r.json()["detail"]["kode"] == "target_tidak_dikenal", t
+
+
+def test_target_huruf_kecil_dinormalkan_ke_ejaan_resmi(client):
+    """`xau` tetap diterima, tetapi respons memakai ejaan resmi `XAU`."""
+    r = client.post(
+        "/api/simulate", json={"text": BERITA, "kind": "berita", "target": "xau"}
+    )
+    assert r.status_code == 200
+    assert r.json()["target"] == "XAU"
+
+
+def test_target_bawaan_adalah_xau(client):
+    r = client.post("/api/simulate", json={"text": BERITA, "kind": "berita"})
+    assert r.status_code == 200
+    assert r.json()["target"] == "XAU"
