@@ -382,6 +382,10 @@
 #simRoot .s-dock .s-composer { max-width: none; }
 #simRoot .s-dock textarea { min-height: 22px; }
 
+/* ---------- riwayat: setiap uji satu giliran ---------- */
+#simRoot .s-turn { margin-bottom: 34px; }
+#simRoot .s-turn:last-child { margin-bottom: 0; }
+
 @media (max-width: 640px) {
   #simRoot .s-greet { font-size: 24px; }
   #simRoot .s-stage { padding-top: 24px; }

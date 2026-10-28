@@ -45,8 +45,10 @@
     if (n === 1) {
       var ta = $("simNews");
       if (ta) ta.focus();
+      /* Gulir ke atas hanya saat kembali ke composer. Di fase 2, yang perlu
+         dilihat adalah giliran terbaru di bawah. */
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ---------------- status badge ---------------- */
@@ -57,13 +59,45 @@
     $("simBadgeText").textContent = teks;
   }
 
-  /* ---------------- render jawaban ---------------- */
-  function renderJawaban(teksAsli, j) {
-    $("simTeksUser").textContent = teksAsli;
-    $("simUkuran").textContent = (j.input_kind === "rumor" ? "rumor yang diuji" : "berita yang diuji");
+  /* ---------------- render jawaban ----------------
+     Setiap panggilan MENAMBAH satu giliran ke percakapan, tidak menimpa.
+     Riwayat hanya hidup selama tab terbuka: backend tidak menyimpan simulasi,
+     dan halaman ini tidak menulis apa pun ke browser. */
+  function giliran(teks, label, judul, tags, metrik, isi, stances, peringatan) {
+    return "<div class='s-turn'>" +
+      "<div class='s-msg-user'><div class='s-bubble'>" +
+        "<span class='s-lbl'>" + esc(label) + "</span>" +
+        "<span>" + esc(teks) + "</span>" +
+      "</div></div>" +
+      "<article class='s-answer'>" +
+        "<div class='s-head'>" +
+          "<h2>" + esc(judul) + "</h2>" +
+          "<div class='s-tags'>" + tags + "</div>" +
+          "<div class='s-metric'>" + metrik + "</div>" +
+        "</div>" +
+        "<div class='s-body'>" + isi +
+          (stances
+            ? "<div class='s-stance-title'>Sudut pandang lima persona</div>" +
+              "<div class='s-stance-list'>" + stances + "</div>"
+            : "") +
+          peringatan +
+        "</div>" +
+      "</article>" +
+    "</div>";
+  }
 
+  function tambahTurn(html) {
+    var box = $("simThread");
+    if (!box) return;
+    box.insertAdjacentHTML("beforeend", html);
+    setFase(2);
+    var last = box.lastElementChild;
+    if (last) last.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function renderJawaban(teksAsli, j) {
     /* Judul: kalimat ringkas dari server, bukan disusun ulang di klien. */
-    $("simJudul").textContent = j.summary.split(". ")[0] + ".";
+    var judul = j.summary.split(". ")[0] + ".";
 
     var tags =
       "<span class='s-tag " + kelasArah(j.direction) + "'>" + labelArah(j.direction) + "</span>" +
@@ -71,14 +105,12 @@
       "<span class='s-tag'>" + esc(j.input_kind) + "</span>" +
       "<span class='s-tag'>horizon " + esc(j.horizon) + "</span>" +
       (j.is_rumor ? "<span class='s-tag s-down'>keyakinan &times;0,60</span>" : "");
-    $("simTags").innerHTML = tags;
 
     var metrik =
       "<span>skor <b>" + esc(A.fmt(j.score)) + "</b></span>" +
       "<span>keyakinan <b>" + esc(nilai01(j.confidence)) + "</b></span>" +
       "<span>penalti <b>&times;" + esc(nilai01(j.penalty)) + "</b></span>" +
       "<span>model <b>" + esc(j.model_version) + "</b></span>";
-    $("simMetrik").innerHTML = metrik;
 
     /* Paragraf: ringkasan utuh, lalu catatan model bila ada.
        `degraded` adalah LIST (kosong saat sehat), jadi list kosong berarti
@@ -90,7 +122,6 @@
       par += "<p><strong>Catatan model:</strong> " + esc(j.degraded) + "</p>";
     }
     if (j.disclaimer) par += "<p class='s-src'>" + esc(j.disclaimer) + "</p>";
-    $("simParagraf").innerHTML = par;
 
     /* Stance: baris + alasan apa adanya dari server. */
     var rows = "";
@@ -104,21 +135,20 @@
         (s.rationale ? "<span class='s-why'>" + esc(s.rationale) + "</span>" : "") +
         "</div>";
     }
-    $("simStances").innerHTML = rows;
 
     /* Peringatan: semua ditampilkan, tidak ada yang disembunyikan. */
-    var per = $("simPeringatan");
+    var per = "";
     if (j.warnings && j.warnings.length) {
       var li = "";
       for (var k = 0; k < j.warnings.length; k++) li += "<li>" + esc(j.warnings[k]) + "</li>";
-      per.innerHTML = "<strong>Perlu dibaca.</strong><ul>" + li + "</ul>";
-      per.hidden = false;
-    } else {
-      per.hidden = true;
-      per.innerHTML = "";
+      per = "<div class='s-disc'><strong>Perlu dibaca.</strong><ul>" + li + "</ul></div>";
     }
 
-    setFase(2);
+    tambahTurn(giliran(
+      teksAsli,
+      (j.input_kind === "rumor" ? "rumor yang diuji" : "berita yang diuji"),
+      judul, tags, metrik, par, rows, per
+    ));
   }
 
   /* ---------------- kirim ---------------- */
@@ -152,33 +182,21 @@
         if (d.contoh && d.contoh.length) {
           isi += "<p><strong>Contoh yang diterima:</strong> " + esc(d.contoh.slice(0, 2).join(" | ")) + "</p>";
         }
-        $("simTeksUser").textContent = teks;
-        $("simUkuran").textContent = "ditolak";
-        $("simJudul").textContent = "Tidak dianalisis";
-        $("simTags").innerHTML = "<span class='s-tag s-hold'>DITOLAK</span>";
-        $("simMetrik").innerHTML = "";
-        $("simParagraf").innerHTML = isi;
-        $("simStances").innerHTML = "";
-        $("simPeringatan").hidden = true;
-        setFase(2);
+        tambahTurn(giliran(teks, "ditolak", "Tidak dianalisis",
+          "<span class='s-tag s-hold'>DITOLAK</span>", "", isi, "", ""));
       } else {
         setBadge(false, "API tidak menjawab");
-        $("simTeksUser").textContent = teks;
-        $("simUkuran").textContent = "gagal";
-        $("simJudul").textContent = "Tidak ada hasil";
-        $("simTags").innerHTML = "<span class='s-tag s-hold'>GAGAL</span>";
-        $("simMetrik").innerHTML = "";
-        $("simParagraf").innerHTML =
+        tambahTurn(giliran(teks, "gagal", "Tidak ada hasil",
+          "<span class='s-tag s-hold'>GAGAL</span>", "",
           "<p>Analisis tidak dapat dijalankan karena API tidak menjawab. " +
-          "Halaman ini tidak menampilkan angka contoh.</p>";
-        $("simStances").innerHTML = "";
-        $("simPeringatan").hidden = true;
-        setFase(2);
+          "Halaman ini tidak menampilkan angka contoh.</p>", "", ""));
       }
     }).then(function () {
       sedangKirim = false;
       $("simSend").disabled = false;
       $("simSendDock").disabled = false;
+      /* Kosongkan input agar uji berikutnya tinggal tempel. */
+      $("simNewsDock").value = "";
     });
   }
 
@@ -205,6 +223,8 @@
     });
 
     $("simUlang").addEventListener("click", function () {
+      /* Mulai percakapan baru: kosongkan riwayat, bukan menimpa satu kartu. */
+      $("simThread").innerHTML = "";
       setFase(1);
     });
 

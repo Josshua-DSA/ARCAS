@@ -88,31 +88,13 @@
   <!-- ================= FASE 2 ================= -->
   <div class="s-conv" id="simConv">
     <div class="s-wrap">
-      <div class="s-msg-user">
-        <div class="s-bubble"><span class="s-lbl" id="simUkuran">berita yang diuji</span>
-          <span id="simTeksUser"></span></div>
+      <!-- Setiap uji menambah satu giliran di sini; yang lama tidak ditimpa.
+           Riwayat hanya hidup selama tab terbuka: backend tidak menyimpan
+           simulasi, dan halaman ini tidak menulis apa pun ke browser. -->
+      <div id="simThread"></div>
+      <div class="s-answer-foot" style="border:0;padding:0;margin-top:18px">
+        <button class="s-ghost" id="simUlang" type="button">Percakapan baru</button>
       </div>
-
-      <article class="s-answer">
-        <div class="s-head">
-          <h2 id="simJudul">&mdash;</h2>
-          <div class="s-tags" id="simTags"></div>
-          <div class="s-metric" id="simMetrik"></div>
-        </div>
-
-        <div class="s-body">
-          <div id="simParagraf"></div>
-
-          <div class="s-stance-title">Sudut pandang lima persona</div>
-          <div class="s-stance-list" id="simStances"></div>
-
-          <div class="s-disc" id="simPeringatan" hidden></div>
-        </div>
-
-        <div class="s-answer-foot">
-          <button class="s-ghost" id="simUlang" type="button">Uji berita lain</button>
-        </div>
-      </article>
     </div>
   </div>
 
