@@ -1032,13 +1032,26 @@ class Database:
             return res
 
     def query_impacts(self, asset_id: str, limit: int = 50) -> list[TargetImpact]:
-        """Queries recent target impacts."""
+        """Queries recent target impacts, terbaru menurut waktu terbit.
+
+        Diurutkan menurut `articles.published_at`, bukan `impacts.created_at`.
+        `created_at` adalah kapan baris ditulis (kapan pipeline jalan): saat
+        beberapa hari berita di-ingest sekaligus, seluruh backlog mendapat
+        `created_at` yang hampir sama sehingga urutannya jadi urutan ingest,
+        bukan urutan terbit. Akibatnya berita tertua bisa muncul paling atas.
+
+        `published_at` NULL (sumber tanpa tanggal) ditaruh paling bawah;
+        SQLite menganggap NULL lebih kecil dari nilai apa pun, jadi ia natural
+        terlempar ke akhir pada DESC. `created_at` jadi pemecah seri agar
+        urutan tetap deterministik.
+        """
         with self.get_connection() as conn:
             rows = conn.execute(
                 """
-                SELECT * FROM impacts
-                WHERE asset_id = ?
-                ORDER BY created_at DESC
+                SELECT i.* FROM impacts i
+                LEFT JOIN articles a ON a.article_id = i.article_id
+                WHERE i.asset_id = ?
+                ORDER BY a.published_at DESC, i.created_at DESC
                 LIMIT ?;
                 """,
                 (asset_id, limit),
@@ -1098,7 +1111,7 @@ class Database:
                 JOIN asset_master m
                     ON m.asset_id = i.asset_id
                 WHERE i.asset_id = ?
-                ORDER BY i.created_at DESC
+                ORDER BY a.published_at DESC, i.created_at DESC
                 LIMIT ?;
                 """,
                 (asset_id, limit),
