@@ -158,10 +158,10 @@ class SimulationService:
         self.db_path = Path(db_path)
         self.model_path = model_path
         self.xau_model_path = xau_model_path
-        self._model = None
-        self._router = None
+        self._model: Any = None
+        self._router: Any = None
         self._cache: dict[str, Any] = {}
-        self._model_router = None
+        self._model_router: Any = None
         self._degraded: list[str] = []
 
     #: Urutan prioritas sama dengan pipeline (MODEL_PRIORITY di runner.py).

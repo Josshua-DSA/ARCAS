@@ -79,7 +79,7 @@ class IngestScheduler:
 
     def __init__(
         self,
-        job: Callable[[datetime], bool],
+        job: Callable[..., bool],
         *,
         clock: Callable[[], datetime] | None = None,
         tick_seconds: int = TICK_SECONDS,
