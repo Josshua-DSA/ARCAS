@@ -257,8 +257,54 @@
     });
   }
 
-  /* ---------------- kontrol ---------------- */
-  $("newsPicker").addEventListener("click", function (e) {
+  /* ---------------- kontrol ----------------
+     Scrollbar disembunyikan karena bar abu di bawah kartu terlihat seperti
+     salah layout. Konsekuensinya penggeseran harus disediakan sendiri:
+     roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
+     Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
+  var picker = $("newsPicker");
+  var drag = { on: false, x: 0, left: 0, moved: false, endedAt: 0 };
+
+  picker.addEventListener("wheel", function (e) {
+    if (picker.scrollWidth <= picker.clientWidth) return;
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    picker.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+
+  picker.addEventListener("pointerdown", function (e) {
+    /* Sentuhan sudah digeser sendiri oleh browser; menyeret manual di sini
+       akan merebut gestur gulir bawaan. */
+    if (e.button !== 0 || e.pointerType !== "mouse") return;
+    drag.on = true; drag.moved = false;
+    drag.x = e.clientX; drag.left = picker.scrollLeft;
+  });
+  picker.addEventListener("pointermove", function (e) {
+    if (!drag.on) return;
+    var dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 3) {
+      drag.moved = true;
+      /* Kelas baru dipasang setelah gerakan nyata. Kalau dipasang sejak
+         pointerdown, anak-anak kartu kehilangan pointer-events dan klik
+         biasa mendarat di wadah, bukan di kartunya. */
+      picker.classList.add("is-dragging");
+    }
+    if (drag.moved) picker.scrollLeft = drag.left - dx;
+  });
+  function endDrag() {
+    if (!drag.on) return;
+    drag.on = false;
+    if (drag.moved) drag.endedAt = Date.now();
+    picker.classList.remove("is-dragging");
+  }
+  picker.addEventListener("pointerup", endDrag);
+  picker.addEventListener("pointercancel", endDrag);
+  picker.addEventListener("pointerleave", endDrag);
+
+  picker.addEventListener("click", function (e) {
+    /* Klik yang lahir dari seret diabaikan berdasarkan waktu, bukan flag yang
+       bisa tertinggal menyala kalau event click tidak pernah datang. */
+    if (Date.now() - drag.endedAt < 200) return;
     var btn = e.target.closest(".rl-item");
     if (!btn) return;
     S.selected = Number(btn.getAttribute("data-i"));
