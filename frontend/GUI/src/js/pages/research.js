@@ -196,29 +196,44 @@
     var missing = TESTS.filter(function (t) {
       return !rows.some(function (r) { return r.test === t; });
     });
-    box.innerHTML = rows.map(function (r) {
-      var sig = r.p_adjusted != null && Number(r.p_adjusted) < 0.05;
-      var ci = (r.ci_low != null && r.ci_high != null)
-        ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]"
-        : "tidak tersedia";
-      var crosses = r.ci_low != null && r.ci_high != null &&
-        Number(r.ci_low) <= 0 && Number(r.ci_high) >= 0;
-      return "<div class='rl-test'>" +
-        "<div class='rl-test-head'><span class='rl-test-name'>" + esc(A.testLabel(r.test)) + "</span>" +
-        (r.lag != null ? "<span class='rl-test-lag'>L" + esc(r.lag) + "</span>" : "") +
-        (sig ? "<span class='rl-sig'>sig</span>" : "") + "</div>" +
-        "<dl class='rl-kv'>" +
-        "<dt>estimasi</dt><dd>" + fmt(r.estimate, 3) + "</dd>" +
-        "<dt>95% CI</dt><dd>" + ci + (crosses ? " <span class='rl-cross'>melewati nol</span>" : "") + "</dd>" +
-        "<dt>p_adj</dt><dd>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "-") + "</dd>" +
-        "<dt>n</dt><dd>" + esc(r.n_obs) + "</dd>" +
-        "</dl></div>";
-    }).join("") +
-    (missing.length
-      ? "<p class='rl-sel-note' style='color:var(--on-dark-muted)'>Belum dihitung untuk target ini: " +
-        esc(missing.map(function (t) { return A.testLabel(t); }).join(", ")) +
-        ". Tidak ada angkanya di sini karena memang belum ada.</p>"
-      : "");
+    /* Urut: CAR, OLS, Granger, Spearman — dari uji yang paling ringkas ke
+       yang paling banyak barisnya, supaya lag tidak menumpuk di atas. */
+    var URUT = ["event_study", "ols", "granger", "spearman", "pearson"];
+    var sorted = rows.slice().sort(function (a, b) {
+      var d = URUT.indexOf(a.test) - URUT.indexOf(b.test);
+      if (d !== 0) return d;
+      return (a.lag == null ? -1 : a.lag) - (b.lag == null ? -1 : b.lag);
+    });
+
+    box.innerHTML =
+      "<div class='rl-test rl-test--head' aria-hidden='true'>" +
+        "<span>uji</span><span>lag</span><span class='rl-test-num'>est</span>" +
+        "<span>95% CI</span><span class='rl-test-num'>p_adj</span>" +
+        "<span class='rl-test-num'>n</span><span></span></div>" +
+      sorted.map(function (r) {
+        var sig = r.p_adjusted != null && Number(r.p_adjusted) < 0.05;
+        /* Granger tidak punya CI: tulis "—", bukan "tidak tersedia" per baris,
+           supaya daftar 11 uji tetap terbaca. */
+        var ci = (r.ci_low != null && r.ci_high != null)
+          ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]"
+          : "—";
+        var crosses = r.ci_low != null && r.ci_high != null &&
+          Number(r.ci_low) <= 0 && Number(r.ci_high) >= 0;
+        return "<div class='rl-test'>" +
+          "<span class='rl-test-name'>" + esc(A.testLabel(r.test)) + "</span>" +
+          "<span class='rl-test-lag'>" + (r.lag != null ? "L" + esc(r.lag) : "—") + "</span>" +
+          "<span class='rl-test-num'>" + fmt(r.estimate, 3) + "</span>" +
+          "<span class='rl-test-ci" + (crosses ? " rl-cross" : "") + "'>" + ci + "</span>" +
+          "<span class='rl-test-num'>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "—") + "</span>" +
+          "<span class='rl-test-num'>" + esc(r.n_obs) + "</span>" +
+          (sig ? "<span class='rl-sig'>sig</span>" : "<span></span>") +
+          "</div>";
+      }).join("") +
+      (missing.length
+        ? "<p class='rl-sel-note' style='color:var(--on-dark-muted)'>Belum dihitung untuk target ini: " +
+          esc(missing.map(function (t) { return A.testLabel(t); }).join(", ")) +
+          ". Tidak ada angkanya di sini karena memang belum ada.</p>"
+        : "");
   }
 
   /* ---------------- muat ----------------
