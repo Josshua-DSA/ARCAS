@@ -193,3 +193,43 @@ def test_seluruh_berita_di_basis_data_diterima():
         except InputRejected as exc:
             ditolak.append((exc.code, title[:60]))
     assert not ditolak, f"gerbang menolak berita asli: {ditolak[:5]}"
+
+
+# -- P3-2: judul nyata yang lebih pendek dari ambang lama -------------------
+
+
+@pytest.mark.parametrize(
+    "judul",
+    [
+        # 37 karakter: judul pernyataan FOMC asli, terpendek di dataset/.
+        "Federal Reserve issues FOMC statement",
+        "Gold hits record high",
+        "Fed cuts rates by 50 bps",
+        "Emas cetak rekor baru",
+        "Dollar slides as Fed cuts",
+    ],
+)
+def test_judul_pendek_yang_sah_diterima(judul):
+    """Ambang lama (40) menolak judul ini; ambang baru harus menerimanya.
+
+    Angka 20 dipilih dari pengukuran dataset/, bukan angka bulat: judul
+    terpendek yang sah 21 karakter, dan seluruh sampel di atas lolos.
+    """
+    hasil = validate(judul, "berita")
+    assert hasil.text
+
+
+@pytest.mark.parametrize("frasa", ["Gold up", "Fed statement", "Rates unchanged"])
+def test_frasa_pendek_tetap_ditolak(frasa):
+    """Menurunkan ambang tidak boleh membuka pintu untuk fragmen."""
+    with pytest.raises(InputRejected) as exc:
+        validate(frasa, "berita")
+    assert exc.value.code == "terlalu_pendek"
+
+
+def test_min_chars_selaras_dengan_temuan_dataset():
+    """Jaga agar ambang tidak naik lagi tanpa pengukuran ulang."""
+    from backend.src.serve.sim_input import MIN_CHARS
+
+    assert MIN_CHARS <= 21, "judul sah terpendek di dataset/ adalah 21 karakter"
+    assert MIN_CHARS >= 20, "terlalu rendah: 'The Fed held rates' (18) ikut masuk"

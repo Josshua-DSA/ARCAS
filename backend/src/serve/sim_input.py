@@ -28,7 +28,15 @@ class InputKind(str, Enum):
 
 #: Batas panjang. Terlalu pendek = bukan laporan; terlalu panjang = bukan
 #: berita melainkan dokumen, dan model hanya membaca 512 token pertama.
-MIN_CHARS = 40
+#:
+#: P3-2: ambang bawah dulu 40 karakter dan menolak judul finansial yang sah --
+#: diukur pada dataset/, judul terpendek adalah "Federal Reserve issues FOMC
+#: statement" (37 karakter, pernyataan FOMC asli). 40 juga tidak menjaga apa
+#: pun: sapaan dan pertanyaan sudah ditolak aturan 1 dan 2, jadi ambang ini
+#: hanya perlu memisahkan "frasa" dari "judul". 20 karakter menerima seluruh
+#: judul pendek yang terukur (terpendek 21: "Gold hits record high") sambil
+#: tetap menolak "Gold up" (7) dan "Fed statement" (13).
+MIN_CHARS = 20
 MAX_CHARS = 4000
 
 #: Sapaan / obrolan. Hanya dipakai bila SELURUH teks terdiri dari kata-kata ini.

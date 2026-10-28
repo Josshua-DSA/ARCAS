@@ -16,7 +16,7 @@ from backend.src.persona.engine import PersonaEngine
 from backend.src.schema import (
     NewsHorizon,
 )
-from backend.src.serve.sim_input import InputKind, InputRejected
+from backend.src.serve.sim_input import MAX_CHARS, InputKind, InputRejected
 from backend.src.serve.sim_service import SimulationService
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,7 @@ class SimulateRequest(BaseModel):
     mengisi jenis input akan diam-diam dianggap mengirim berita.
     """
 
-    text: str = Field(..., min_length=1, max_length=20000)
+    text: str = Field(..., min_length=1, max_length=MAX_CHARS)
     kind: InputKind
     source: Optional[str] = Field(default=None, max_length=200)
     target: str = Field(default="XAU", max_length=20)
@@ -83,9 +83,9 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
     # bahkan ketika scheduler dimatikan (mis. saat uji).
     _scheduler_holder: dict[str, object] = {}
 
-    # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
-    # request. Didefinisikan di sini (bukan setelah lifespan) supaya bisa
-    # dipanaskan di lifespan.
+    # Satu service per aplikasi: bobot model tidak boleh dimuat ulang tiap
+    # request (FinBERT-EMAS (440 MB) dan FOMC-RoBERTa (1,42 GB/berkas)).
+    # Didefinisikan di sini (bukan setelah lifespan) supaya bisa dipanaskan.
     sim_service = SimulationService(db_path=db_path)
 
     #: Batas tunggu warm-up (detik). Startup tidak boleh menggantung tanpa
@@ -133,7 +133,8 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         # lazy pada request pertama seperti sebelumnya.
         #
         # ARCAS_DISABLE_WARMUP=1 mematikan ini untuk uji yang tidak butuh bobot
-        # 440 MB; tanpa itu, setiap TestClient akan menunggu warm-up.
+        # model sama sekali; tanpa itu, setiap TestClient akan menunggu
+        # warm-up (sampai beberapa GB).
         if os.getenv("ARCAS_DISABLE_WARMUP", "").strip() not in ("1", "true", "yes"):
             try:
                 await asyncio.wait_for(
@@ -153,9 +154,8 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             if sched is not None:
                 sched.stop()  # type: ignore[attr-defined]
 
-    # Satu service per aplikasi: bobot 440 MB tidak boleh dimuat ulang tiap
-    # request. Sejak P1-9 dimuat di lifespan (dengan batas tunggu) supaya
-    # request pertama tidak menanggung 3,33 detik pemuatan.
+    # Sejak P1-9 model dimuat di lifespan (dengan batas tunggu) supaya
+    # request pertama tidak menanggung pemuatan bobot.
     app = FastAPI(
         title="FinNews API",
         version="0.5.0",
@@ -163,7 +163,7 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         lifespan=lifespan,
     )
     # Diekspos agar tes bisa memeriksa/mensimulasikan status kesiapan model
-    # tanpa memuat bobot 440 MB.
+    # tanpa memuat bobotnya.
     app.state.sim_service = sim_service
 
     app.add_middleware(
