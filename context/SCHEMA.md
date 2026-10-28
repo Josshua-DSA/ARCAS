@@ -313,6 +313,36 @@ CREATE INDEX idx_source_health_source ON source_health(source, checked_at);
 - `source_health` bersifat append-only per pemeriksaan; `consecutive_failures`
   adalah turunan yang dipakai untuk alert, bukan sumber kebenaran.
 
+### 6.1 Versi & Migrasi Skema (P3-5)
+
+Skema **tidak** punya berkas migrasi eksternal; pembuatannya ada di
+`backend/src/store/db.py` dan dijalankan setiap kali aplikasi start
+(`Database.init_schema`). Urutannya wajib:
+
+| # | Langkah | Kenapa harus di posisi itu |
+|---|---|---|
+| 1 | `DDL_SCHEMA` | Membuat tabel yang belum ada (`IF NOT EXISTS`) |
+| 2 | `_migrate()` | Melengkapi kolom tabel **lama** |
+| 3 | `DDL_INDEXES` | Indeks dibuat **setelah** kolomnya pasti ada |
+| 4 | `_seed_schema_data()` | Baris wajib, tanpa menimpa data pengguna |
+
+**Versi skema** disimpan di `PRAGMA user_version` (`Database.SCHEMA_VERSION`,
+kini `1`). Nilai `0` berarti "belum pernah dimigrasi kode ini". Jangan menebak
+versi dari keberadaan tabel: DB lama bisa punya semua tabel tetapi belum punya
+kolom susulan — persis kondisi yang menyebabkan `OperationalError` di runtime.
+
+**Kolom wajib** didaftarkan di `Database.KOLOM_WAJIB` (tabel → kolom → DDL).
+Menambah kolom berarti menambahkannya di sana **dan** di `DDL_SCHEMA`; ada tes
+(`test_kolom_wajib_benar_benar_ada_di_ddl`) yang gagal bila keduanya melenceng.
+Kolom `NOT NULL` wajib memakai `DEFAULT` agar baris lama tetap valid.
+
+**Seed** (`SEED_ASSET_MASTER`) mengisi universe terkunci `XAU`, `RATE_UST`,
+`SPX` dengan `ON CONFLICT(asset_id) DO NOTHING` — aman diulang dan tidak pernah
+menimpa nilai yang sudah diubah lewat `data/universe/asset_master.csv`.
+
+**Memeriksa tanpa mengubah:** `fi check-schema` (kode keluar 1 bila ada yang
+tertinggal), berguna di CI dan sebelum deploy.
+
 ## 7. Invarian (wajib dijaga validator)
 
 1. `asset_id` ∈ `asset_master` pada `universe_version` yang dipakai.
@@ -411,6 +441,7 @@ ML → `ArticleSentiment {tone, score=p_pos-p_neg, probs[], translation_used}`. 
 
 ## 9. Changelog
 
+- 0.8.1-migrasi — **P3-5**: tambah `PRAGMA user_version` (`SCHEMA_VERSION=1`), peta `KOLOM_WAJIB` per-tabel (bukan hanya `impacts`), seed idempoten universe terkunci via `ON CONFLICT DO NOTHING`, dan `fi check-schema`. Indeks dipisah ke `DDL_INDEXES` agar dibuat setelah migrasi kolom. Tanpa perubahan pada skor, enum, atau kontrak analisis.
 - 0.8.0-operasional — Catat dua tabel yang sudah ada di kode tetapi belum pernah didokumentasikan: `ingest_runs` (jejak tarikan terjadwal, dipakai `has_run_for_slot` untuk mencegah tarikan ganda saat restart) dan `source_health` (riwayat kesehatan sumber + `consecutive_failures` untuk alert). Keduanya operasional; tidak ada perubahan pada skor, enum, atau kontrak analisis. Ditemukan lewat audit v2 (P0-5).
 - 0.7.0-core3 — Pin Tools: `STOCK`→`SPX`, `ETF`→`SPX`, kelas alokasi `BTC` dibekukan (`no_change`); seed nonaktifkan aset pensiun; tanpa perubahan struktur tabel (schema_version tetap 0.5.0).
 - 0.7.0 — Supervised 3 (`XAU/RATE_UST/SPX`); Track A mati; `ModelProbs` tanpa indobert/finbert_mt; dataset gold+FOMC lokal.

@@ -258,6 +258,38 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check_schema(args: argparse.Namespace) -> int:
+    """Laporkan selisih skema DB terhadap yang diharapkan kode (P3-5).
+
+    Hanya membaca; tidak pernah mengubah apa pun. Dipakai untuk mendeteksi DB
+    yang tertinggal SEBELUM query-nya gagal di produksi. Kode keluar 1 bila ada
+    yang tidak beres, supaya bisa dipakai di CI.
+    """
+    db = Database(args.db)
+    if not db.db_path.exists():
+        print(f"DB tidak ditemukan: {db.db_path}")
+        return 1
+
+    with db.get_connection() as conn:
+        versi = db.versi_skema(conn)
+        hilang = db.skema_tidak_lengkap(conn)
+
+    print(f"db       : {db.db_path}")
+    print(f"versi    : {versi} (diharapkan {Database.SCHEMA_VERSION})")
+    if hilang:
+        print(f"hilang   : {len(hilang)} kolom/tabel")
+        for item in hilang:
+            print(f"  - {item}")
+        print("\nJalankan `fi pipeline` atau buka aplikasi sekali untuk memigrasi.")
+        return 1
+
+    print("skema    : lengkap")
+    if versi < Database.SCHEMA_VERSION:
+        print(f"peringatan: versi DB lebih lama dari kode ({versi} < {Database.SCHEMA_VERSION})")
+        return 1
+    return 0
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     """Hitung OLS HAC + Granger per aset, simpan ke stat_results."""
     import pandas as pd
@@ -465,6 +497,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--out", default="outputs", help="direktori keluaran")
     sp.add_argument("--name", default="report.html")
     sp.set_defaults(func=cmd_report)
+
+    sp = sub.add_parser(
+        "check-schema", help="periksa apakah skema DB tertinggal dari kode (P3-5)"
+    )
+    sp.set_defaults(func=cmd_check_schema)
 
     return p
 
