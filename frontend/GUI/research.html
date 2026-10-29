@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
 <title>ARCAS : Research Lab</title>
-<meta name="description" content="Meja kerja asosiasi, statistik lengkap, kualitas data, dan kualitas model. Simulasi analitis, bukan nasihat investasi.">
+<meta name="description" content="Pilih berita dan lihat titiknya di grafik pasar, lalu baca uji statistik yang tersimpan. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
 <link rel="stylesheet" href="src/css/layout.css">
@@ -14,6 +14,78 @@
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
   window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
 </script>
+<style>
+  /* Gaya khusus Research Lab. Tidak dimasukkan ke layout.css supaya file
+     bersama tetap ramping dan tidak bentrok dengan halaman lain. */
+
+  /* --- pemilih berita: kartu horizontal, bukan dropdown (judul panjang) --- */
+  .rl-picker-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;margin:22px 0 10px}
+  .rl-picker-head h2{font-family:var(--font-sans);font-size:17px;font-weight:700;margin:0;color:var(--text-primary)}
+  .rl-picker-head .hint{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted)}
+  #newsPicker{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity;
+    scrollbar-width:none;-ms-overflow-style:none;
+    cursor:grab;touch-action:pan-x;overscroll-behavior-x:contain}
+  /* Scrollbar disembunyikan: bar abu di bawah kartu terlihat seperti salah layout.
+     Penggeseran disediakan lewat seret dan roda mouse (lihat research.js). */
+  #newsPicker::-webkit-scrollbar{height:0;display:none}
+  #newsPicker.is-dragging{cursor:grabbing;scroll-snap-type:none;user-select:none}
+  /* Kartu tidak boleh ikut tersorot saat diseret. */
+  #newsPicker.is-dragging *{user-select:none;pointer-events:none}
+  .rl-item{flex:0 0 258px;scroll-snap-align:start;text-align:left;cursor:pointer;
+    display:flex;flex-direction:column;gap:6px;padding:12px 14px;min-height:44px;
+    background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;
+    font-family:inherit;color:inherit}
+  .rl-item:hover{border-color:var(--border-strong)}
+  .rl-item:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
+  .rl-item[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-subtle)}
+  .rl-when{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+  .rl-title{font-family:var(--font-sans);font-size:13.5px;font-weight:600;line-height:1.35;
+    color:var(--text-primary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .rl-src{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted)}
+
+  #priceChart{width:100%;height:340px}
+
+  /* --- detail berita terpilih --- */
+  .rl-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;
+    font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums}
+  .rl-kv dt{color:var(--on-dark-muted)}
+  .rl-kv dd{margin:0;color:var(--on-dark-primary)}
+  .rl-cross{font-family:var(--font-sans);font-size:11px;color:#C99A6E}
+  .rl-sel-title{font-family:var(--font-serif);font-weight:400;font-size:19px;line-height:1.3;margin:0 0 4px}
+  .rl-sel-meta{font-family:var(--font-mono);font-size:11.5px;color:var(--on-dark-muted);margin:0 0 10px}
+  .rl-sel-note{font-family:var(--font-sans);font-size:13px;line-height:1.55;
+    color:var(--on-dark-secondary);margin:10px 0 0}
+  .rl-empty{font-family:var(--font-sans);font-size:13px;color:var(--on-dark-muted);margin:0}
+
+  /* --- daftar uji: satu baris per uji, bukan satu blok --- */
+  .rl-test{display:grid;grid-template-columns:auto 34px 1fr 1fr 1fr 34px 30px;
+    align-items:center;gap:8px;padding:7px 0;
+    font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums;
+    border-bottom:1px solid var(--border-dark-subtle);color:var(--on-dark-primary)}
+  .rl-test:last-of-type{border-bottom:0}
+  .rl-test--head{color:var(--on-dark-muted);font-size:10px;letter-spacing:.06em;
+    text-transform:uppercase;padding-bottom:6px}
+  .rl-test-name{font-family:var(--font-sans);font-size:12.5px;font-weight:600;
+    white-space:nowrap}
+  .rl-test-lag{color:var(--on-dark-muted)}
+  .rl-test-num{text-align:right}
+  .rl-test-ci{white-space:nowrap}
+  .rl-sig{display:inline-block;padding:1px 5px;border-radius:5px;
+    border:1px solid #56D364;color:#56D364;font-size:9.5px;text-align:center}
+
+  @media (max-width:960px){
+    #priceChart{height:300px}
+    .rl-item{flex:0 0 220px}
+  }
+  @media (max-width:600px){
+    /* Kolom n dan badge sig dibuang: p_adj sudah memberi tahu signifikansi,
+       dan tujuh kolom tidak muat di 390px. */
+    .rl-test{grid-template-columns:auto 26px 1fr 1fr 1fr;gap:6px;font-size:11px}
+    .rl-test > :nth-child(6),.rl-test > :nth-child(7){display:none}
+  }
+</style>
 </head>
 <body>
 
@@ -64,67 +136,46 @@
 
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
-    <h1 id="resTitle">Uji asosiasi per lag, kualitas data, dan kejujuran model.</h1>
-    <p class="lead">Di sini angka berhenti jadi klaim. Uji asosiasi dibaca per lag dengan rentang kepercayaan dan koreksi lipat ganda, kualitas data ditimbang sebelum skor, dan panel model hanya bicara setelah artefaknya ada. Yang belum terbukti tetap ditulis belum terbukti.</p>
+    <h1 id="resTitle">Pilih berita, lihat ia jatuh di titik mana pada grafik harga.</h1>
+    <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Di sebelah grafik tampil uji statistik yang benar-benar tersimpan untuk target ini. Yang belum tersedia ditulis belum tersedia.</p>
   </section>
 
+  <!-- ============ 1. Pilih berita ============ -->
+  <section aria-labelledby="pickTitle">
+    <div class="rl-picker-head">
+      <h2 id="pickTitle">Pilih berita</h2>
+      <span class="hint">klik satu kartu untuk menandainya di grafik</span>
+    </div>
+    <div class="state" id="newsState" hidden></div>
+    <div id="newsPicker" role="group" aria-label="Daftar berita"></div>
+  </section>
+
+  <!-- ============ 2. Grafik pasar + uji ============ -->
   <div class="grid">
-    <section class="panel dark" id="statistik" aria-labelledby="statTitle">
+    <section class="panel dark" aria-labelledby="chartTitle">
       <div class="panel-head">
-        <h2 id="statTitle">Hasil uji tersimpan</h2>
-        <span class="hint">asosiasi, bukan bukti sebab</span>
+        <h2 id="chartTitle">Grafik harga dan titik berita</h2>
+        <span class="hint">90 hari terakhir</span>
       </div>
       <div class="panel-body">
-        <div class="state" id="statState" hidden></div>
-        <div id="statTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Baca: estimate = ukuran efek, p_adj = p-value setelah koreksi BH-FDR, n = jumlah observasi. Hari tanpa berita dibiarkan kosong (NaN), bukan nol. Bukan nasihat investasi.
+        <div id="priceChart" role="img" aria-label="Grafik harga harian dengan penanda berita"></div>
+        <div class="state" id="chartState" hidden></div>
+        <div id="selDetail" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+    <section class="panel dark" aria-labelledby="testTitle">
+      <div class="panel-head">
+        <h2 id="testTitle">Uji statistik tersimpan</h2>
+        <span class="hint">hanya yang sudah dihitung</span>
+      </div>
+      <div class="panel-body">
+        <div class="state" id="testState" hidden></div>
+        <div id="testList"></div>
+        <p class="rl-sel-meta" style="margin:12px 0 0">
+          Asosiasi historis, bukan bukti sebab. p_adj sudah dikoreksi Benjamini-Hochberg.
+          Bukan nasihat investasi.
         </p>
-      </div>
-    </section>
-
-    <section class="panel dark" id="meja" aria-labelledby="wbTitle">
-      <div class="panel-head">
-        <h2 id="wbTitle">Meja kerja asosiasi</h2>
-        <span class="hint">arah berubah menurut lag</span>
-      </div>
-      <div class="panel-body">
-        <div class="wb-controls" id="wbControls">
-          <label style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">Metrik pasar
-            <select id="wbMetric" aria-label="Filter metrik pasar"></select>
-          </label>
-          <button class="btn small" id="wbRun" type="button" title="Hitung ulang Spearman untuk lag 0 sampai 5 dari data harian lewat API">Hitung Spearman L0..L5</button>
-          <div class="state" id="wbState" hidden></div>
-        </div>
-        <div id="wbTables"></div>
-        <p class="hint" style="font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)">
-          Rolling window belum ada di engine, jadi kontrolnya tidak dipajang palsu; menyusul bersama run model.
-        </p>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid flip">
-    <section class="panel dark" id="kualitas" aria-labelledby="qualityTitle">
-      <div class="panel-head">
-        <h2 id="qualityTitle">Kualitas data</h2>
-        <span class="hint">denominator sebelum skor</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="qualityState" hidden></div>
-        <div id="qualityTables"></div>
-      </div>
-    </section>
-
-    <section class="panel dark" id="kualitas-model" aria-labelledby="mqTitle">
-      <div class="panel-head">
-        <h2 id="mqTitle">Kualitas model (UI-04)</h2>
-        <span class="hint">menunggu artefak evaluasi</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="mqState">
-          Belum ada artefak evaluasi model (F1, kappa, confusion matrix, ECE). Panel ini akan terisi ketika run model dan evaluasinya tersedia di backend. Tidak ada angka penggantinya di sini, agar dasbor ini boleh dipergunakan oleh analis.
-        </div>
       </div>
     </section>
   </div>
@@ -137,6 +188,7 @@
   </div>
 </footer>
 
+<script src="src/js/echarts.min.js"></script>
 <script src="src/js/splash.js"></script>
 <script src="src/js/api.js"></script>
 <script src="src/js/state.js"></script>

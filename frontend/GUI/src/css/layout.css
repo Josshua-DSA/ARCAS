@@ -265,7 +265,7 @@ footer a{color:var(--accent-text-on-dark)}
 
 /* Responsif: grid menumpuk di bawah 960px, tanpa overflow horizontal (R-03) */
 @media (max-width:960px){
-  .grid,.grid.flip{grid-template-columns:1fr}
+  .grid,.grid.flip,.grid.overview{grid-template-columns:1fr}
   .hero{padding:30px 0 8px}
   #chart{height:320px}
   .brand-name{font-size:38px}

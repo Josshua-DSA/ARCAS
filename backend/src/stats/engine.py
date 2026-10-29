@@ -395,30 +395,51 @@ class StatEngine:
     ) -> list[StatResult]:
         """
         Event study: Cumulative Abnormal Returns (CAR) around sentiment spikes.
+
+        CAR di sini adalah jumlah return pada jendela event, bukan return
+        dikurangi benchmark: benchmark per aset belum tersimpan di DB. Karena
+        itu pembaca tidak boleh membacanya sebagai alpha.
         """
-        if df.empty or len(df) < 10:
+        if df.empty or len(df) < MIN_OBS_OLS:
             return []
 
         clean_df = df.dropna(subset=["close"]).copy()
+        # reset_index: `.index` adalah LABEL, bukan posisi. Tanpa ini, satu
+        # baris NaN yang dibuang membuat .iloc membaca posisi yang salah dan
+        # jendela event bergeser tanpa error.
+        clean_df = clean_df.reset_index(drop=True)
         clean_df["return"] = clean_df["close"].pct_change()
-        spikes = clean_df[clean_df["score_mean"].abs() >= spike_threshold].index
+
+        # Posisi baris spike, bukan label indeksnya.
+        spike_pos = np.flatnonzero(
+            clean_df["score_mean"].abs().fillna(0.0).to_numpy() >= spike_threshold
+        )
 
         car_estimates: list[float] = []
-        for idx in spikes:
-            start_i = max(0, idx - window_pre)
-            end_i = min(len(clean_df), idx + window_post + 1)
+        for pos in spike_pos:
+            start_i = max(0, int(pos) - window_pre)
+            end_i = min(len(clean_df), int(pos) + window_post + 1)
             event_returns = clean_df.iloc[start_i:end_i]["return"].dropna()
             if not event_returns.empty:
-                car = float(event_returns.sum())
-                car_estimates.append(car)
+                car_estimates.append(float(event_returns.sum()))
 
         if not car_estimates:
             return []
 
         mean_car = float(np.mean(car_estimates))
         p_val = 1.0
+        ci_low: Optional[float] = None
+        ci_high: Optional[float] = None
+
+        # CI hanya bila ada >=2 event dan galat bakunya terdefinisi. n=1 tidak
+        # punya sebaran, jadi CI dibiarkan None alih-alih dikarang.
         if stats is not None and len(car_estimates) > 1:
             p_val = float(stats.ttest_1samp(car_estimates, 0.0)[1])
+            se = float(np.std(car_estimates, ddof=1) / math.sqrt(len(car_estimates)))
+            if se > 0:
+                t_crit = float(stats.t.ppf(0.975, len(car_estimates) - 1))
+                ci_low = round(mean_car - t_crit * se, 4)
+                ci_high = round(mean_car + t_crit * se, 4)
 
         p_start = cls._coerce_date(df["date"].min())
         p_end = cls._coerce_date(df["date"].max())
@@ -431,14 +452,20 @@ class StatEngine:
                 market_metric="abnormal_return",
                 lag=None,
                 estimate=round(mean_car, 4),
-                ci_low=None,
-                ci_high=None,
+                ci_low=ci_low,
+                ci_high=ci_high,
                 p_value=round(p_val, 5),
                 p_adjusted=round(p_val, 5),
                 n_obs=len(car_estimates),
                 period_start=p_start,
                 period_end=p_end,
-                params_json=json.dumps({"window_pre": window_pre, "window_post": window_post}),
+                params_json=json.dumps(
+                    {
+                        "window_pre": window_pre,
+                        "window_post": window_post,
+                        "spike_threshold": spike_threshold,
+                    }
+                ),
                 code_version="v0.5.0",
             )
         ]
