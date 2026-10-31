@@ -37,3 +37,25 @@ Thumbs.db
 outputs/*.html
 outputs/*.json
 !outputs/.gitkeep
+
+# --- Bobot model: HANYA yang mati yang dibuang -------------------------------
+#
+# PENTING: `model/*/weights/` DIPAKAI runtime oleh halaman Simulations
+# (backend/src/serve/sim_service.py -> _muat_fomc / _muat_xau). Jangan
+# mengecualikan seluruh `model/`: itu mematikan simulasi dengan 503
+# `model_tidak_ada`. Yang dibuang di bawah hanya berkas yang terbukti
+# tidak pernah dibaca kode.
+#
+# `pytorch_model.bin` adalah duplikat 1,4 GB dari `model.safetensors`.
+# Seluruh pemuatan memakai `use_safetensors=True` (model/fomc/src/model.py
+# baris 198, 233, 249; model/xau/src/model.py baris 133), sehingga berkas
+# .bin tidak pernah dibuka. Ia bahkan berbahaya: torch 2.5.1 menolaknya
+# karena CVE-2025-32434 (lihat requirements.txt).
+model/**/pytorch_model.bin
+
+# Artefak riset: notebook & evaluasi tidak diimpor oleh API maupun pipeline.
+model/**/notebooks/
+model/**/evaluation/
+research/
+docs/
+dataset/
