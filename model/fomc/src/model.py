@@ -37,6 +37,36 @@ DEFAULT_ROBERTA_CHECKPOINT = "gtfintechlab/FOMC-RoBERTa"
 FALLBACK_ROBERTA_CHECKPOINT = "tim9510019/FOMC-RoBERTa"
 
 
+def _bersihkan_cache_tidak_lengkap(checkpoint: str) -> int:
+    """Hapus sisa unduhan (*.incomplete) milik satu checkpoint dari cache HF.
+
+    Berkas *.incomplete adalah unduhan yang terputus. Bila dibiarkan,
+    transformers bisa membangun model di `meta` device lalu gagal mengisi
+    bobotnya ("Cannot copy out of meta tensor"), dan galat itu terlihat
+    seperti kerusakan model padahal hanya unduhan setengah jalan.
+
+    Hanya berkas *.incomplete untuk repo yang bersangkutan yang dihapus;
+    snapshot lain tidak disentuh. Mengembalikan jumlah berkas yang dihapus.
+    """
+    try:
+        from huggingface_hub.constants import HF_HUB_CACHE
+    except Exception:
+        return 0
+
+    repo_dir = Path(HF_HUB_CACHE) / ("models--" + checkpoint.replace("/", "--"))
+    if not repo_dir.is_dir():
+        return 0
+
+    dihapus = 0
+    for berkas in repo_dir.rglob("*.incomplete"):
+        try:
+            berkas.unlink()
+            dihapus += 1
+        except OSError:
+            continue
+    return dihapus
+
+
 def train_fomc_baseline(
     df_train: pd.DataFrame,
     out_path: Path | str = DEFAULT_FOMC_BASELINE_PATH,
@@ -127,6 +157,53 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
     def model_version(self) -> str:
         return self._model_version
 
+    def _pulihkan_dari_meta_tensor(self, exc: Exception, device) -> bool:
+        """Bersihkan sisa unduhan lalu muat ulang sekali bila kena `meta tensor`.
+
+        `meta tensor` berarti bobot tidak benar-benar terisi: transformers
+        membangun model kosong lalu gagal memuat state dict, biasanya karena
+        unduhan sebelumnya terputus dan menyisakan berkas *.incomplete di
+        cache. Mengulang sekali setelah membersihkannya jauh lebih berguna
+        daripada langsung jatuh ke baseline TF-IDF.
+
+        Mengembalikan True bila pemulihan berhasil dan model siap dipakai.
+        """
+        if "meta tensor" not in str(exc).lower():
+            return False
+        sudah = getattr(self, "_dipulihkan", set())
+        if self._checkpoint in sudah:
+            # Sudah dicoba untuk checkpoint ini: jangan berulang tanpa henti.
+            return False
+
+        bersih = _bersihkan_cache_tidak_lengkap(self._checkpoint)
+        if not bersih:
+            return False
+
+        sudah.add(self._checkpoint)
+        self._dipulihkan = sudah
+        logger.warning(
+            "Bobot '%s' tidak lengkap (meta tensor). %d berkas sisa unduhan dihapus "
+            "dari cache; mencoba muat ulang sekali.",
+            self._checkpoint,
+            bersih,
+        )
+
+        import torch
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+        token = self._hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        try:
+            self._tokenizer = AutoTokenizer.from_pretrained(self._checkpoint, token=token)
+            self._model = AutoModelForSequenceClassification.from_pretrained(
+                self._checkpoint, token=token, use_safetensors=True
+            ).to(device)
+            self._model.eval()
+            logger.info("Muat ulang '%s' berhasil setelah cache dibersihkan.", self._checkpoint)
+            return True
+        except Exception as ulang_exc:
+            logger.error("Muat ulang '%s' tetap gagal: %s", self._checkpoint, ulang_exc)
+            return False
+
     def _ensure_loaded(self) -> None:
         """Loads Hugging Face tokenizer and model onto target device."""
         if self._model is not None:
@@ -157,6 +234,8 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
             ).to(device)
             self._model.eval()
         except Exception as exc:
+            if self._pulihkan_dari_meta_tensor(exc, device):
+                return
             is_access_issue = any(k in str(exc).lower() for k in ["gated repo", "unauthorized", "401", "403", "awaiting a review"])
             if is_access_issue and self._checkpoint != FALLBACK_ROBERTA_CHECKPOINT:
                 logger.warning(
@@ -173,6 +252,12 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
                     self._checkpoint = FALLBACK_ROBERTA_CHECKPOINT
                     return
                 except Exception as fallback_exc:
+                    # Jalur fallback juga bisa kena "meta tensor" bila
+                    # unduhannya sendiri terputus. Tangani di sini supaya
+                    # tidak langsung menyerah ke baseline TF-IDF.
+                    if self._pulihkan_dari_meta_tensor(fallback_exc, device):
+                        self._checkpoint = FALLBACK_ROBERTA_CHECKPOINT
+                        return
                     logger.error("Gagal memuat fallback checkpoint: %s", fallback_exc)
 
             if is_access_issue:
