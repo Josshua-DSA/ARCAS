@@ -1,6 +1,7 @@
 # frontend/GUI/ — Static ECharts HTML Dashboard (FR-15)
 
 Dashboard web statis offline (zero-build, zero-server) untuk artefak presentasi sidang:
+- **Satu perintah, satu origin**: backend kini menyajikan folder ini langsung (mount `/` di `create_app`, dipasang paling akhir sehingga `/api/*` tetap menang). Jalankan `uvicorn backend.src.serve.app:create_app --factory` lalu buka `http://127.0.0.1:8000/research.html` — tidak perlu server statis terpisah, dan `api.js` otomatis memakai path relatif. Matikan dengan `ARCAS_SERVE_GUI=0` untuk deployment API murni. Membuka `index.html` lewat `file://` juga masih bisa (mode dev), tetapi `fetch` relatif gagal dan GUI jatuh ke `localhost:8000`.
 - `src/css/`: Styling ikut `THEME.md` v0.1 (Claude × Bloomberg, offline adaptasi): font Newsreader/Inter/JetBrains Mono via `@font-face` lokal `src/fonts/`, Base `#F6F4F4`, Surface `#FFFFFF`, Technical `#3E3939`, Accent `#FF7517`, Text `#2C2727`, semantik UP/DOWN/HOLD + palet grafik; proporsi 65/20/10/5, filosofi 70% Claude + 30% Bloomberg. `layout.css` berisi shell bersama; CSS spesifik halaman tidak diperlukan, semua halaman memakai set yang sama.
 - `src/js/api.js`: layer API tanpa build (deteksi base relatif lalu localhost, fetch, penyedia data ilustrasi berlabel `demoSeries`/`demoImpacts`/`demoQuality`).
 - `src/js/state.js`: state antarhalaman lewat `URLSearchParams` (`?target=XAU&days=90&profile=moderate`), tautan dan reload selalu membawa state.

@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.src.alloc.engine import AllocationEngine
@@ -313,6 +314,25 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
         prices = db.query_prices(target, broad_start, broad_end)
         frame = StatEngine.frame_from_daily_prices(daily, prices)
         results = StatEngine.compute_spearman_lags(frame, target, max_lag=max_lag)
+        if not results:
+            # Mengembalikan [] membuat pengguna melihat panel kosong tanpa tahu
+            # sebabnya. Engine butuh >= 5 hari yang punya sentimen DAN harga;
+            # sebutkan angkanya supaya beda "data belum cukup" dari "rusak".
+            berpasangan = StatEngine.hitung_hari_berpasangan(daily, prices)
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "kode": "data_belum_cukup",
+                    "pesan": (
+                        f"Spearman per lag butuh minimal 5 hari berpasangan "
+                        f"(tanggal yang punya sentimen dan harga sekaligus); "
+                        f"{target} baru punya {berpasangan}. "
+                        "Tambah riwayat sentimen atau harga, lalu coba lagi."
+                    ),
+                    "hari_berpasangan": berpasangan,
+                    "hari_minimum": 5,
+                },
+            )
         return [r.model_dump() for r in results]
 
     @app.get("/api/allocation")
@@ -502,5 +522,14 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 },
             )
         return jejak
+
+    # GUI statis (frontend/GUI) disajikan dari proses yang sama supaya
+    # `uvicorn` cukup satu perintah. Dipasang PALING AKHIR dan di path "/",
+    # sehingga semua route /api di atas tetap menang; mount ini hanya
+    # melayani sisa path (index.html, research.html, src/...).
+    # Bisa dimatikan dengan ARCAS_SERVE_GUI=0 untuk deployment API murni.
+    _gui_dir = Path(__file__).resolve().parents[3] / "frontend" / "GUI"
+    if os.getenv("ARCAS_SERVE_GUI", "1") != "0" and _gui_dir.is_dir():
+        app.mount("/", StaticFiles(directory=str(_gui_dir), html=True), name="gui")
 
     return app

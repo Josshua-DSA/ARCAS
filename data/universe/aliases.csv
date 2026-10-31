@@ -10,6 +10,9 @@ RATE_UST,treasury yield,en
 RATE_UST,10-year treasury,en
 RATE_UST,us 10y,en
 RATE_UST,fed funds rate,en
+RATE_UST,fomc,en
+RATE_UST,federal funds rate,en
+RATE_UST,federal open market committee,en
 SPX,s&p 500,id
 SPX,wall street,id
 SPX,s&p 500,en

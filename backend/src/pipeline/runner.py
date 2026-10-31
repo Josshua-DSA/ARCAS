@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+import uuid
 
 from backend.src.aggregate.daily import DailyAggregator
 from backend.src.normalize.cleaner import ArticleCleaner
@@ -88,6 +89,8 @@ class PipelineStats:
     #: "Harga emas anjlok tajam..." diskor positive +0.231. Melewati artikel
     #: ini lebih jujur daripada memasukkan sinyal palsu ke agregasi harian.
     artikel_bukan_inggris: int = 0
+    #: Jumlah baris stat_results yang ditulis langkah `compute_stats`.
+    baris_statistik: int = 0
     errors: list[str] = field(default_factory=list)
 
     def ringkas(self) -> str:
@@ -102,6 +105,7 @@ class PipelineStats:
             f"tanpa target      : {self.tanpa_target}\n"
             f"near-duplicate    : {self.artikel_duplikat}\n"
             f"bukan Inggris     : {self.artikel_bukan_inggris}\n"
+            f"baris statistik   : {self.baris_statistik}\n"
             f"error             : {len(self.errors)}"
         )
 
@@ -595,6 +599,53 @@ class Pipeline:
         return stats
 
     # ------------------------------------------------------------------
+    # Statistik (OLS/Granger/CAR)
+    # ------------------------------------------------------------------
+    def compute_stats(self, dry_run: bool = False, stats: PipelineStats | None = None) -> PipelineStats:
+        """daily_sentiment + prices -> stat_results.
+
+        Sebelumnya langkah ini hanya ada sebagai subperintah `fi stats` yang
+        harus dijalankan manual. Akibatnya `fi pipeline` bisa selesai dengan
+        sukses penuh tetapi `stat_results` tetap kosong, dan panel uji di
+        Research Lab tampil kosong seolah GUI-nya rusak. Menaruhnya di alur
+        berarti "pipeline selesai" juga berarti "statistik tersedia".
+        """
+        stats = stats or PipelineStats()
+        if dry_run:
+            return stats
+
+        from backend.src.stats.engine import StatEngine
+
+        # Satu siklus pipeline = satu `run_id`. Sebelumnya tiap uji membuat
+        # uuid sendiri, sehingga `stat_results` tidak punya "run" yang utuh:
+        # riwayat menumpuk dan panel Research Lab menampilkan hasil basi
+        # berulang kali tanpa cara membedakan run lama vs baru.
+        run_id = str(uuid.uuid4())[:8]
+
+        universe = self.db.get_active_universe() or []
+        total = 0
+        for aset in universe:
+            asset_id = aset.get("asset_id")
+            if not asset_id:
+                continue
+            broad_start, broad_end = date(2000, 1, 1), date(2100, 1, 1)
+            daily = self.db.query_daily_sentiment(asset_id, broad_start, broad_end)
+            prices = self.db.query_prices(asset_id, broad_start, broad_end)
+            frame = StatEngine.frame_from_daily_prices(daily, prices)
+            if frame is None or frame.empty:
+                continue
+            hasil = (
+                StatEngine.compute_ols_hac(frame, asset_id, run_id=run_id)
+                + StatEngine.compute_granger(frame, asset_id, run_id=run_id)
+                + StatEngine.compute_car_event_study(frame, asset_id, run_id=run_id)
+            )
+            for res in hasil:
+                self.db.save_stat(res)
+            total += len(hasil)
+        stats.baris_statistik = total
+        return stats
+
+    # ------------------------------------------------------------------
     # Jalur lengkap
     # ------------------------------------------------------------------
     def run(
@@ -611,6 +662,9 @@ class Pipeline:
         articles, stats = self.normalize_raw(limit=limit, dry_run=dry_run, stats=stats)
         impacts, stats = self.score_and_route(articles, dry_run=dry_run, stats=stats)
         stats = self.aggregate(impacts, articles, dry_run=dry_run, stats=stats)
+        # Statistik ikut dihitung di sini: tanpa langkah ini `fi pipeline`
+        # selesai dengan sukses tetapi `stat_results` tetap kosong.
+        stats = self.compute_stats(dry_run=dry_run, stats=stats)
         # Audit P1-1: jangan biarkan degradasi model hilang dari ringkasan run.
         stats.errors.extend(self._degradasi)
         return stats

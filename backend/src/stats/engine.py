@@ -173,6 +173,26 @@ class StatEngine:
         return results
 
     @staticmethod
+    def hitung_hari_berpasangan(daily: list, prices: list) -> int:
+        """Jumlah tanggal yang punya sentimen DAN harga sekaligus.
+
+        Dipakai untuk menjelaskan hasil kosong: `compute_spearman_lags`
+        mengembalikan [] bila hari berpasangan < 5, dan tanpa angka ini
+        pengguna hanya melihat array kosong tanpa tahu penyebabnya.
+        """
+        tanggal_sentimen = {
+            str(r.get("date") if isinstance(r, dict) else getattr(r, "date", ""))
+            for r in (daily or [])
+        }
+        tanggal_harga = {
+            str(r.get("date") if isinstance(r, dict) else getattr(r, "date", ""))
+            for r in (prices or [])
+        }
+        tanggal_sentimen.discard("")
+        tanggal_harga.discard("")
+        return len(tanggal_sentimen & tanggal_harga)
+
+    @staticmethod
     def _clean_frame(df: pd.DataFrame) -> pd.DataFrame:
         """Frame bersih: terurut tanggal, kolom `return`, tanpa baris kosong.
 
@@ -204,6 +224,7 @@ class StatEngine:
         max_lag: int = 5,
         period_start: Optional[date] = None,
         period_end: Optional[date] = None,
+        run_id: Optional[str] = None,
     ) -> list[StatResult]:
         """Regresi OLS `return ~ sentiment` dengan galat standar Newey-West (HAC).
 
@@ -264,7 +285,7 @@ class StatEngine:
             return results
 
         p_adj = cls.benjamini_hochberg(p_raw)
-        run_id = str(uuid.uuid4())[:8]
+        run_id = run_id or str(uuid.uuid4())[:8]
         p_start = cls._coerce_date(period_start or clean["date"].min())
         p_end = cls._coerce_date(period_end or clean["date"].max())
 
@@ -306,6 +327,7 @@ class StatEngine:
         max_lag: int = 5,
         period_start: Optional[date] = None,
         period_end: Optional[date] = None,
+        run_id: Optional[str] = None,
     ) -> list[StatResult]:
         """Uji kausalitas Granger: apakah sentimen membantu memprediksi return.
 
@@ -353,7 +375,7 @@ class StatEngine:
             return results
 
         p_adj = cls.benjamini_hochberg(p_raw)
-        run_id = str(uuid.uuid4())[:8]
+        run_id = run_id or str(uuid.uuid4())[:8]
         p_start = cls._coerce_date(period_start or clean["date"].min())
         p_end = cls._coerce_date(period_end or clean["date"].max())
 
@@ -392,6 +414,7 @@ class StatEngine:
         spike_threshold: float = 0.5,
         window_pre: int = 1,
         window_post: int = 3,
+        run_id: Optional[str] = None,
     ) -> list[StatResult]:
         """
         Event study: Cumulative Abnormal Returns (CAR) around sentiment spikes.
@@ -446,7 +469,7 @@ class StatEngine:
 
         return [
             StatResult(
-                run_id=str(uuid.uuid4())[:8],
+                run_id=run_id or str(uuid.uuid4())[:8],
                 asset_id=asset_id,
                 test="event_study",
                 market_metric="abnormal_return",

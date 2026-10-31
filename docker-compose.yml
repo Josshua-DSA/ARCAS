@@ -10,6 +10,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
+      # `.env` sengaja TIDAK ikut ke dalam image (.dockerignore) supaya kunci
+      # API tidak pernah tertanam di layer. Nilainya disuntikkan saat runtime
+      # dari `.env` di host lewat `env_file`. Tanpa ini, container berjalan
+      # tanpa kunci dan ingest berita gagal senyap.
+      - ARCAS_DISABLE_SCHEDULER=${ARCAS_DISABLE_SCHEDULER:-1}
+    env_file:
+      - path: .env
+        required: false
     volumes:
       # Mount data folder untuk persistensi basis data SQLite dan konfigurasi
       - ./data:/app/data
