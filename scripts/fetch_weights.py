@@ -42,9 +42,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import sys
 from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -58,20 +63,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKSUMS: dict[str, dict[str, Any]] = {
     "fomc": {
         "kind": "hf",
-        "repo_id": "tim9510019/FOMC-RoBERTa",
+        "repo_id": "gtfintechlab/FOMC-RoBERTa",
         "local_dir": "model/fomc/weights/roberta",
         "files": {
             "config.json": {
-                "sha256": "2922246d05e484441ed64d410854491aa52f4fd4f93fe8cf35ada59c12fd4979",
-                "size": 903,
+                "sha256": "bf2a9584761c7c14a307acaf3e459cad7dcc75ff758580e0a7570327b4ecdb4d",
+                "size": 891,
             },
             "pytorch_model.bin": {
-                "sha256": "4f7a4f60ae60e639c3c1450257f6da04fee50f55c25f8cf9f227b38819fdd5ae",
-                "size": 1421581361,
+                "sha256": "c7f49f8b3049d0a446e0e4ac5c5e161f2dc2d8834806c7b9b75a4399226c280a",
+                "size": 1421588461,
             },
             "tokenizer.json": {
-                "sha256": "cfdd8e06b322eb64e234d00f479dd0939a39ce8e2f139814b48de8adf4448277",
-                "size": 2108872,
+                "sha256": "2857ab3215a5c3c72656d5f578782e13ce6ae782f6fa10b7e745c56a42e6911f",
+                "size": 2108844,
             },
             "vocab.json": {
                 "sha256": "ed19656ea1707df69134c4af35c8ceda2cc9860bf2c3495026153a133670ab5e",
@@ -162,10 +167,11 @@ def download_hf(name: str, spec: dict[str, Any]) -> None:
     local_dir = REPO_ROOT / spec["local_dir"]
     local_dir.mkdir(parents=True, exist_ok=True)
 
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     print(f"[{name}] mengunduh {spec['repo_id']} -> {local_dir}")
     for filename in spec["files"]:
         print(f"  - {filename} ...", end=" ", flush=True)
-        cached = hf_hub_download(repo_id=spec["repo_id"], filename=filename)
+        cached = hf_hub_download(repo_id=spec["repo_id"], filename=filename, token=token)
         dest = local_dir / filename
         if dest.exists() and dest.resolve() == Path(cached).resolve():
             print("sudah ada (tertaut)")
