@@ -1,0 +1,26 @@
+# Override KHUSUS PENGEMBANGAN — dimuat otomatis oleh `docker compose`,
+# jadi TIDAK ikut ke produksi. Untuk menjalankan konfigurasi produksi murni
+# (tanpa mount kode), pakai:
+#
+#     docker compose -f docker-compose.yml up -d
+#
+# Kenapa berkas terpisah, bukan ditambahkan ke docker-compose.yml:
+# image `finews-app` sudah berisi kode yang di-COPY. Kalau kode di-mount di
+# compose utama, hasil di mesin dev dan di image bisa BERBEDA tanpa ada yang
+# sadar — persis bug yang terjadi saat perbaikan Market Overview dulu hanya
+# masuk lewat `docker cp` lalu hilang saat container dibuat ulang. Dengan
+# override terpisah, produksi tetap memakai kode dari image (terverifikasi),
+# sedangkan dev memakai kode dari disk.
+services:
+  app:
+    volumes:
+      # Kode dari host. Perubahan HTML/JS/CSS langsung terlihat cukup dengan
+      # refresh browser, karena StaticFiles membaca dari disk tiap request.
+      # Perubahan .py tetap butuh `docker compose restart app`.
+      - ./frontend:/app/frontend
+      - ./backend:/app/backend
+      # Skrip operasional (backfill berita, fetch_weights). Tanpa mount ini,
+      # `scripts/backfill_news.py` tidak ada di container sehingga backfill
+      # hanya bisa dijalankan dari host -- padahal kuota/scheduler hidup di
+      # dalam container.
+      - ./scripts:/app/scripts

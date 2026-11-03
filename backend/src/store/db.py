@@ -1312,6 +1312,22 @@ class Database:
                 SELECT i.* FROM impacts i
                 LEFT JOIN articles a ON a.article_id = i.article_id
                 WHERE i.asset_id = ?
+                  /* Satu baris per artikel, walau ada beberapa model_version.
+                     PK impacts adalah (article_id, asset_id, model_version),
+                     jadi artikel yang sama bisa punya baris `v1` (baseline
+                     TF-IDF) DAN `fomc-roberta-v1.0`. Tanpa penyaringan ini
+                     artikel yang sama tampil dua kali di daftar berita.
+                     Yang dipilih: created_at terbaru lebih dulu (skor
+                     terbaru menang), lalu model spesialis sebelum baseline
+                     `v1` bila waktunya sama. */
+                  AND i.rowid = (
+                      SELECT i2.rowid FROM impacts i2
+                      WHERE i2.article_id = i.article_id
+                        AND i2.asset_id = i.asset_id
+                      ORDER BY i2.created_at DESC,
+                               CASE WHEN i2.model_version = 'v1' THEN 1 ELSE 0 END ASC
+                      LIMIT 1
+                  )
                 ORDER BY a.published_at DESC, i.created_at DESC
                 LIMIT ?;
                 """,
@@ -1372,6 +1388,18 @@ class Database:
                 JOIN asset_master m
                     ON m.asset_id = i.asset_id
                 WHERE i.asset_id = ?
+                  /* Penyaringan yang SAMA dengan query_impacts. Tanpa ini,
+                     audit mengembalikan dua baris untuk artikel yang punya
+                     dua model_version sementara impacts hanya satu, sehingga
+                     daftar berita di GUI menjadi tidak sinkron. */
+                  AND i.rowid = (
+                      SELECT i2.rowid FROM impacts i2
+                      WHERE i2.article_id = i.article_id
+                        AND i2.asset_id = i.asset_id
+                      ORDER BY i2.created_at DESC,
+                               CASE WHEN i2.model_version = 'v1' THEN 1 ELSE 0 END ASC
+                      LIMIT 1
+                  )
                 ORDER BY a.published_at DESC, i.created_at DESC
                 LIMIT ?;
                 """,

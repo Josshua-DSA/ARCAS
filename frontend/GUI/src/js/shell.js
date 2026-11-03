@@ -8,10 +8,14 @@ window.ARCAS = window.ARCAS || {};
 
   /* Komponen target: peta tampilan dengan fallback generik. Tab tetap dibangun
      dari respons /api/universe, bukan dari konstanta lokal ini. */
+  /* `satuan` menentukan cara perubahan ditampilkan. Instrumen berbasis
+     suku bunga memakai basis poin (bps); aset lain persen dari harga.
+     Tanpa penanda ini, angka suku bunga ditampilkan sebagai % dari %,
+     yang salah secara ekonomi (lihat ticker di bawah). */
   var TARGET_INFO = {
-    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg" },
-    RATE_UST: { name: "Suku Bunga", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg" },
-    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg" }
+    XAU: { name: "Emas", ticker: "GC=F", venue: "CME", color: "#FFD33D", icon: "src/assets/gold.svg", satuan: "persen" },
+    RATE_UST: { name: "Suku Bunga", ticker: "^TNX", venue: "CBOE", color: "#58A6FF", icon: "src/assets/rate_ust.svg", satuan: "bps" },
+    SPX: { name: "S&P 500", ticker: "^GSPC", venue: "SNP", color: "#FF7517", icon: "src/assets/spx.svg", satuan: "persen" }
   };
   A.TARGET_INFO = TARGET_INFO;
   A.metaFor = function (assetId, row) {
@@ -142,12 +146,26 @@ window.ARCAS = window.ARCAS || {};
         var chg = prev ? (close - Number(prev.close)) / Number(prev.close) * 100 : null;
         var dir = chg === null ? "flat" : chg > 0 ? "up" : chg < 0 ? "down" : "flat";
         var arrow = dir === "up" ? "\u25B2" : dir === "down" ? "\u25BC" : "\u25CF";
-        var chgText = chg === null ? "n/a" : arrow + " " + (chg > 0 ? "+" : "") + chg.toFixed(2).replace(".", ",") + "%";
+        /* Suku bunga bukan harga, jadi perubahannya TIDAK boleh dinyatakan
+           dalam persen-dari-persen. "4,93 turun 1,20%" ambigu: 1,20% dari
+           4,93 = 0,059 pp, bukan 1,20 pp. Pembaca suku bunga memakai basis
+           poin (bps), jadi selisihnya ditampilkan apa adanya: 1 pp = 100 bps.
+           Aset lain tetap persen karena itu memang satuan harganya. */
+        var chgText;
+        if (chg === null) {
+          chgText = "n/a";
+        } else if (info.satuan === "bps") {
+          var bps = (close - Number(prev.close)) * 100;
+          chgText = arrow + " " + (bps > 0 ? "+" : "") +
+            (Math.round(bps * 10) / 10).toFixed(0).replace(".", ",") + " bps";
+        } else {
+          chgText = arrow + " " + (chg > 0 ? "+" : "") + chg.toFixed(2).replace(".", ",") + "%";
+        }
         return "<span class='t'><span class='t-name'>" + esc(info.name) + "</span>" +
           "<span class='t-val'>" + esc(fmtPrice(close)) + "</span>" +
           "<span class='t-chg " + dir + "'>" + esc(chgText) + "</span></span>";
       });
-      if (lastDate) parts.push("<span class='t t-date'>data per " + esc(lastDate) + "</span>");
+      if (lastDate) parts.push("<span class='t t-date'>data pasar per " + esc(lastDate) + "</span>");
       box.innerHTML = parts.join("");
     });
   };

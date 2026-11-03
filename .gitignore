@@ -18,6 +18,10 @@ model/*/weights/*/
 outputs/
 *.db
 *.db-journal
+# Backup DB dibuat sebelum backfill — jangan masuk repo (berisi data penuh).
+data/*.db.bak-*
+# State progres backfill: milik mesin yang menjalankannya, bukan artefak kode.
+data/backfill_state.json
 .venv/
 venv/
 .env
