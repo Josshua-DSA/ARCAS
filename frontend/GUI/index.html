@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ARCAS : Market Overview</title>
+<title>ARCAS : Ikhtisar Pasar</title>
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
@@ -21,7 +21,7 @@
 <body>
 
 <div id="splash" class="splash" role="status" aria-live="polite" hidden>
-  <div class="splash__title">ARCAS Sentiment Desk</div>
+  <div class="splash__title">ARCAS · Prototipe Riset</div>
   <div class="splash__log" id="splash-log"></div>
   <div class="splash__bar"><i></i></div>
   <div class="splash__pct">0%</div>
@@ -32,17 +32,17 @@
 <header class="brand">
   <div class="wrap brand-row">
     <div>
-      <p class="brand-name">ARCAS Sentiment Desk</p>
+      <p class="brand-name">ARCAS<span class="brand-sub">Riset sentimen pasar</span></p>
     </div>
   </div>
   <!-- Navigasi 4 halaman (Upgrade.md 3): tautan biasa, state dibawa URL.
        Hotkey 1-4 memindahkan halaman; target pakai tombol arah pada tab fokus. -->
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html" aria-current="page">Market Overview</a>
-      <a href="evidence.html" data-page="evidence.html">News &amp; Evidence</a>
-      <a href="research.html" data-page="research.html">Research Lab</a>
-      <a href="simulations.html" data-page="simulations.html">Simulations</a>
+      <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
+      <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+      <a href="research.html" data-page="research.html">Lab Riset</a>
+      <a href="simulations.html" data-page="simulations.html">Simulasi</a>
     </div>
   </nav>
 </header>
@@ -83,7 +83,8 @@
         <div id="chart" role="img" aria-label="Grafik harga dan sentimen harian"></div>
         <div class="legend" aria-hidden="true">
           <span><i id="lgPrice" style="background:#FFD33D"></i>Harga tutup</span>
-          <span><i style="background:#F6F4F4"></i>Skor sentimen</span>
+          <span><i style="background:#3FB950"></i>Sentimen positif</span>
+          <span><i style="background:#F85149"></i>Sentimen negatif</span>
           <span>Hari tanpa berita tidak diberi nilai</span>
         </div>
         <div class="chart-controls" role="group" aria-label="Rentang waktu">
@@ -100,14 +101,14 @@
       <div class="panel-body">
         <div class="state" id="allocState" hidden></div>
         <div id="allocBars"></div>
-        <a class="btn small" href="simulations.html" data-page="simulations.html">Ganti profil dan lihat persona di Simulations</a>
+        <a class="btn small" href="simulations.html" data-page="simulations.html">Ganti profil dan lihat persona di halaman Simulasi</a>
       </div>
     </section>
   </div>
 
   <section class="news-section" id="berita" aria-labelledby="newsTitle">
     <div class="news-head">
-      <h2 id="newsTitle">News</h2>
+      <h2 id="newsTitle">Berita pendukung</h2>
       <span class="hint" id="newsKick">memuat...</span>
       <span class="hint" id="preloadStamp"></span>
     </div>
@@ -119,7 +120,7 @@
 
 <footer>
   <div class="wrap">
-    <span>ARCAS Sentiment Desk : simulasi sudut pandang. Bukan nasihat investasi.</span>
+    <span>ARCAS · prototipe riset. Angka diturunkan dari data berita dan harga terbatas; bukan nasihat investasi.</span>
     <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
   </div>
 </footer>

@@ -49,8 +49,17 @@
       series: [
         { name: "Tutup", type: "line", data: closes, yAxisIndex: 0, showSymbol: false, connectNulls: false,
           lineStyle: { width: 2.5, color: info.color }, itemStyle: { color: info.color } },
+        /* Bar sentimen diwarnai menurut TANDA skornya, bukan satu warna
+           untuk semua. Sebelumnya seluruh bar putih, sehingga hari sentimen
+           positif dan negatif tidak bisa dibedakan sekilas — padahal itu
+           inti dari grafik ini. Hijau/merah dipilih yang tetap terbaca di
+           latar gelap; opasitas dinaikkan agar tidak tenggelam. */
         { name: "Skor", type: "bar", data: scores, yAxisIndex: 1, connectNulls: false,
-          itemStyle: { color: "#F6F4F4", opacity: 0.85 }, barMaxWidth: 5 }
+          itemStyle: { color: function (p) {
+            var v = p.value;
+            if (v == null) return "transparent";
+            return v > 0 ? "#3FB950" : v < 0 ? "#F85149" : "#BDB7B7";
+          }, opacity: 0.9 }, barMaxWidth: 5 }
       ]
     }, true);
   }

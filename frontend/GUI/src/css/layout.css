@@ -40,8 +40,13 @@ body{margin:0}
    Oranye sengaja disisakan untuk aksen kecil: tab aktif, tautan, penanda.
    Kontras putih di #3E3939 = 11,36:1. */
 header.brand{background:var(--surface)}
-.brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:26px 20px 22px;flex-wrap:wrap}
-.brand-name{font-family:var(--font-serif);font-weight:400;font-size:52px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
+.brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:14px 20px 12px;flex-wrap:wrap}
+.brand-name{font-family:var(--font-serif);font-weight:400;font-size:34px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
+/* Sub-label pada nama merek: menjelaskan produk apa ini tanpa harus
+   membaca hero. Ukurannya kecil dan redup supaya tidak bersaing dengan
+   nama, tapi tetap terbaca sebagai keterangan, bukan hiasan. */
+.brand-sub{display:block;font-family:var(--font-mono);font-size:10px;font-weight:400;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:4px}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
@@ -88,11 +93,17 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
 
 main{display:block}
-.hero{padding:40px 0 10px}
-.hero h1{font-weight:300;font-size:clamp(30px,3.9vw,52px);line-height:1.08;letter-spacing:-0.012em;
-  margin:0 0 16px;max-width:none;text-wrap:balance}
-.hero p.lead{font-family:var(--font-serif);font-size:18px;line-height:1.7;color:var(--text-secondary);
-  max-width:none;margin:0;text-align:justify;text-justify:inter-word;hyphens:auto}
+/* Hero dikecilkan supaya grafik dan berita masuk ke layar pertama.
+   Dulu h1 sampai 52px + lead 18px dengan padding 40px, sehingga di laptop
+   768px tinggi yang terlihat hanya judul dan satu paragraf -- grafik dan
+   berita (isi sebenarnya) terdorong ke bawah lipatan. Sekarang h1 turun ke
+   34px dan lead ke 15px; posisi hero tetap di atas sebagai pengantar, bukan
+   sebagai pemandangan utama. */
+.hero{padding:14px 0 2px}
+.hero h1{font-weight:300;font-size:clamp(19px,1.9vw,26px);line-height:1.16;letter-spacing:-0.01em;
+  margin:0 0 7px;max-width:64ch;text-wrap:balance}
+.hero p.lead{font-family:var(--font-serif);font-size:14px;line-height:1.55;color:var(--text-secondary);
+  max-width:80ch;margin:0;text-align:left;hyphens:none}
 .hero-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
 
 /* Grid asimetris: panel primer lebar, pendamping sempit (fokus baca deret dulu) */
@@ -120,8 +131,12 @@ main{display:block}
 .panel-head .hint{font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)}
 .panel.light .hint{color:var(--text-muted)}
 .panel-body{padding:16px 18px}
-#chart{width:100%;height:380px}
-.chart-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+/* Grafik dipendekkan dari 380px ke 300px. Pada layar 900px tinggi, tinggi
+   lama mendorong berita sampai 1048px -- jauh di bawah lipatan, padahal
+   berita adalah bukti yang membuat angka di grafik bisa dipercaya. Dengan
+   300px, grafik + kontrol + legenda + judul berita masuk satu layar. */
+#chart{width:100%;height:260px}
+.chart-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .range-btn{font-family:var(--font-mono);font-size:12px;background:transparent;color:var(--on-dark-primary);
   border:1px solid var(--border-dark-strong);border-radius:8px;padding:8px 14px;min-height:44px;cursor:pointer}
 .range-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#2C2727;font-weight:500}
