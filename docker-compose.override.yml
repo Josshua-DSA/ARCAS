@@ -19,3 +19,8 @@ services:
       # Perubahan .py tetap butuh `docker compose restart app`.
       - ./frontend:/app/frontend
       - ./backend:/app/backend
+      # Skrip operasional (backfill berita, fetch_weights). Tanpa mount ini,
+      # `scripts/backfill_news.py` tidak ada di container sehingga backfill
+      # hanya bisa dijalankan dari host -- padahal kuota/scheduler hidup di
+      # dalam container.
+      - ./scripts:/app/scripts
