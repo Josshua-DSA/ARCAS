@@ -69,14 +69,42 @@
      yang selalu melabeli data palsu. Berita sekarang hanya dari API -- kalau
      kosong, tampilkan pesan apa adanya. */
 
+  /* Label sumber untuk PEMBACA, bukan key internal.
+     `source` di DB berbentuk "eulerpool:CNBC" — gabungan nama agregator dan
+     penerbit asli, berguna untuk penelusuran tapi tidak untuk dibaca.
+     Yang ditampilkan hanya penerbitnya ("CNBC"). Bila tidak ada pemisah,
+     key itu sendiri dipakai. Underscore diganti spasi dan nama kanal yang
+     sudah dikenal diterjemahkan, supaya "rss:fed_press" tidak muncul
+     sebagai "fed_press" di layar. */
+  var SUMBER_TERKENAL = {
+    fed_press: "Federal Reserve",
+    investing_commodities_news: "Investing.com",
+    investing_commodities_analysis: "Investing.com (analisis)"
+  };
+  function sourceLabel(s) {
+    if (!s) return "";
+    var t = String(s).trim();
+    var i = t.indexOf(":");
+    var kunci = i >= 0 ? t.slice(i + 1).trim() : t;
+    if (SUMBER_TERKENAL[kunci]) return SUMBER_TERKENAL[kunci];
+    return (kunci || t).replace(/_/g, " ");
+  }
+
   function newsItem(t) {
     var d = String(t.direction || "neutral").toLowerCase();
     var cls = d === "bullish" ? "buy" : d === "bearish" ? "sell" : "hold";
     var arrow = d === "bullish" ? "▲" : d === "bearish" ? "▼" : "●";
+    /* Arah HARUS menyebut asetnya. "Bullish" tanpa objek ambigu: bullish
+       untuk emas, untuk dolar, atau untuk surat utang? Saat tab Emas aktif
+       dan harga turun, tag hijau tanpa konteks terbaca seperti kontradiksi.
+       `asset_id` dari API adalah aset yang dipengaruhi artikel ini, jadi
+       itulah yang ditulis. */
+    var aset = t.asset_id ? (A.TARGET_INFO[t.asset_id] || {}).name || t.asset_id : null;
     var label = d === "bullish" ? "Bullish" : d === "bearish" ? "Bearish" : "Netral";
+    if (aset) label += " " + aset;
     var title = t.title || t.article_id;
     var meta = [];
-    if (t.source) meta.push("<span>" + esc(t.source) + "</span>");
+    if (t.source) meta.push("<span>" + esc(sourceLabel(t.source)) + "</span>");
     var when = A.fmtDate(t.published_at);
     if (when) meta.push("<span>" + esc(when) + "</span>");
     /* Judul menjadi tautan ke sumber asli bila URL tersedia. rel noopener
@@ -167,7 +195,13 @@
   var inFlight = null;
 
   /* Cap waktu preload terakhir: menjawab "data ini setua apa?" tanpa
-     mengarang. Sumbernya /api/preload/status (tabel ingest_runs). */
+     mengarang. Sumbernya /api/preload/status (tabel ingest_runs).
+
+     Dulu labelnya "preload terakhir <tanggal>" dan muncul berdampingan
+     dengan "data per <tanggal>" di ticker. Dua tanggal berbeda tanpa
+     keterangan membuat pembaca tidak tahu mana yang jadi acuan. Sekarang
+     keduanya dibedakan tegas: "data pasar" = tanggal harga terakhir,
+     "berita terakhir masuk" = kapan ingest terakhir selesai. */
   function renderPreloadStamp(info) {
     var el = A.$("preloadStamp");
     if (!el) return;
@@ -176,8 +210,49 @@
     var when = A.fmtDate(last.finished_at);
     var n = Number(last.raw_new) || 0;
     el.textContent = when
-      ? "preload terakhir " + when + " · " + n + " berita baru"
+      ? "berita terakhir masuk " + when + " · " + n + " berita baru"
       : "";
+  }
+
+  /* Hero berbasis DATA, bukan filosofi produk.
+     Kalimat seperti "arah sentimen tiga pasar makro..." bisa ditempel di
+     dashboard apa pun dan tidak memberi tahu apa pun tentang hari ini.
+     Yang ditampilkan di sini: perubahan harga sebenarnya pada rentang
+     aktif, dan berapa hari terakhir sentimennya negatif. Bila datanya
+     tidak cukup, dikatakan apa adanya -- tidak dikarang. */
+  function renderHeroLead(target, payload) {
+    var el = A.$("heroLead");
+    if (!el) return;
+    var info = A.metaFor(target);
+    var rows = (payload && payload.prices) || [];
+    var sent = (payload && payload.sentiments) || [];
+    if (!rows.length) { el.textContent = "Data harga untuk rentang ini belum tersedia."; return; }
+
+    var first = Number(rows[0].close);
+    var last = Number(rows[rows.length - 1].close);
+    var bagian = [];
+    if (isFinite(first) && isFinite(last) && first !== 0) {
+      var pct = (last - first) / first * 100;
+      var arah = pct < 0 ? "turun" : pct > 0 ? "naik" : "datar";
+      bagian.push(info.name + " " + arah + " " +
+        Math.abs(pct).toFixed(1).replace(".", ",") + "% dalam " +
+        A.state.days + " hari");
+    }
+
+    /* Hitung hari berita terakhir yang skornya negatif/positif. Hanya
+       dihitung dari hari yang PUNYA berita; hari kosong tidak dianggap
+       netral. */
+    var berisi = sent.filter(function (s) { return s && s.score_mean != null; });
+    var akhir = berisi.slice(-8);
+    if (akhir.length) {
+      var neg = akhir.filter(function (s) { return Number(s.score_mean) < 0; }).length;
+      bagian.push("sentimen berita negatif " + neg + " dari " + akhir.length + " hari terakhir");
+    }
+
+    var seri = rows.length;
+    el.textContent = bagian.length
+      ? bagian.join("; ") + "."
+      : "Ringkasan belum bisa dihitung: data harga " + seri + " baris.";
   }
 
   function loadPreloadStamp(signal, live) {
@@ -212,6 +287,7 @@
       if (!live()) return;
       A.state.apiOk = true; A.state.apiReachable = true; A.setStatus("ok", "terhubung ke API");
       renderChart(payload);
+      renderHeroLead(t, payload);
     }).catch(function (err) {
       if (!live() || (err && err.name === "AbortError")) return;
       A.state.apiOk = false; A.setStatus("err", "API tidak terjangkau : ilustrasi");
