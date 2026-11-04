@@ -13,8 +13,6 @@ sehat. Karena itu tes di sini mengunci *penjelasan*, bukan hanya nilai:
 
 from __future__ import annotations
 
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
