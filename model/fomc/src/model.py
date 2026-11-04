@@ -188,7 +188,6 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
             bersih,
         )
 
-        import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         token = self._hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")

@@ -22,12 +22,12 @@ Prinsip yang dipegang:
 from __future__ import annotations
 
 import logging
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
-import uuid
 
 from backend.src.aggregate.daily import DailyAggregator
 from backend.src.normalize.cleaner import ArticleCleaner
