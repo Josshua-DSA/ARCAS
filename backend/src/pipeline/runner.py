@@ -639,8 +639,7 @@ class Pipeline:
                 + StatEngine.compute_granger(frame, asset_id, run_id=run_id)
                 + StatEngine.compute_car_event_study(frame, asset_id, run_id=run_id)
             )
-            for res in hasil:
-                self.db.save_stat(res)
+            self.db.save_stats(asset_id, hasil)
             total += len(hasil)
         stats.baris_statistik = total
         return stats

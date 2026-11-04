@@ -1424,35 +1424,48 @@ class Database:
                 r["probs"] = probs.get(r["article_id"], [])
             return out
 
-    def save_stat(self, stat: StatResult) -> None:
-        """Stores econometric test result."""
+    def save_stats(self, asset_id: str, results: list[StatResult]) -> int:
+        """Ganti seluruh hasil statistik satu aset dengan `results`.
+
+        `save_stat` memakai INSERT biasa, sedangkan pipeline dijalankan ulang
+        setiap kali server hidup (catch-up startup). Tanpa penggantian ini,
+        tiap restart menambah satu batch duplikat dan panel Research Lab
+        menampilkan uji yang sama berulang kali. Menghapus per aset (bukan
+        seluruh tabel) membuat aset yang gagal dihitung tetap punya hasil
+        terakhirnya, bukan ikut terhapus.
+
+        Mengembalikan jumlah baris yang ditulis.
+        """
         with self.get_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO stat_results (
-                    run_id, asset_id, test, market_metric, lag, estimate,
-                    ci_low, ci_high, p_value, p_adjusted, n_obs,
-                    period_start, period_end, params_json, code_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                """,
-                (
-                    stat.run_id,
-                    stat.asset_id,
-                    stat.test,
-                    stat.market_metric,
-                    stat.lag,
-                    stat.estimate,
-                    stat.ci_low,
-                    stat.ci_high,
-                    stat.p_value,
-                    stat.p_adjusted,
-                    stat.n_obs,
-                    stat.period_start.isoformat(),
-                    stat.period_end.isoformat(),
-                    stat.params_json,
-                    stat.code_version,
-                ),
-            )
+            conn.execute("DELETE FROM stat_results WHERE asset_id = ?;", (asset_id,))
+            for stat in results:
+                conn.execute(
+                    """
+                    INSERT INTO stat_results (
+                        run_id, asset_id, test, market_metric, lag, estimate,
+                        ci_low, ci_high, p_value, p_adjusted, n_obs,
+                        period_start, period_end, params_json, code_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        stat.run_id,
+                        stat.asset_id,
+                        stat.test,
+                        stat.market_metric,
+                        stat.lag,
+                        stat.estimate,
+                        stat.ci_low,
+                        stat.ci_high,
+                        stat.p_value,
+                        stat.p_adjusted,
+                        stat.n_obs,
+                        stat.period_start.isoformat(),
+                        stat.period_end.isoformat(),
+                        stat.params_json,
+                        stat.code_version,
+                    ),
+                )
+        return len(results)
 
     def query_stats(self, asset_id: str) -> list[StatResult]:
         """Queries recent econometric results for asset."""
