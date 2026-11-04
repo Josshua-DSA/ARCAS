@@ -18,7 +18,6 @@ from __future__ import annotations
 import pytest
 
 from model.fomc.src.model import (
-    FALLBACK_ROBERTA_CHECKPOINT,
     FOMCRoBERTaSentiment,
     _bersihkan_cache_tidak_lengkap,
 )
@@ -51,9 +50,10 @@ def test_pembersih_aman_saat_repo_tidak_ada(tmp_path, monkeypatch):
 
 def test_meta_tensor_dipulihkan_dan_model_siap(monkeypatch):
     """Sisa cache dibersihkan lalu muat ulang; hasilnya model terpakai."""
-    import model.fomc.src.model as mod
     from transformers import AutoModelForSequenceClassification as AM
     from transformers import AutoTokenizer as AT
+
+    import model.fomc.src.model as mod
 
     class ModelPalsu:
         def to(self, device):
@@ -87,8 +87,9 @@ def test_meta_tensor_dipulihkan_dan_model_siap(monkeypatch):
 
 def test_tanpa_sisa_cache_tidak_mengulang(monkeypatch):
     """Bila tidak ada yang bisa dibersihkan, jangan buang waktu mengulang."""
-    import model.fomc.src.model as mod
     from transformers import AutoModelForSequenceClassification as AM
+
+    import model.fomc.src.model as mod
 
     dipanggil: list[int] = []
 
@@ -108,9 +109,10 @@ def test_tanpa_sisa_cache_tidak_mengulang(monkeypatch):
 
 def test_pemulihan_tidak_berulang_tanpa_henti(monkeypatch):
     """Percobaan ulang maksimal sekali per checkpoint, bukan tak terbatas."""
-    import model.fomc.src.model as mod
     from transformers import AutoModelForSequenceClassification as AM
     from transformers import AutoTokenizer as AT
+
+    import model.fomc.src.model as mod
 
     dipanggil: list[int] = []
 
@@ -132,8 +134,9 @@ def test_pemulihan_tidak_berulang_tanpa_henti(monkeypatch):
 
 def test_galat_lain_tidak_memicu_pemulihan(monkeypatch):
     """Galat gated (401) bukan urusan cache; jangan hapus berkas apa pun."""
-    import model.fomc.src.model as mod
     from transformers import AutoModelForSequenceClassification as AM
+
+    import model.fomc.src.model as mod
 
     dibersihkan: list[str] = []
 
