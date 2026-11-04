@@ -170,7 +170,7 @@ class FOMCRoBERTaSentiment(BaseSentimentModel):
         """
         if "meta tensor" not in str(exc).lower():
             return False
-        sudah = getattr(self, "_dipulihkan", set())
+        sudah: set[str] = getattr(self, "_dipulihkan", set())
         if self._checkpoint in sudah:
             # Sudah dicoba untuk checkpoint ini: jangan berulang tanpa henti.
             return False
