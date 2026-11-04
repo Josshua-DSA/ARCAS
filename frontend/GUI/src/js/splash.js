@@ -22,6 +22,11 @@
   var t0 = performance.now(), minDone = !cfg.waitForApp, ready = false, finished = false;
   var raf = 0, timers = [];
   var later = function (f, ms) { timers.push(setTimeout(f, ms)); };
+  /* Antrean baris log. Wajib dideklarasikan di sini: `status()` sudah dipanggil
+     sebelum baris tempat variabel ini dulu ditulis, dan `var` baru bernilai
+     setelah barisnya dieksekusi. */
+  var antre = [], timerAntre = 0, terakhir = 0;
+  var JEDA_BARIS = 180;
 
   if (mode === "none" || (!el && mode !== "skeleton")) { if (el) el.remove(); return expose(); }
 
@@ -68,9 +73,27 @@
 
   /* Log hanya berisi tahapan yang benar-benar terjadi; tiap baris masuk
      beranimasi dan baris sebelumnya ditandai OK tepat saat tahap berikutnya
-     dimulai. Tanpa baris dramatis buatan. */
+     dimulai. Tanpa baris dramatis buatan.
+     Di localhost keempat tahap selesai dalam <100 ms, sehingga semua baris
+     muncul beruntun dan tidak ada yang terbaca. Jeda minimum 180 ms per baris
+     memberi irama baca; tidak ada baris yang dikarang, hanya waktunya diatur. */
   function status(text) {
     if (!log) return;
+    antre.push(text);
+    jadwalkanBaris();
+  }
+
+  function jadwalkanBaris() {
+    if (timerAntre || !antre.length) return;
+    timerAntre = setTimeout(function () {
+      timerAntre = 0;
+      tulisBaris(antre.shift());
+      terakhir = performance.now();
+      jadwalkanBaris();
+    }, Math.max(0, JEDA_BARIS - (performance.now() - terakhir)));
+  }
+
+  function tulisBaris(text) {
     var prev = log.querySelector(".log-line.is-active");
     if (prev) {
       prev.classList.remove("is-active");
@@ -93,11 +116,18 @@
     row.appendChild(t);
     row.appendChild(ts);
     log.appendChild(row);
-    log.scrollTop = log.scrollHeight;
   }
 
   function markAllDone() {
     if (!log) return;
+    /* Sisa antrean tetap ditulis: tahap tersebut benar-benar terjadi, hanya
+       waktunya belum tiba. Tanpa ini baris terakhir bisa hilang saat splash
+       ditutup lebih cepat dari irama antrean. */
+    if (timerAntre) {
+      clearTimeout(timerAntre);
+      timerAntre = 0;
+    }
+    while (antre.length) tulisBaris(antre.shift());
     log.querySelectorAll(".log-line").forEach(function (line) {
       line.classList.remove("is-active");
       line.classList.add("is-ok");
