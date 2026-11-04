@@ -324,8 +324,7 @@ def cmd_stats(args: argparse.Namespace) -> int:
         hasil = ols + granger + car
 
         if not args.dry_run:
-            for res in hasil:
-                db.save_stat(res)
+            db.save_stats(asset_id, hasil)
 
         total += len(hasil)
         if hasil:

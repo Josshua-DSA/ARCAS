@@ -65,8 +65,8 @@
       (it.rationale ? "<p style='font-size:14px;color:var(--text-secondary);margin:6px 0'>" + esc(it.rationale) + "</p>" : "") +
       (quote ? "<blockquote class='quote'>" + esc(quote) + "</blockquote>" : "") +
       timeAuditLine(it) + evidenceDrawer(it) +
-      "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'>" +
-      "<button class='btn small primary' data-persona='" + esc(it.article_id) + "'>Lihat Persona POV</button></div></article>";
+      "<div class='card-actions'>" +
+      "<button class='btn small' data-persona='" + esc(it.article_id) + "'>Lihat Persona POV</button></div></article>";
   }
 
   var impacts = [];

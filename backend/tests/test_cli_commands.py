@@ -78,8 +78,7 @@ def test_parser_accepts_stats_flags():
 
 def test_report_html_actually_contains_statistics(db, tmp_path):
     """Regresi: laporan pernah mengabaikan argumen `stats` sepenuhnya."""
-    db.save_stat(_stat())
-    db.save_stat(_stat(test="granger", est=7.42, p=0.031, lag=2))
+    db.save_stats("SPX", [_stat(), _stat(test="granger", est=7.42, p=0.031, lag=2)])
 
     out = ReportExporter(tmp_path).export_html_report(
         universe=[{"asset_id": "SPX", "name": "S&P 500", "track": "market",
