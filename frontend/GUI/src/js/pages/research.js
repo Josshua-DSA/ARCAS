@@ -11,6 +11,60 @@
 
   function $(id) { return document.getElementById(id); }
 
+  /* ---------------- perapian daftar uji ----------------
+
+     `stat_results` menyimpan baris kembar persis: menjalankan ulang `cli
+     stats` menambah baris baru tanpa membuang yang lama. Untuk XAU itu berarti
+     28 baris padahal hanya 24 kombinasi (uji, lag, estimate, p_adj, n) yang
+     berbeda -- tabel menampilkan uji yang sama dua kali dan pembaca mengira
+     rangkaiannya lebih panjang dari kenyataan.
+
+     Kunci dedup memakai nilai yang benar-benar tampil di baris, bukan run_id:
+     dua baris identik dari run berbeda adalah satu bukti yang sama.
+     `JSON.stringify` memisahkan null dari 0, jadi p_adj null tidak tertukar
+     dengan p_adj 0. */
+  function dedupUji(rows) {
+    var terlihat = {}, hasil = [];
+    (rows || []).forEach(function (r) {
+      var kunci = JSON.stringify([r.test, r.market_metric, r.lag,
+        r.estimate, r.p_adjusted, r.n_obs, r.ci_low, r.ci_high]);
+      if (terlihat[kunci]) return;
+      terlihat[kunci] = true;
+      hasil.push(r);
+    });
+    return hasil;
+  }
+
+  /* Urut berdasarkan kekuatan bukti: p_adj terkecil dulu, yang tidak punya
+     p_adj paling bawah. Di 24 baris mono 10px, dua baris signifikan tenggelam
+     kalau urutannya mengikuti jenis uji. Pengurutan stabil supaya dua baris
+     setara tidak bertukar posisi tiap kali target diganti. */
+  function urutUji(rows) {
+    return (rows || []).map(function (r, i) { return { r: r, i: i }; })
+      .sort(function (a, b) {
+        var pa = a.r.p_adjusted == null ? Infinity : Number(a.r.p_adjusted);
+        var pb = b.r.p_adjusted == null ? Infinity : Number(b.r.p_adjusted);
+        if (pa !== pb) return pa - pb;
+        return a.i - b.i;
+      })
+      .map(function (x) { return x.r; });
+  }
+
+  /* Rentang n_obs untuk kalimat pengingat sampel kecil. Baris tanpa n_obs
+     dilewati, bukan dihitung nol: nol akan menakut-nakuti tanpa alasan. */
+  function minN(rows) {
+    var v = rows.map(function (r) { return r.n_obs; })
+      .filter(function (n) { return n != null && isFinite(Number(n)); })
+      .map(Number);
+    return v.length ? Math.min.apply(null, v) : "?";
+  }
+  function maxN(rows) {
+    var v = rows.map(function (r) { return r.n_obs; })
+      .filter(function (n) { return n != null && isFinite(Number(n)); })
+      .map(Number);
+    return v.length ? Math.max.apply(null, v) : "?";
+  }
+
   /* Tanggal berita bisa jatuh di hari bursa tutup. Marker digeser ke tanggal
      bursa terdekat yang tersedia, dan UI menyebut pergeserannya supaya tidak
      terbaca sebagai presisi palsu. */
@@ -181,10 +235,19 @@
 
   /* ---------------- uji statistik ---------------- */
   var TESTS = ["spearman", "ols", "granger", "event_study"];
+  /* Ambang signifikansi. p_adj 0.049 dan 0.051 tampil sama sebagai 0.05 di
+     UI, jadi statusnya dihitung dari nilai mentah, bukan dari angka bulat. */
+  var SIG_AMBANG = 0.05;
+
   function renderTests() {
     var box = $("testList");
     if (!box) return;
-    var rows = S.tests.filter(function (r) { return TESTS.indexOf(r.test) !== -1; });
+    /* Urutan: dedup dulu (baris kembar dari run berulang), baru urut menurut
+       kekuatan bukti. Membalik urutannya membuat dedup memilih wakil yang
+       salah saat nilai yang sama muncul dari run berbeda. */
+    var rows = urutUji(dedupUji(S.tests.filter(function (r) {
+      return TESTS.indexOf(r.test) !== -1;
+    })));
     if (!rows.length) {
       box.innerHTML = "";
       A.showState("testState", "Belum ada hasil uji tersimpan. Jalankan `cli stats` dulu agar panel terisi.");
@@ -196,22 +259,15 @@
     var missing = TESTS.filter(function (t) {
       return !rows.some(function (r) { return r.test === t; });
     });
-    /* Urut: CAR, OLS, Granger, Spearman — dari uji yang paling ringkas ke
-       yang paling banyak barisnya, supaya lag tidak menumpuk di atas. */
-    var URUT = ["event_study", "ols", "granger", "spearman", "pearson"];
-    var sorted = rows.slice().sort(function (a, b) {
-      var d = URUT.indexOf(a.test) - URUT.indexOf(b.test);
-      if (d !== 0) return d;
-      return (a.lag == null ? -1 : a.lag) - (b.lag == null ? -1 : b.lag);
-    });
-
+    /* Baris no. 1 adalah bukti terkuat; urutan mengikuti p_adj, bukan jenis
+       uji (lihat urutUji). */
     box.innerHTML =
       "<div class='rl-test rl-test--head' aria-hidden='true'>" +
         "<span>uji</span><span>lag</span><span class='rl-test-num'>est</span>" +
         "<span>95% CI</span><span class='rl-test-num'>p_adj</span>" +
         "<span class='rl-test-num'>n</span><span></span></div>" +
-      sorted.map(function (r) {
-        var sig = r.p_adjusted != null && Number(r.p_adjusted) < 0.05;
+      rows.map(function (r) {
+        var sig = r.p_adjusted != null && Number(r.p_adjusted) < SIG_AMBANG;
         /* Granger tidak punya CI: tulis "—", bukan "tidak tersedia" per baris,
            supaya daftar 11 uji tetap terbaca. */
         var ci = (r.ci_low != null && r.ci_high != null)
@@ -233,7 +289,12 @@
         ? "<p class='rl-sel-note' style='color:var(--on-dark-muted)'>Belum dihitung untuk target ini: " +
           esc(missing.map(function (t) { return A.testLabel(t); }).join(", ")) +
           ". Tidak ada angkanya di sini karena memang belum ada.</p>"
-        : "");
+        : "") +
+      /* n_obs di sini 24–49 hari berpasangan. Tanpa kalimat ini, p_adj kecil
+         terbaca sebagai kepastian padahal sampelnya sebulan-dua bulan. */
+      "<p class='rl-sel-note rl-n-mini'>Sampel tiap uji " + esc(minN(rows)) + "–" +
+        esc(maxN(rows)) + " hari berpasangan. p_adj kecil pada sampel sekecil ini " +
+        "berarti asosiasi lemah yang belum stabil, bukan kepastian.</p>";
   }
 
   /* ---------------- muat ----------------
@@ -295,6 +356,13 @@
      roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
      Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
   var picker = $("newsPicker");
+  if (!picker) {
+    /* Tanpa DOM (diuji lewat node) tidak ada kontrol untuk didaftari. */
+    A.dedupUji = dedupUji;
+    A.urutUji = urutUji;
+    A.renderPage = loadData;
+    return;
+  }
   var drag = { on: false, x: 0, left: 0, moved: false, endedAt: 0 };
 
   picker.addEventListener("wheel", function (e) {
@@ -345,6 +413,8 @@
     drawPriceChart();
   });
 
+  A.dedupUji = dedupUji;
+  A.urutUji = urutUji;
   A.renderPage = loadData;
   A.boot();
 })(window.ARCAS);
