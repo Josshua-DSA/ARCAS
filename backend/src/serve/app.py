@@ -111,6 +111,19 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
             )
             from backend.src.serve.news_preload import make_job
 
+            # Uvicorn hanya menyiapkan logger `uvicorn.*`; root logger dibiarkan
+            # tanpa handler dan berlevel WARNING. Akibatnya INFO dari
+            # scheduler/preload tidak pernah tercetak, sehingga "scheduler mati"
+            # dan "scheduler jalan tapi bisu" terlihat sama dari `docker logs`.
+            # Handler dipasang SEBELUM `start()`, kalau tidak pesan "Scheduler
+            # preload aktif" ikut hilang dan hanya tersisa log slot berikutnya.
+            _arcas_log = logging.getLogger("backend.src")
+            if not _arcas_log.handlers:
+                _h = logging.StreamHandler()
+                _h.setFormatter(logging.Formatter("%(levelname)s:     %(name)s - %(message)s"))
+                _arcas_log.addHandler(_h)
+            _arcas_log.setLevel(logging.INFO)
+
             sched = IngestScheduler(
                 make_job(db_path=db_path),
                 slot_done=Database(db_path=db_path).has_run_for_slot,
