@@ -50,14 +50,14 @@
     "</div>";
   }
 
-  /* Kartu kiri: harga aset 90 hari terakhir. Tanpa legenda -- hanya satu
+  /* Kartu kiri: harga aset 180 hari terakhir. Tanpa legenda -- hanya satu
      deret, legenda tidak menambah informasi apa pun. Bukan lagi tabel
      OLS/Granger/CAR: angka itu sudah ada di Lab Riset, dan di sini yang
      dibutuhkan pembaca adalah bentuk pergerakan harganya. */
   function kartuBacktest(id, j) {
     return "<section class='s-card s-card-backtest' data-target='" + esc(j.target) + "'>" +
       "<header class='s-card-head'>" +
-        "<span class='s-card-kicker'>Backtesting &middot; 90 hari</span>" +
+        "<span class='s-card-kicker'>Backtesting &middot; 180 hari</span>" +
         "<h3>" + esc(A.metaFor(j.target).name) + " &middot; " + esc(j.target) + "</h3>" +
       "</header>" +
       "<div class='s-card-body' id='" + id + "-grafik'>" +
@@ -122,7 +122,7 @@
       barisBukti(d) +
       (d.catatan ? "<p class='s-card-note'>" + esc(d.catatan) + "</p>" : "") +
       "<p class='s-card-note s-src'>Keputusan ini agregasi lima persona dan " +
-        "hit-rate historis 90 hari, bukan rekomendasi investasi.</p>";
+        "hit-rate historis 180 hari, bukan rekomendasi investasi.</p>";
   }
 
   /* Bukti historis selalu ditampilkan, termasuk saat n kecil: angka yang
@@ -213,7 +213,7 @@
   function muatSeri(target, selesai) {
     if (statCache[target] === "gagal") { selesai("gagal"); return; }
     if (statCache[target]) { selesai(statCache[target]); return; }
-    var mulai = new Date(Date.now() - 89 * 86400000);
+    var mulai = new Date(Date.now() - 179 * 86400000);
     A.api("/api/series/" + encodeURIComponent(target) +
           "?start_date=" + A.localISO(mulai)).then(function (d) {
       statCache[target] = { prices: (d && d.prices) || [], sentiments: (d && d.sentiments) || [] };
