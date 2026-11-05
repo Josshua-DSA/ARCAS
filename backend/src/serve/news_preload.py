@@ -29,6 +29,11 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "model/common/baseline_tfidf.joblib"
 
+# Seberapa jauh ke belakang harga ditarik ulang. Sepuluh hari menutup akhir
+# pekan panjang dan libur bursa; `save_price` memakai INSERT OR REPLACE
+# sehingga mengulang rentang yang sama tidak menggandakan baris.
+PRICE_LOOKBACK_DAYS = 10
+
 
 def _collect_via_eulerpool(db_path: Path) -> tuple[int, str]:
     """Tarik berita eulerpool dan simpan ke raw_articles.
@@ -69,6 +74,45 @@ def _collect_via_eulerpool(db_path: Path) -> tuple[int, str]:
             rows.append((item.to_raw_article(fetched_at), item.payload or None))
     inserted = db.save_raw_articles(rows)
     return inserted, f"eulerpool: {jumlah} item, {inserted} baru"
+
+
+def _refresh_prices(db_path: Path, days: int = PRICE_LOOKBACK_DAYS) -> tuple[int, str]:
+    """Tarik harga harian terbaru dan simpan ke tabel `prices`.
+
+    Kenapa di sini: `Pipeline.run()` hanya menjalankan
+    clean -> score -> aggregate -> compute_stats, **tanpa** mengambil harga.
+    Tanpa langkah ini `daily_sentiment` bergerak sampai hari ini sementara
+    `prices` berhenti di hari bursa terakhir yang pernah ditarik manual,
+    sehingga `/api/series` mengembalikan dua ujung tanggal yang berbeda dan
+    grafik tampak "tidak sampai hari ini".
+
+    Kegagalan Yahoo tidak boleh menggagalkan preload berita: harga adalah
+    pelengkap, berita adalah inti job. Pemanggil mencatat pesannya saja.
+    """
+    from datetime import date, timedelta
+
+    from backend.src.collect.yfinance_collector import PriceCollector, PriceFetchError
+    from backend.src.store.db import Database
+
+    end = date.today()
+    start = end - timedelta(days=days)
+    collector = PriceCollector()
+    try:
+        data = collector.fetch_universe_prices(start, end)
+    except PriceFetchError as exc:
+        return 0, f"harga gagal: {exc}"
+
+    db = Database(db_path)
+    total = 0
+    for records in data.values():
+        for rec in records:
+            db.save_price(rec)
+            total += 1
+
+    catatan = f"harga: {total} baris"
+    if collector.last_errors:
+        catatan += f" (gagal: {', '.join(collector.last_errors)})"
+    return total, catatan
 
 
 def _run_pipeline(db_path: Path, model_path: str, limit: int) -> tuple[bool, str, dict[str, int]]:
@@ -132,6 +176,14 @@ def run_preload(
         catatan.append(f"penarikan gagal: {exc}")
         db.finish_ingest_run(run_id, "failed", raw_new=0, detail="; ".join(catatan))
         return False
+
+    # Harga ditarik SEBELUM pipeline: `aggregate` dan `compute_stats` membaca
+    # `prices`, jadi urutan ini penting. Kegagalannya tidak fatal.
+    try:
+        _, note_harga = _refresh_prices(db_file)
+        catatan.append(note_harga)
+    except Exception as exc:  # noqa: BLE001 - harga pelengkap, bukan inti job
+        catatan.append(f"harga gagal: {exc}")
 
     # Tidak ada berita baru bukan kegagalan: mungkin memang belum ada kabar
     # baru. Tetap jalankan pipeline supaya artikel lama yang belum diskor
