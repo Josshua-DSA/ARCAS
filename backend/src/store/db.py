@@ -296,6 +296,15 @@ CREATE INDEX IF NOT EXISTS idx_source_health_source
   ON source_health(source, checked_at);
 CREATE INDEX IF NOT EXISTS idx_sim_runs_created ON sim_runs(created_at);
 CREATE INDEX IF NOT EXISTS idx_sim_runs_hash ON sim_runs(text_hash);
+-- Satu baris per bukti. run_id TIDAK ikut: dua run yang menghitung hal sama
+-- adalah satu bukti, bukan dua. COALESCE dipakai karena `event_study`
+-- menyimpan lag NULL dan SQLite menganggap setiap NULL berbeda, sehingga
+-- UNIQUE biasa meloloskan baris kembar untuk semua uji tanpa lag.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_stat_results_bukti
+  ON stat_results(
+    asset_id, test, market_metric, COALESCE(lag, -1),
+    estimate, p_adjusted, n_obs
+  );
 """
 
 
@@ -473,7 +482,33 @@ class Database:
         for tabel, kolom in cls.KOLOM_WAJIB.items():
             for nama, ddl in kolom.items():
                 cls._tambah_kolom(conn, tabel, nama, ddl)
+        # Baris kembar lama harus dibuang SEBELUM DDL_INDEXES memasang indeks
+        # unik: CREATE UNIQUE INDEX gagal bila tabelnya sudah melanggar, dan
+        # kegagalan itu menggagalkan seluruh init_schema.
+        cls._buang_stat_kembar(conn)
         conn.execute(f"PRAGMA user_version = {int(cls.SCHEMA_VERSION)};")
+
+    @staticmethod
+    def _buang_stat_kembar(conn: sqlite3.Connection) -> int:
+        """Hapus baris `stat_results` yang menyatakan bukti yang sama.
+
+        Menyisakan `rowid` terbesar (tulisan terbaru). Definisi "sama" harus
+        persis sama dengan `ux_stat_results_bukti`: kalau keduanya berbeda,
+        migrasi lolos tetapi indeksnya gagal terpasang.
+
+        Mengembalikan jumlah baris yang dibuang.
+        """
+        cur = conn.execute(
+            """
+            DELETE FROM stat_results
+            WHERE rowid NOT IN (
+              SELECT MAX(rowid) FROM stat_results
+              GROUP BY asset_id, test, market_metric, COALESCE(lag, -1),
+                       estimate, p_adjusted, n_obs
+            );
+            """
+        )
+        return cur.rowcount or 0
 
     @classmethod
     def _seed_schema_data(cls, conn: sqlite3.Connection) -> None:
@@ -1445,7 +1480,8 @@ class Database:
                         run_id, asset_id, test, market_metric, lag, estimate,
                         ci_low, ci_high, p_value, p_adjusted, n_obs,
                         period_start, period_end, params_json, code_version
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT DO NOTHING;
                     """,
                     (
                         stat.run_id,

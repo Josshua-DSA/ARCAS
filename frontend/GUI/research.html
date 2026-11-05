@@ -32,7 +32,10 @@
   #newsPicker.is-dragging{cursor:grabbing;scroll-snap-type:none;user-select:none}
   /* Kartu tidak boleh ikut tersorot saat diseret. */
   #newsPicker.is-dragging *{user-select:none;pointer-events:none}
-  .rl-item{flex:0 0 258px;scroll-snap-align:start;text-align:left;cursor:pointer;
+  /* Lima kartu harus muat penuh: lebar tetap 258px membuat kartu kelima
+     terpotong di 1440px (sisa 134px). Kartu dibiarkan menyusut, dengan batas
+     bawah supaya judul tetap terbaca. */
+  .rl-item{flex:0 1 258px;min-width:196px;scroll-snap-align:start;text-align:left;cursor:pointer;
     display:flex;flex-direction:column;gap:6px;padding:12px 14px;min-height:44px;
     background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;
     font-family:inherit;color:inherit}
@@ -46,6 +49,44 @@
   .rl-src{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted)}
 
   #priceChart{width:100%;height:340px}
+
+  /* --- kolom kiri mengisi tinggi barisnya ---
+     .grid memakai align-items:start, sehingga panel kiri berhenti ~342px lebih
+     pendek dari panel uji dan meninggalkan lubang kosong di bawah grafik.
+     Panel dipaksa setinggi baris dan detail berita diberi flex:1, jadi sisa
+     ruang jatuh ke catatan di bawah, bukan jadi lubang. */
+  .grid.rl-grid{align-items:stretch}
+  .grid.rl-grid > .panel{display:flex;flex-direction:column}
+  .grid.rl-grid > .panel > .panel-body{display:flex;flex-direction:column;flex:1}
+  .grid.rl-grid > .panel > .panel-body > #selDetail{flex:1}
+
+  /* --- ruang kiri yang dulu menggantung ---
+     Panel grafik berhenti ~554px lebih pendek dari panel uji (.grid memakai
+     align-items:start). Sisa ruang dipakai untuk apa yang memang belum muat:
+     jejak harga setelah berita terpilih, dihitung di klien dari deret yang
+     sudah ada. Tidak ada request baru dan tidak ada angka karangan. */
+  .rl-after{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
+  .rl-after-cell{flex:1 1 92px;min-width:92px;padding:8px 10px;border-radius:8px;
+    background:var(--surface-raised);border:1px solid var(--border-dark-subtle)}
+  .rl-after-k{font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--on-dark-muted);margin:0 0 3px}
+  .rl-after-v{font-family:var(--font-mono);font-size:14px;font-variant-numeric:tabular-nums;
+    margin:0;color:var(--on-dark-primary)}
+  .rl-after-sub{font-size:11px;color:var(--on-dark-muted);margin:3px 0 0;
+    font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* --- pemilih berita: beri tahu bahwa masih ada 45 kartu di kanan ---
+     Scrollbar disembunyikan (bar abu terbaca seperti salah layout) dan tidak
+     ada panah, sehingga 12.194px isi di luar layar tidak punya petunjuk apa
+     pun. Gradien tepi + penghitung adalah petunjuk termurah yang tidak
+     menambah kontrol baru. */
+  .rl-picker{position:relative}
+  .rl-picker::after{content:"";position:absolute;top:0;bottom:10px;right:0;width:56px;
+    pointer-events:none;border-radius:0 10px 10px 0;transition:opacity .18s ease;
+    background:linear-gradient(to right,rgba(246,244,244,0),var(--bg) 78%)}
+  .rl-picker.at-end::after{opacity:0}
+  .rl-count{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);
+    white-space:nowrap}
 
   /* --- detail berita terpilih --- */
   .rl-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;
@@ -74,6 +115,9 @@
   .rl-test-ci{white-space:nowrap}
   .rl-sig{display:inline-block;padding:1px 5px;border-radius:5px;
     border:1px solid #56D364;color:#56D364;font-size:9.5px;text-align:center}
+
+  .rl-n-mini{font-size:11.5px;color:var(--on-dark-muted);margin-top:10px;
+    padding-top:8px;border-top:1px solid var(--border-dark-subtle)}
 
   @media (max-width:960px){
     #priceChart{height:300px}
@@ -147,11 +191,14 @@
       <span class="hint">klik satu kartu untuk menandainya di grafik</span>
     </div>
     <div class="state" id="newsState" hidden></div>
-    <div id="newsPicker" role="group" aria-label="Daftar berita"></div>
+    <div class="rl-picker" id="pickerWrap">
+      <div id="newsPicker" role="group" aria-label="Daftar berita"></div>
+    </div>
+    <p class="rl-count" id="newsCount" aria-live="polite" hidden></p>
   </section>
 
   <!-- ============ 2. Grafik pasar + uji ============ -->
-  <div class="grid">
+  <div class="grid rl-grid">
     <section class="panel dark" aria-labelledby="chartTitle">
       <div class="panel-head">
         <h2 id="chartTitle">Grafik harga dan titik berita</h2>

@@ -319,7 +319,10 @@
     });
 
     loadPreloadStamp(signal, live);
-    A.api("/api/impacts/" + t + "?limit=60", signal).then(function (rows) {
+    /* 20, bukan 60: pager menampilkan 5 per halaman, jadi 60 berarti 55 baris
+       terbuang tiap muat. 20 memberi 4 halaman riwayat tanpa membawa sisa yang
+       tidak pernah bisa dijangkau pembaca. */
+    A.api("/api/impacts/" + t + "?limit=20", signal).then(function (rows) {
       if (!live()) return;
       renderNews(rows, false);
     }).catch(function (err) {
