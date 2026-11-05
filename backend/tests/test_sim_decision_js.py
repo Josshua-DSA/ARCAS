@@ -311,3 +311,89 @@ def test_arah_netral_tidak_memakai_hit_rate():
     assert r["label"] == "tanpa arah berita"
     assert r["hit_rate"] is None
     assert r["n"] == 0
+
+
+# ---------------- agregasi sentimen ke hari bursa ----------------
+#
+# Lubang di grafik ikhtisar: sumbu-x digabung dari tanggal sentimen DAN tanggal
+# harga, sehingga hari yang hanya punya salah satunya tampil sebagai celah.
+# Memperbaikinya di halaman berarti menghapus titik, dan itu menyembunyikan
+# data. Yang benar: tempelkan sentimen ke hari bursa berikutnya.
+
+# Hari bursa untuk tes agregasi: 01-01..01-08 TANPA Sabtu/Minggu (01-03, 01-04).
+BURSA = [d for d in HARI if d not in ("2026-01-03", "2026-01-04")]
+TUTUP_BURSA = [100.0, 101.0, 102.0, 103.0, 104.0, 105.0]
+
+
+def _harga_bursa(nilai=None):
+    return [{"date": d, "close": c} for d, c in zip(BURSA, nilai or TUTUP_BURSA)]
+
+
+def _jalan_rapikan(sentiments, prices):
+    skrip = f"""
+const fs = require('fs');
+const vm = require('vm');
+const src = fs.readFileSync({str(JS)!r}, 'utf8');
+const ctx = {{ window: {{}} }};
+vm.createContext(ctx);
+vm.runInContext(src, ctx);
+const r = ctx.window.ARCAS.rapikanKeHariBursa(
+  {json.dumps(sentiments)}, {json.dumps(prices)});
+process.stdout.write(JSON.stringify(r));
+"""
+    out = subprocess.run(
+        [NODE or "node", "-e", skrip], capture_output=True, text=True, check=True
+    )
+    return json.loads(out.stdout)
+
+
+def test_sentimen_akhir_pekan_menempel_ke_senin():
+    """Sentimen Sabtu/Minggu tidak punya harga; tanpa penempelan ia hilang."""
+    s = _sentimen([("2026-01-03", 0.6), ("2026-01-04", 0.2)])   # Sabtu, Minggu
+    r = _jalan_rapikan(s, _harga_bursa())
+    assert r["tanggal"] == BURSA
+    by = {d: v for d, v in zip(r["tanggal"], r["skor"])}
+    assert by["2026-01-05"] == pytest.approx(0.4)
+
+
+def test_agregasi_berbobot_jumlah_artikel():
+    """Dua hari sentimen yang menempel ke hari bursa sama digabung berbobot
+    n_articles, bukan rata-rata sederhana: hari dengan 9 artikel tidak boleh
+    kalah oleh hari dengan 1 artikel."""
+    s = [
+        {"date": "2026-01-03", "score_mean": 0.9, "n_articles": 1},   # Sabtu
+        {"date": "2026-01-04", "score_mean": 0.0, "n_articles": 9},   # Minggu
+    ]
+    r = _jalan_rapikan(s, _harga_bursa())
+    by = {d: v for d, v in zip(r["tanggal"], r["skor"])}
+    assert by["2026-01-05"] == pytest.approx(0.09)
+
+
+def test_hari_bursa_tanpa_berita_tetap_null():
+    """Hari bursa tanpa berita harus tetap null, bukan 0.
+
+    Nol berarti "sentimen netral"; null berarti "tidak ada berita". Dua hal
+    berbeda, dan aturan nol-vs-null di repo ini menuntutnya.
+    """
+    r = _jalan_rapikan([], _harga_bursa())
+    assert all(v is None for v in r["skor"])
+    assert r["tanggal"] == BURSA
+
+
+def test_agregasi_terurut_dan_panjangnya_sama_dengan_harga():
+    s = _sentimen([("2026-01-05", 0.5), ("2026-01-02", -0.5)])
+    r = _jalan_rapikan(s, _harga_bursa())
+    assert r["tanggal"] == BURSA
+    assert r["tanggal"] == sorted(r["tanggal"])
+    assert len(r["skor"]) == len(r["tanggal"]) == len(r["tutup"])
+
+
+def test_sentimen_jauh_sebelum_rentang_harga_tidak_ditempel():
+    """Berita Desember tidak boleh menempel ke harga Januari.
+
+    Menempelkannya berarti memasang sentimen lama ke harga yang jauh lebih
+    baru -- itu lookahead yang menyamar sebagai kelengkapan data.
+    """
+    s = _sentimen([("2025-12-20", 0.9)])
+    r = _jalan_rapikan(s, _harga_bursa())
+    assert all(v is None for v in r["skor"])

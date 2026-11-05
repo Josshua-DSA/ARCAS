@@ -238,9 +238,78 @@ window.ARCAS = window.ARCAS || {};
     return Math.round(Number(v) * 100) + "%";
   }
 
+  /* ---------------- agregasi sentimen ke hari bursa ----------------
+
+     Grafik ikhtisar dulu menggabungkan tanggal sentimen DAN tanggal harga ke
+     satu sumbu-x, sehingga hari yang hanya punya salah satunya tampil sebagai
+     celah. Memperbaikinya di halaman berarti membuang titik, dan itu
+     menyembunyikan data yang sah.
+
+     Yang benar di level data: sentimen bertanggal Sabtu/Minggu/libur tidak
+     punya harga, jadi tempelkan ke hari bursa BERIKUTNYA -- itu hari ketika
+     pasar pertama kali bisa bereaksi. Kalau beberapa hari sentimen menempel ke
+     hari bursa yang sama, gabungkan berbobot n_articles: hari dengan 9 artikel
+     tidak boleh kalah oleh hari dengan 1 artikel.
+
+     Hari bursa tanpa berita tetap null, bukan 0. Nol berarti "sentimen
+     netral"; null berarti "tidak ada berita". */
+  var _rapikanCache = {};
+
+  /* Selisih hari kalender antara dua tanggal ISO (YYYY-MM-DD). */
+  function selisihHari(a, b) {
+    var ms = Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z");
+    return Math.round(ms / 86400000);
+  }
+
+  function rapikanKeHariBursa(sentiments, prices) {
+    var kunci = (prices && prices.length ? prices[0].date + "|" + prices.length : "0") +
+                "|" + ((sentiments && sentiments.length) || 0);
+    if (_rapikanCache[kunci]) return _rapikanCache[kunci];
+
+    var tutup = {}, tanggal = [], i;
+    for (i = 0; i < (prices || []).length; i++) {
+      var p = prices[i];
+      if (p.close !== null && p.close !== undefined) {
+        tutup[p.date] = Number(p.close);
+        tanggal.push(p.date);
+      }
+    }
+    tanggal.sort();
+
+    var bobot = {}, jumlah = {};
+    for (i = 0; i < (sentiments || []).length; i++) {
+      var s = sentiments[i];
+      if (s.score_mean === null || s.score_mean === undefined) continue;
+      /* Hari bursa pertama yang >= tanggal sentimen. Tanggal sentimen sebelum
+         seluruh rentang harga tidak punya tujuan: lewati, jangan tempelkan ke
+         hari pertama (itu memasang berita lama ke harga yang lebih baru). */
+      var j = 0;
+      while (j < tanggal.length && tanggal[j] < s.date) j++;
+      if (j >= tanggal.length) continue;
+      var tujuan = tanggal[j];
+      /* Jangan tempelkan sentimen lama ke hari bursa yang jauh di kemudian
+         hari: itu memasang berita lama ke harga baru, lookahead yang menyamar
+         sebagai kelengkapan data. Empat hari cukup untuk Sabtu+Minggu+libur. */
+      if (selisihHari(s.date, tujuan) > 4) continue;
+      var n = Number(s.n_articles) > 0 ? Number(s.n_articles) : 1;
+      bobot[tujuan] = (bobot[tujuan] || 0) + Number(s.score_mean) * n;
+      jumlah[tujuan] = (jumlah[tujuan] || 0) + n;
+    }
+
+    var skor = [];
+    for (i = 0; i < tanggal.length; i++) {
+      skor.push(jumlah[tanggal[i]] ? bobot[tanggal[i]] / jumlah[tanggal[i]] : null);
+    }
+
+    var hasil = { tanggal: tanggal, tutup: tanggal.map(function (d) { return tutup[d]; }), skor: skor };
+    _rapikanCache[kunci] = hasil;
+    return hasil;
+  }
+
   A.agregasiStance = agregasiStance;
   A.hitungBukti = hitungBukti;
   A.keputusanBerita = keputusanBerita;
+  A.rapikanKeHariBursa = rapikanKeHariBursa;
   A.AMBANG_AGREGAT = AMBANG_AGREGAT;
   A.AMBANG_LAYAK = AMBANG_LAYAK;
 })(window.ARCAS);
