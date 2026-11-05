@@ -342,10 +342,10 @@
 
 #simRoot .s-bt-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: baseline;
-  padding: 7px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: 11.5px;
@@ -354,9 +354,21 @@
 #simRoot .s-bt-k { color: var(--text-secondary); }
 #simRoot .s-bt-v { color: var(--text); font-weight: 600; }
 #simRoot .s-bt-v.muted { color: var(--text-muted); font-weight: 400; font-style: italic; }
-#simRoot .s-bt-p { color: var(--text-muted); }
-#simRoot .s-bt-p.sig { color: var(--text); font-weight: 700; }
-#simRoot .s-bt-n { color: var(--text-muted); }
+#simRoot .s-bt-v.s-tegas { font-weight: 700; }
+
+/* Bukti historis: dipisah garis atas supaya tidak terbaca sebagai bagian
+   dari alasan keputusan. */
+#simRoot .s-bukti {
+  margin: 12px 0 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ECharts tidak punya tinggi intrinsik: tanpa tinggi eksplisit kanvasnya 0 px. */
+#simRoot .s-card-backtest .s-card-body {
+  padding: 4px 0 0;
+  height: 190px;
+}
 
 #simRoot .s-decide {
   display: flex;
