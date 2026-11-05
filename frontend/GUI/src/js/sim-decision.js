@@ -169,6 +169,22 @@ window.ARCAS = window.ARCAS || {};
       return hasil;
     }
 
+    /* Tanpa arah berita, tidak ada yang bisa diuji terhadap histori. Ini kasus
+       nyata: server mengirim direction="netral" untuk teks yang tidak menyebut
+       asetnya, walau skornya ekstrem. Memaksakan hit-rate di situ akan
+       menghasilkan "sell on news" untuk berita yang arahnya tidak ada. */
+    if (arah !== "naik" && arah !== "turun") {
+      hasil.alasan = "Berita ini tidak punya arah jelas untuk target ini, " +
+        "jadi keputusan mengikuti lima persona tanpa uji historis.";
+      hasil.label = "tanpa arah berita";
+      hasil.n = 0;
+      hasil.hit_rate = null;
+      hasil.rata2 = null;
+      hasil.rata2_t1 = null;
+      hasil.layak = false;
+      return hasil;
+    }
+
     var nLayak = !!(t3 && t3.n >= AMBANG_LAYAK && t3.hit_rate !== null);
     hasil.layak = nLayak;
 

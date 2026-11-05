@@ -294,3 +294,20 @@ def test_catatan_puncak_hanya_keterangan():
          "T3": {"n": 40, "hit_rate": 0.60, "rata2": 0.008}}, 0.95)
     assert bawah["keputusan"] == "beli"
     assert bawah["catatan"] == "harga sudah di puncak 20 hari"
+
+
+def test_arah_netral_tidak_memakai_hit_rate():
+    """Server mengirim direction="netral" untuk teks tanpa aset, walau skornya
+    ekstrem. Tanpa arah, hit-rate tidak punya populasi yang bisa diuji dan
+    keputusan harus jatuh ke persona -- bukan mengarang "sell on news".
+    """
+    r = _jalan_keputusan(
+        [{"stance": "sell", "strength": 1.0}] * 4 + [{"stance": "hold", "strength": 0.1}],
+        0.99, [], "netral",
+        {"T1": {"n": 0, "hit_rate": None, "rata2": None},
+         "T3": {"n": 0, "hit_rate": None, "rata2": None}},
+    )
+    assert r["keputusan"] == "jual"
+    assert r["label"] == "tanpa arah berita"
+    assert r["hit_rate"] is None
+    assert r["n"] == 0
