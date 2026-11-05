@@ -8,6 +8,10 @@
 
   var esc = A.esc;
   var sedangKirim = false;
+  /* Penghitung giliran untuk id kartu backtesting. `run_id` dari server bisa
+     null (penyimpanan jejak gagal) sehingga dua giliran bisa bertabrakan di
+     id yang sama; penghitung ini selalu unik per tab. */
+  var nomorGiliran = 0;
 
   function $(id) { return document.getElementById(id); }
 
@@ -26,15 +30,226 @@
     if (d === "bearish") return "BEARISH";
     return "NETRAL";
   }
-  function labelStance(s) {
-    if (s === "buy") return "BUY";
-    if (s === "sell") return "SELL";
-    return "HOLD";
+
+  /* ---------------- kartu bawah: backtesting + keputusan ----------------
+     Keduanya dirender di klien dari respons yang SUDAH ada:
+     - backtest  : GET /api/stats/{target} (OLS / Granger / event study)
+     - keputusan : agregasi 5 stance dari respons /api/simulate itu sendiri
+     Tidak ada angka yang dikarang; bila sumber kosong, kartu mengatakannya. */
+
+  var statCache = {};   /* target -> {prices, sentiments} | "gagal" */
+  var idKartuTerakhir = "";
+  var grafik = {};      /* idKartu -> instance ECharts */
+
+  function kartuBawah(j) {
+    nomorGiliran++;
+    var id = "sim-" + nomorGiliran;
+    idKartuTerakhir = id;
+    return "<div class='s-cards'>" +
+      kartuBacktest(id, j) + kartuKeputusan(id, j) +
+    "</div>";
   }
-  function kelasStance(s) {
-    if (s === "buy") return "s-up";
-    if (s === "sell") return "s-down";
-    return "s-hold";
+
+  /* Kartu kiri: harga aset 180 hari terakhir. Tanpa legenda -- hanya satu
+     deret, legenda tidak menambah informasi apa pun. Bukan lagi tabel
+     OLS/Granger/CAR: angka itu sudah ada di Lab Riset, dan di sini yang
+     dibutuhkan pembaca adalah bentuk pergerakan harganya. */
+  function kartuBacktest(id, j) {
+    return "<section class='s-card s-card-backtest' data-target='" + esc(j.target) + "'>" +
+      "<header class='s-card-head'>" +
+        "<span class='s-card-kicker'>Backtesting &middot; 180 hari</span>" +
+        "<h3>" + esc(A.metaFor(j.target).name) + " &middot; " + esc(j.target) + "</h3>" +
+      "</header>" +
+      "<div class='s-card-body' id='" + id + "-grafik'>" +
+        "<p class='s-card-note'>memuat grafik&hellip;</p>" +
+      "</div>" +
+    "</section>";
+  }
+
+  function kartuKeputusan(id, j) {
+    return "<section class='s-card s-card-decision'>" +
+      "<header class='s-card-head'>" +
+        "<span class='s-card-kicker'>Decision making</span>" +
+        "<h3>Keputusan</h3>" +
+      "</header>" +
+      "<div class='s-card-body' id='" + id + "-keputusan'>" +
+        "<p class='s-card-note'>memuat bukti historis&hellip;</p>" +
+      "</div>" +
+    "</section>";
+  }
+
+  /* Isi kartu keputusan setelah seri harga tersedia: keputusan butuh
+     hit-rate, dan hit-rate butuh sentimen + harga. */
+  function isiKeputusan(idKartu, j, seri) {
+    var box = $(idKartu);
+    if (!box) return;
+    if (seri === "gagal") {
+      box.innerHTML = "<p class='s-card-note'>Bukti historis tidak dapat " +
+        "dimuat (API tidak menjawab). Halaman ini tidak menampilkan angka contoh.</p>";
+      return;
+    }
+
+    var arah = j.direction === "bullish" ? "naik"
+             : j.direction === "bearish" ? "turun" : "netral";
+    var bukti = {
+      T1: A.hitungBukti(seri.sentiments, seri.prices, arah, 1),
+      T3: A.hitungBukti(seri.sentiments, seri.prices, arah, 3)
+    };
+    var d = A.keputusanBerita({
+      stances: j.stances || [],
+      confidence: j.confidence,
+      warnings: j.warnings || [],
+      arah: arah,
+      bukti: bukti,
+      persentil: persentil20(seri.prices)
+    });
+    box.innerHTML = isiKartuKeputusan(d);
+  }
+
+  function isiKartuKeputusan(d) {
+    var kls = d.keputusan === "beli" ? "s-up"
+            : d.keputusan === "jual" ? "s-down" : "s-hold";
+    var label = d.keputusan === "beli" ? "BELI"
+              : d.keputusan === "jual" ? "JUAL"
+              : d.keputusan === "tahan" ? "TAHAN" : "TIDAK ADA SINYAL";
+
+    return "<div class='s-decide'><span class='s-pill " + kls + "'>" + label + "</span>" +
+        "<span class='s-decide-score'>skor persona <b>" +
+        (d.skor_persona >= 0 ? "+" : "") + nilai01(d.skor_persona) + "</b>" +
+        (d.label !== "persona" ? " &middot; " + esc(d.label) : "") +
+        "</span></div>" +
+      "<p class='s-card-note'>" + esc(d.alasan) + "</p>" +
+      barisBukti(d) +
+      (d.catatan ? "<p class='s-card-note'>" + esc(d.catatan) + "</p>" : "") +
+      "<p class='s-card-note s-src'>Keputusan ini agregasi lima persona dan " +
+        "hit-rate historis 180 hari, bukan rekomendasi investasi.</p>";
+  }
+
+  /* Bukti historis selalu ditampilkan, termasuk saat n kecil: angka yang
+     tidak layak disimpulkan tetap berguna asal n-nya ikut terlihat. */
+  function barisBukti(d) {
+    if (d.hit_rate === null || d.hit_rate === undefined) return "";
+    var pers = Math.round(d.hit_rate * 100) + "%";
+    var tebal = d.layak ? " s-tegas" : "";
+    return "<div class='s-bukti'>" +
+      "<div class='s-bt-row'><span class='s-bt-k'>kejadian serupa</span>" +
+        "<span class='s-bt-v" + tebal + "'>n " + d.n + "</span></div>" +
+      "<div class='s-bt-row'><span class='s-bt-k'>searah berita (T+3)</span>" +
+        "<span class='s-bt-v" + tebal + "'>" + pers + "</span></div>" +
+      "<div class='s-bt-row'><span class='s-bt-k'>rata-rata T+3</span>" +
+        "<span class='s-bt-v'>" + persenBertanda(d.rata2) + "</span></div>" +
+      "<div class='s-bt-row'><span class='s-bt-k'>rata-rata T+1</span>" +
+        "<span class='s-bt-v'>" + persenBertanda(d.rata2_t1) + "</span></div>" +
+    "</div>";
+  }
+
+  function persenBertanda(v) {
+    if (v === null || v === undefined) return "n/a";
+    var n = Number(v) * 100;
+    return (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+  }
+
+  /* Grafik harga: ECharts lokal, renderer SVG supaya teksnya tetap tajam dan
+     kartu tidak butuh canvas bitmap. */
+  function gambarGrafik(idKartu, target, prices) {
+    var el = $(idKartu);
+    if (!el) return;
+    if (typeof echarts === "undefined") {
+      el.innerHTML = "<p class='s-card-note'>Pustaka grafik lokal belum " +
+        "termuat (src/js/echarts.min.js).</p>";
+      return;
+    }
+    if (grafik[idKartu]) grafik[idKartu].dispose();
+
+    var info = A.metaFor(target);
+    var tanggal = [], tutup = [];
+    for (var i = 0; i < prices.length; i++) {
+      if (prices[i].close === null || prices[i].close === undefined) continue;
+      tanggal.push(prices[i].date);
+      tutup.push(Number(prices[i].close));
+    }
+    if (!tanggal.length) {
+      el.innerHTML = "<p class='s-card-note'>Belum ada harga untuk " +
+        esc(target) + ".</p>";
+      return;
+    }
+
+    el.innerHTML = "";
+    var c = echarts.init(el, null, { renderer: "svg" });
+    grafik[idKartu] = c;
+    c.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 4, right: 48, top: 8, bottom: 4, containLabel: true },
+      tooltip: {
+        trigger: "axis", backgroundColor: "#2C2727", borderWidth: 0,
+        textStyle: { color: "#F6F4F4", fontFamily: "JetBrains Mono, monospace", fontSize: 11 },
+        formatter: function (ps) {
+          return ps[0].axisValue + " &middot; " + Number(ps[0].data).toLocaleString("id-ID");
+        }
+      },
+      xAxis: {
+        type: "category", data: tanggal, boundaryGap: false,
+        axisLine: { lineStyle: { color: "#DDD8D8" } }, axisTick: { show: false },
+        axisLabel: { color: "#8A8282", fontFamily: "JetBrains Mono, monospace",
+          fontSize: 9, hideOverlap: true }
+      },
+      yAxis: {
+        type: "value", scale: true, position: "right",
+        splitLine: { lineStyle: { color: "#DDD8D8", opacity: 0.6 } },
+        axisLabel: { color: "#8A8282", fontFamily: "JetBrains Mono, monospace", fontSize: 9 }
+      },
+      series: [{
+        type: "line", data: tutup, showSymbol: false,
+        lineStyle: { width: 2, color: info.color },
+        itemStyle: { color: info.color },
+        areaStyle: { opacity: 0.08, color: info.color }
+      }]
+    });
+    window.addEventListener("resize", function () { c.resize(); });
+  }
+
+  /* Satu permintaan /api/series per target dipakai bersama: grafik butuh
+     prices, keputusan butuh sentiments + prices untuk hitungBukti. */
+  function muatSeri(target, selesai) {
+    if (statCache[target] === "gagal") { selesai("gagal"); return; }
+    if (statCache[target]) { selesai(statCache[target]); return; }
+    var mulai = new Date(Date.now() - 179 * 86400000);
+    A.api("/api/series/" + encodeURIComponent(target) +
+          "?start_date=" + A.localISO(mulai)).then(function (d) {
+      statCache[target] = { prices: (d && d.prices) || [], sentiments: (d && d.sentiments) || [] };
+      selesai(statCache[target]);
+    }).catch(function () {
+      statCache[target] = "gagal";
+      selesai("gagal");
+    });
+  }
+
+  function isiBacktest(idKartu, target, seri) {
+    var box = $(idKartu);
+    if (!box) return;
+    if (seri === "gagal") {
+      box.innerHTML = "<p class='s-card-note'>Harga tidak dapat dimuat " +
+        "(API tidak menjawab). Kartu ini tidak menampilkan angka contoh.</p>";
+      return;
+    }
+    gambarGrafik(idKartu, target, seri.prices || []);
+  }
+
+  /* Persentil close terakhir dalam 20 sesi terakhir (0..1). Dipakai sebagai
+     keterangan "harga sudah di puncak/dasar", bukan sebagai keputusan. */
+  function persentil20(prices) {
+    var tutup = [];
+    for (var i = 0; i < (prices || []).length; i++) {
+      if (prices[i].close !== null && prices[i].close !== undefined) {
+        tutup.push(Number(prices[i].close));
+      }
+    }
+    if (tutup.length < 2) return null;
+    var jendela = tutup.slice(-20);
+    var akhir = jendela[jendela.length - 1];
+    var bawah = Math.min.apply(null, jendela), atas = Math.max.apply(null, jendela);
+    if (atas === bawah) return 0.5;
+    return (akhir - bawah) / (atas - bawah);
   }
 
   /* ---------------- fase ---------------- */
@@ -63,7 +278,7 @@
      Setiap panggilan MENAMBAH satu giliran ke percakapan, tidak menimpa.
      Riwayat hanya hidup selama tab terbuka: backend tidak menyimpan simulasi,
      dan halaman ini tidak menulis apa pun ke browser. */
-  function giliran(teks, label, judul, tags, metrik, isi, stances, peringatan) {
+  function giliran(teks, label, judul, tags, metrik, isi, kartu, peringatan) {
     return "<div class='s-turn'>" +
       "<div class='s-msg-user'><div class='s-bubble'>" +
         "<span class='s-lbl'>" + esc(label) + "</span>" +
@@ -75,13 +290,8 @@
           "<div class='s-tags'>" + tags + "</div>" +
           "<div class='s-metric'>" + metrik + "</div>" +
         "</div>" +
-        "<div class='s-body'>" + isi +
-          (stances
-            ? "<div class='s-stance-title'>Sudut pandang lima persona</div>" +
-              "<div class='s-stance-list'>" + stances + "</div>"
-            : "") +
-          peringatan +
-        "</div>" +
+        "<div class='s-body'>" + isi + peringatan + "</div>" +
+        kartu +
       "</article>" +
     "</div>";
   }
@@ -123,19 +333,6 @@
     }
     if (j.disclaimer) par += "<p class='s-src'>" + esc(j.disclaimer) + "</p>";
 
-    /* Stance: baris + alasan apa adanya dari server. */
-    var rows = "";
-    for (var i = 0; i < j.stances.length; i++) {
-      var s = j.stances[i];
-      rows +=
-        "<div class='s-stance'>" +
-        "<span class='s-who'>" + esc(s.persona_name || s.persona_id) + "</span>" +
-        "<span class='s-pill " + kelasStance(s.stance) + "'>" + labelStance(s.stance) + "</span>" +
-        "<span class='s-str'>" + esc(A.fmt(s.strength)) + "</span>" +
-        (s.rationale ? "<span class='s-why'>" + esc(s.rationale) + "</span>" : "") +
-        "</div>";
-    }
-
     /* Peringatan: semua ditampilkan, tidak ada yang disembunyikan. */
     var per = "";
     if (j.warnings && j.warnings.length) {
@@ -147,8 +344,16 @@
     tambahTurn(giliran(
       teksAsli,
       (j.input_kind === "rumor" ? "rumor yang diuji" : "berita yang diuji"),
-      judul, tags, metrik, par, rows, per
+      judul, tags, metrik, par, kartuBawah(j), per
     ));
+
+    /* Satu permintaan seri untuk dua kartu. Kartu kanan menunggu angkanya;
+       kartu kiri langsung menggambar begitu seri tiba. */
+    var id = idKartuTerakhir;
+    muatSeri(j.target, function (seri) {
+      isiBacktest(id + "-grafik", j.target, seri);
+      isiKeputusan(id + "-keputusan", j, seri);
+    });
   }
 
   /* ---------------- kirim ---------------- */

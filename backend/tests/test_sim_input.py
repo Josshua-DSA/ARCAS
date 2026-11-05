@@ -168,6 +168,28 @@ def test_berita_tanpa_badan_hanya_judul_tetap_diterima():
     assert v.kind is InputKind.NEWS
 
 
+def test_badan_berita_ditutup_pertanyaan_retoris_tetap_diterima():
+    """Badan berita yang berakhir "?" adalah gaya penulisan, bukan pertanyaan.
+
+    Ditemukan di data nyata: judul + ringkasan Finnhub sering berakhir dengan
+    pertanyaan retoris ("... Can earnings revive the AI sector?"). Gerbang
+    sempat menolaknya sehingga berita sah tidak bisa dianalisis sama sekali.
+    """
+    v = validate(
+        "Dow Jones Futures Rebound After AI Sell-Off; Meta, SpaceX, Tesla "
+        "Earnings Key. The S&P 500 broke key support. Can Meta and Tesla "
+        "earnings revive the AI sector?", "berita")
+    assert v.kind is InputKind.NEWS
+
+
+def test_pertanyaan_tanpa_pernyataan_pendahulu_tetap_ditolak():
+    """Jaring pengaman untuk aturan baru: "?" tanpa kalimat pernyataan = tanya."""
+    with pytest.raises(InputRejected) as exc:
+        validate("Apakah harga emas akan naik besok pagi setelah rilis data "
+                 "inflasi Amerika Serikat?", "berita")
+    assert exc.value.code == "pertanyaan"
+
+
 def test_seluruh_berita_di_basis_data_diterima():
     """Penjaga terpenting: gerbang tidak boleh menolak berita yang sudah sah.
 

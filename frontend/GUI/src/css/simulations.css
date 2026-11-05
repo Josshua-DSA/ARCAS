@@ -276,39 +276,6 @@
 #simRoot .s-body strong { color: var(--text); font-weight: 600; }
 #simRoot .s-body p.s-src { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 13px; }
 
-#simRoot .s-stance-title {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: .09em;
-  color: var(--text-muted);
-  margin: 20px 0 10px;
-}
-#simRoot .s-stance-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--border-subtle);
-}
-#simRoot .s-stance {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 12px;
-  align-items: center;
-  background: var(--bg-card);
-  padding: 11px 14px;
-}
-#simRoot .s-stance .s-who { font-size: 13px; color: var(--text); font-weight: 500; }
-#simRoot .s-stance .s-why {
-  grid-column: 1 / -1;
-  font-size: 11.5px;
-  color: var(--text-muted);
-  margin-top: -4px;
-  line-height: 1.5;
-}
 #simRoot .s-pill {
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -321,13 +288,92 @@
 #simRoot .s-pill.s-up { background: #E4F3EA; color: var(--up); }
 #simRoot .s-pill.s-down { background: #FBE7E5; color: var(--down); }
 #simRoot .s-pill.s-hold { background: #EFEBEB; color: var(--hold); }
-#simRoot .s-str {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-muted);
-  min-width: 38px;
-  text-align: right;
+
+/* ---------- dua kartu bawah jawaban ----------
+   Grid bertumpuk 1px: garis pemisah datang dari background induk, bukan border
+   per kartu, sehingga tidak ada garis ganda di tengah. Di layar sempit kartu
+   keputusan naik ke atas -- itulah yang dicari pembaca lebih dulu. */
+#simRoot .s-cards {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1px;
+  background: var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
 }
+@media (max-width: 760px) {
+  #simRoot .s-cards { grid-template-columns: 1fr; }
+  #simRoot .s-card-decision { order: -1; }
+}
+#simRoot .s-card { background: var(--bg-card); padding: 16px 18px 18px; }
+#simRoot .s-card-head { margin-bottom: 12px; }
+#simRoot .s-card-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-muted);
+}
+#simRoot .s-card-head h3 {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  font-weight: 500;
+  margin: 4px 0 0;
+  color: var(--text);
+}
+#simRoot .s-card-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+#simRoot .s-card-note:last-child { margin-bottom: 0; }
+#simRoot .s-card-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+#simRoot .s-bt-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+#simRoot .s-bt-row:last-of-type { border-bottom: 0; }
+#simRoot .s-bt-k { color: var(--text-secondary); }
+#simRoot .s-bt-v { color: var(--text); font-weight: 600; }
+#simRoot .s-bt-v.muted { color: var(--text-muted); font-weight: 400; font-style: italic; }
+#simRoot .s-bt-v.s-tegas { font-weight: 700; }
+
+/* Bukti historis: dipisah garis atas supaya tidak terbaca sebagai bagian
+   dari alasan keputusan. */
+#simRoot .s-bukti {
+  margin: 12px 0 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ECharts tidak punya tinggi intrinsik: tanpa tinggi eksplisit kanvasnya 0 px. */
+#simRoot .s-card-backtest .s-card-body {
+  padding: 4px 0 0;
+  height: 190px;
+}
+
+#simRoot .s-decide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+#simRoot .s-decide-score {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+#simRoot .s-decide-score b { color: var(--text); font-weight: 600; }
 
 #simRoot .s-disc {
   margin: 16px 0 0;

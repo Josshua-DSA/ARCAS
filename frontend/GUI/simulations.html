@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
 <title>ARCAS : Simulasi</title>
-<meta name="description" content="Uji satu berita atau rumor, lihat arah dan sudut pandang lima persona. Simulasi sudut pandang, bukan nasihat investasi.">
+<meta name="description" content="Uji satu berita atau rumor, lihat arahnya, backtest historisnya, dan keputusan yang diturunkan dari lima persona. Simulasi, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
 <link rel="stylesheet" href="src/css/layout.css">
@@ -51,7 +51,7 @@
       <p class="s-badge" id="simBadge" aria-live="polite"><span id="simBadgeText">menghubungi API</span></p>
       <h1 class="s-greet">Berita apa yang ingin <em>kamu</em> uji?</h1>
       <p class="s-sub">Tempel judul atau isi berita. Sistem membaca arahnya untuk target yang
-        kamu pilih, lalu menampilkan sudut pandang lima persona.</p>
+        kamu pilih, lalu menampilkan backtest historis dan keputusan turunannya.</p>
 
       <div class="s-composer">
         <label for="simNews">Berita</label>
@@ -80,7 +80,7 @@
         <button class="s-chip" type="button" data-fill="Gold surged 3.2% to a record high as investors rushed into bullion"><span class="s-k">contoh</span>Gold surge</button>
       </div>
 
-      <p class="s-note">Hasil berupa simulasi sudut pandang, bukan nasihat investasi.<br>
+      <p class="s-note">Hasil berupa simulasi dan backtest historis, bukan nasihat investasi.<br>
         Angka diambil dari model dan bobot yang tersimpan, bukan dikarang.</p>
     </div>
   </div>
@@ -124,6 +124,8 @@
 <script src="src/js/api.js"></script>
 <script src="src/js/state.js"></script>
 <script src="src/js/shell.js"></script>
+<script src="src/js/echarts.min.js"></script>
+<script src="src/js/sim-decision.js"></script>
 <script src="src/js/pages/simulations.js"></script>
 </body>
 </html>

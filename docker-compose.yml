@@ -14,7 +14,14 @@ services:
       # API tidak pernah tertanam di layer. Nilainya disuntikkan saat runtime
       # dari `.env` di host lewat `env_file`. Tanpa ini, container berjalan
       # tanpa kunci dan ingest berita gagal senyap.
-      - ARCAS_DISABLE_SCHEDULER=${ARCAS_DISABLE_SCHEDULER:-1}
+      # Scheduler preload 07:00 WIB. Dulu default-nya 1 (MATI), sehingga
+      # container tidak pernah menarik berita/harga sendiri dan halaman
+      # menampilkan data basi sampai ada yang ingat menjalankan CLI.
+      # Kontainer tidak memakai `--reload`, jadi proses tidak lahir berkali-kali
+      # dan kuota eulerpool tetap aman (klaim slot di `ingest_runs` juga
+      # mencegah tarikan ganda). Setel ke 1 hanya saat pengembangan dengan
+      # `--reload`, atau lewat `ARCAS_DISABLE_SCHEDULER=1` di `.env`.
+      - ARCAS_DISABLE_SCHEDULER=${ARCAS_DISABLE_SCHEDULER:-0}
     env_file:
       - path: .env
         required: false

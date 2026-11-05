@@ -26,11 +26,17 @@ def _stub_pipeline(ok: bool, ringkas: str = "artikel tertulis : 3"):
     return _run
 
 
+def _stub_harga(baris: int = 9, note: str = "harga: 9 baris"):
+    """Harga selalu di-stub: test tidak boleh bergantung pada Yahoo."""
+    return lambda _db_path, _days=10: (baris, note)
+
+
 def _run(monkeypatch, db_path, *, raw_new, pipeline_ok):
     monkeypatch.setattr(news_preload, "_collect_via_eulerpool",
                         _stub_collect(raw_new))
     monkeypatch.setattr(news_preload, "_run_pipeline",
                         _stub_pipeline(pipeline_ok))
+    monkeypatch.setattr(news_preload, "_refresh_prices", _stub_harga())
     from datetime import datetime
 
     from backend.src.serve.ingest_scheduler import slot_for
@@ -100,6 +106,7 @@ def _hit(monkeypatch, db_path, slot, *, trigger="schedule"):
 
     monkeypatch.setattr(news_preload, "_collect_via_eulerpool", collect)
     monkeypatch.setattr(news_preload, "_run_pipeline", _stub_pipeline(True))
+    monkeypatch.setattr(news_preload, "_refresh_prices", _stub_harga())
     ok = news_preload.run_preload(slot, db_path=db_path, trigger=trigger)
     return ok, panggilan["collect"]
 
@@ -213,3 +220,59 @@ def test_run_manual_tidak_diklaim_sehingga_tidak_saling_memblokir(db_path):
     a = db.start_ingest_run("manual")
     b = db.start_ingest_run("manual")
     assert a > 0 and b > 0 and a != b
+
+
+# -- harga ikut diperbarui dalam slot yang sama ----------------------------
+
+
+def test_harga_gagal_tidak_menggagalkan_preload(monkeypatch, db_path):
+    """Yahoo mati tidak boleh membatalkan berita: harga hanya pelengkap.
+
+    Kalau ini mengembalikan False, scheduler akan mengulang tiap 30 detik
+    dan membakar kuota eulerpool hanya karena bursa tidak bisa dihubungi.
+    """
+    monkeypatch.setattr(news_preload, "_collect_via_eulerpool", _stub_collect(5))
+    monkeypatch.setattr(news_preload, "_run_pipeline", _stub_pipeline(True))
+
+    def boom(_db_path, _days=10):
+        raise RuntimeError("yahoo mati")
+
+    monkeypatch.setattr(news_preload, "_refresh_prices", boom)
+    from datetime import datetime
+
+    from backend.src.serve.ingest_scheduler import slot_for
+    slot = slot_for(datetime.now().astimezone())
+    assert news_preload.run_preload(slot, db_path=db_path) is True
+
+
+def test_harga_ditarik_sebelum_pipeline(monkeypatch, db_path):
+    """Urutan penting: `aggregate`/`compute_stats` membaca `prices`."""
+    urutan: list[str] = []
+
+    monkeypatch.setattr(news_preload, "_collect_via_eulerpool", _stub_collect(1))
+
+    def harga(_db_path, _days=10):
+        urutan.append("harga")
+        return 3, "harga: 3 baris"
+
+    def pipeline(_db, _model, _limit):
+        urutan.append("pipeline")
+        return True, "ok", {"articles_clean": 1, "impacts_new": 1}
+
+    monkeypatch.setattr(news_preload, "_refresh_prices", harga)
+    monkeypatch.setattr(news_preload, "_run_pipeline", pipeline)
+    from datetime import datetime
+
+    from backend.src.serve.ingest_scheduler import slot_for
+    slot = slot_for(datetime.now().astimezone())
+    news_preload.run_preload(slot, db_path=db_path)
+    assert urutan == ["harga", "pipeline"]
+
+
+def test_catatan_harga_tersimpan_di_ingest_runs(monkeypatch, db_path):
+    """Jejak harga harus terlihat di `ingest_runs.detail`, bukan hilang."""
+    _run(monkeypatch, db_path, raw_new=2, pipeline_ok=True)
+    from backend.src.store.db import Database
+    last = Database(db_path).last_ingest_run()
+    assert last is not None
+    assert "harga" in (last["detail"] or "")

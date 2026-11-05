@@ -177,7 +177,18 @@ def _looks_like_question(lowered: str, original: str) -> bool:
 
     # Judul berita bertanya hampir selalu berkolon ("Topik: Pertanyaan?").
     # Pengguna tidak mengetik kolon sebelum bertanya.
-    if ":" in original.split("?")[0]:
+    sebelum = original.split("?")[0]
+    if ":" in sebelum:
+        return False
+
+    # Pernyataan lengkap lalu ditutup pertanyaan retoris: "Gold fell to a
+    # two-month low. Can central banks turn it around?" Itu badan berita, bukan
+    # pertanyaan kepada sistem. Bedanya dengan "Apakah Fed akan memangkas suku
+    # bunga tahun ini?": di situ tanda tanya membentuk SELURUH kalimat, tanpa
+    # pernyataan yang mendahuluinya. Tanpa aturan ini, setiap berita yang
+    # badannya berakhir dengan "?" ditolak dan tidak bisa dianalisis sama
+    # sekali -- kejadian nyata pada 2 dari 360 artikel di basis data.
+    if "." in sebelum.strip() and len(sebelum.split()) >= 6:
         return False
 
     # Bila setelah "?" masih ada kalimat panjang, ini artikel yang judulnya
