@@ -50,19 +50,17 @@
       .map(function (x) { return x.r; });
   }
 
-  /* Rentang n_obs untuk kalimat pengingat sampel kecil. Baris tanpa n_obs
-     dilewati, bukan dihitung nol: nol akan menakut-nakuti tanpa alasan. */
-  function minN(rows) {
-    var v = rows.map(function (r) { return r.n_obs; })
+  /* Rentang n_obs per jenis uji. Baris tanpa n_obs dilewati, bukan dihitung
+     nol: nol akan menakut-nakuti tanpa alasan. Mengembalikan "tidak tersedia"
+     bila jenis uji itu memang tidak dihitung untuk target ini. */
+  function rentangN(rows, test) {
+    var v = rows.filter(function (r) { return r.test === test; })
+      .map(function (r) { return r.n_obs; })
       .filter(function (n) { return n != null && isFinite(Number(n)); })
       .map(Number);
-    return v.length ? Math.min.apply(null, v) : "?";
-  }
-  function maxN(rows) {
-    var v = rows.map(function (r) { return r.n_obs; })
-      .filter(function (n) { return n != null && isFinite(Number(n)); })
-      .map(Number);
-    return v.length ? Math.max.apply(null, v) : "?";
+    if (!v.length) return "tidak tersedia";
+    var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
+    return lo === hi ? String(lo) : lo + "–" + hi;
   }
 
   /* Tanggal berita bisa jatuh di hari bursa tutup. Marker digeser ke tanggal
@@ -221,7 +219,13 @@
       " Perubahan dihitung dari harga tutup hari berita, bukan dari harga saat berita terbit.</p>";
   }
 
-  /* ---------------- pemilih berita ---------------- */
+  /* ---------------- pemilih berita ----------------
+     Hanya 5 kartu terbaru yang dirender. Sebelumnya 50 kartu dirender ke satu
+     baris horizontal 13.394px: 45 di antaranya di luar layar tanpa petunjuk,
+     dan "50 berita" di layar terbaca sebagai 5 berita. Angka total tetap
+     disebut supaya pembaca tahu ini pilihan, bukan seluruh arsip. */
+  var MAKS_KARTU = 5;
+
   function renderNews() {
     var box = $("newsPicker");
     if (!box) return;
@@ -232,7 +236,8 @@
     }
     A.showState("newsState", "");
     var dates = S.prices.map(function (p) { return p.date; });
-    box.innerHTML = S.news.map(function (n, i) {
+    var tampil = S.news.slice(0, MAKS_KARTU);
+    box.innerHTML = tampil.map(function (n, i) {
       var near = nearestTradingDate(n.published_at, dates);
       var d = String(n.direction || "neutral").toLowerCase();
       var arrow = d === "bullish" ? "▲" : d === "bearish" ? "▼" : "●";
@@ -296,6 +301,22 @@
      UI, jadi statusnya dihitung dari nilai mentah, bukan dari angka bulat. */
   var SIG_AMBANG = 0.05;
 
+  /* Nilai `est` tidak sama artinya antar uji, dan kolom CI tidak selalu ada:
+     - `granger` menyimpan statistik F (selalu >= 0, tanpa tanda), dan uji ini
+       memang tidak menghasilkan interval kepercayaan -> ci_low/ci_high NULL
+       untuk SEMUA baris Granger, bukan sebagian.
+     - `event_study` menyimpan CAR (jumlah return jendela event), punya CI.
+     - `ols` menyimpan koefisien sentimen, punya CI.
+     Tanpa label ini, kolom `est` terbaca seolah satu besaran yang sama di
+     semua baris, dan "—" di kolom CI terbaca sebagai data yang gagal dimuat. */
+  var KETERANGAN_UJI = {
+    ols: { estimasi: "koefisien sentimen", ada_ci: true },
+    granger: { estimasi: "statistik F", ada_ci: false },
+    event_study: { estimasi: "CAR jendela event", ada_ci: true },
+    spearman: { estimasi: "koefisien Spearman", ada_ci: false },
+    pearson: { estimasi: "koefisien Pearson", ada_ci: false }
+  };
+
   function renderTests() {
     var box = $("testList");
     if (!box) return;
@@ -325,18 +346,23 @@
         "<span class='rl-test-num'>n</span><span></span></div>" +
       rows.map(function (r) {
         var sig = r.p_adjusted != null && Number(r.p_adjusted) < SIG_AMBANG;
-        /* Granger tidak punya CI: tulis "—", bukan "tidak tersedia" per baris,
-           supaya daftar 11 uji tetap terbaca. */
+        var ket = KETERANGAN_UJI[r.test] || { estimasi: "estimasi", ada_ci: true };
+        /* Granger tidak punya CI: tulis "—" dengan judul yang menyebut alasannya,
+           supaya tidak terbaca sebagai data yang gagal dimuat. */
         var ci = (r.ci_low != null && r.ci_high != null)
           ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]"
           : "—";
+        var judulCi = ket.ada_ci ? "interval kepercayaan 95%"
+          : "uji ini tidak menghasilkan interval kepercayaan";
         var crosses = r.ci_low != null && r.ci_high != null &&
           Number(r.ci_low) <= 0 && Number(r.ci_high) >= 0;
         return "<div class='rl-test'>" +
           "<span class='rl-test-name'>" + esc(A.testLabel(r.test)) + "</span>" +
           "<span class='rl-test-lag'>" + (r.lag != null ? "L" + esc(r.lag) : "—") + "</span>" +
-          "<span class='rl-test-num'>" + fmt(r.estimate, 3) + "</span>" +
-          "<span class='rl-test-ci" + (crosses ? " rl-cross" : "") + "'>" + ci + "</span>" +
+          "<span class='rl-test-num' title='" + esc(ket.estimasi) + "'>" +
+            fmt(r.estimate, 3) + "</span>" +
+          "<span class='rl-test-ci" + (crosses ? " rl-cross" : "") + "' title='" +
+            esc(judulCi) + "'>" + ci + "</span>" +
           "<span class='rl-test-num'>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "—") + "</span>" +
           "<span class='rl-test-num'>" + esc(r.n_obs) + "</span>" +
           (sig ? "<span class='rl-sig'>sig</span>" : "<span></span>") +
@@ -347,11 +373,23 @@
           esc(missing.map(function (t) { return A.testLabel(t); }).join(", ")) +
           ". Tidak ada angkanya di sini karena memang belum ada.</p>"
         : "") +
-      /* n_obs di sini 24–49 hari berpasangan. Tanpa kalimat ini, p_adj kecil
-         terbaca sebagai kepastian padahal sampelnya sebulan-dua bulan. */
-      "<p class='rl-sel-note rl-n-mini'>Sampel tiap uji " + esc(minN(rows)) + "–" +
-        esc(maxN(rows)) + " hari berpasangan. p_adj kecil pada sampel sekecil ini " +
-        "berarti asosiasi lemah yang belum stabil, bukan kepastian.</p>";
+      /* `n_obs` tidak sama artinya per uji: event_study menghitung jumlah
+         spike sentimen (bisa 2), sedangkan OLS/Granger menghitung hari
+         berpasangan (32-49). Menyebut satu rentang "2-46 hari berpasangan"
+         mencampur dua satuan dan membuat sampelnya terbaca lebih buruk dari
+         kenyataan untuk OLS. */
+      "<p class='rl-sel-note rl-n-mini'>Jumlah sampel berbeda satuan: OLS " +
+        esc(rentangN(rows, "ols")) + " hari berpasangan, Granger " +
+        esc(rentangN(rows, "granger")) + " hari berpasangan, CAR " +
+        esc(rentangN(rows, "event_study")) + " kejadian spike. p_adj kecil pada " +
+        "sampel sekecil ini berarti asosiasi lemah yang belum stabil, bukan " +
+        "kepastian.</p>" +
+      /* Tanpa kalimat ini, pembaca membandingkan est OLS (-0,007) dengan est
+         Granger (0,96) seolah keduanya besaran yang sama. */
+      "<p class='rl-sel-note rl-n-mini'>Arti kolom <code>est</code> berbeda per uji: " +
+        "OLS = koefisien sentimen, Granger = statistik F, CAR = jumlah return " +
+        "jendela event. Tanda “—” di kolom CI bukan data hilang: Granger memang " +
+        "tidak menghasilkan interval kepercayaan.</p>";
   }
 
   /* ---------------- muat ----------------
@@ -413,38 +451,23 @@
      salah layout. Konsekuensinya penggeseran harus disediakan sendiri:
      roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
      Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
-  /* Penghitung "kartu ke-1 dari 50" dan gradien tepi. Tanpa ini, 45 kartu di
-     kanan tidak punya petunjuk keberadaan: scrollbar disembunyikan dan tidak
-     ada panah. Dihitung dari posisi nyata, jadi tetap benar saat digeser. */
+  /* Penghitung dan gradien tepi. Dengan lima kartu yang semuanya muat, tidak
+     ada lagi isi tersembunyi: hitungannya menyebut bahwa ini lima terbaru dari
+     arsip, bukan lima kartu yang bisa digeser. Gradien hanya muncul kalau
+     layar sempit sampai kartu benar-benar terpotong. */
   function perbaruiPetunjuk() {
     var wrap = $("pickerWrap"), hitung = $("newsCount");
     if (!wrap || !hitung) return;
-    var item = picker.querySelectorAll(".rl-item");
-    var total = item.length;
+    var total = S.news.length;
     if (!total) { hitung.hidden = true; return; }
-    /* Dihitung dari posisi nyata tiap kartu lewat rect, bukan offsetLeft:
-       offsetLeft relatif terhadap kontainer dan tidak berubah saat digeser,
-       sehingga 50 kartu terbaca "terlihat" semua. Kartu yang terpotong di tepi
-       tetap dihitung: pembaca melihatnya, jadi menyebut 4 saat 5 tampak
-       membuat penghitung ini terbaca salah. */
-    var box = picker.getBoundingClientRect();
-    var terlihat = 0;
-    for (var i = 0; i < total; i++) {
-      var r = item[i].getBoundingClientRect();
-      if (r.right > box.left + 2 && r.left < box.right - 2) terlihat++;
-    }
-    terlihat = Math.max(1, terlihat);
-    var sampaiUjung = picker.scrollLeft + picker.clientWidth >= picker.scrollWidth - 4;
-    var diAwal = picker.scrollLeft <= 4;
+    var tampil = Math.min(total, MAKS_KARTU);
+    var meluber = picker.scrollWidth > picker.clientWidth + 4;
     hitung.hidden = false;
-    /* Jangan tawarkan "geser ke kanan" saat sudah di ujung: itu menyuruh
-       pembaca melakukan hal yang mustahil. */
-    hitung.textContent = picker.scrollWidth > picker.clientWidth + 4
-      ? "menampilkan " + terlihat + " dari " + total + " berita" +
-        (sampaiUjung ? " · sudah di ujung kanan" : " · geser ke kanan" +
-          (diAwal ? "" : " atau seret"))
-      : total + " berita";
-    wrap.classList.toggle("at-end", sampaiUjung);
+    hitung.textContent = tampil < total
+      ? tampil + " berita terbaru dari " + total + " yang tersimpan"
+      : total + " berita tersimpan";
+    wrap.classList.toggle("at-end", !meluber ||
+      picker.scrollLeft + picker.clientWidth >= picker.scrollWidth - 4);
   }
 
   var picker = $("newsPicker");
