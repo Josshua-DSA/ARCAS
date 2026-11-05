@@ -15,12 +15,17 @@
   function renderChart(payload) {
     ensureChart();
     var info = A.metaFor(A.state.target);
-    var byDate = {};
-    (payload.sentiments || []).forEach(function (s) { byDate[s.date] = byDate[s.date] || {}; byDate[s.date].score = s.score_mean; byDate[s.date].n = s.n_articles; });
-    (payload.prices || []).forEach(function (p) { byDate[p.date] = byDate[p.date] || {}; byDate[p.date].close = p.close; });
-    var dates = Object.keys(byDate).sort();
-    var closes = dates.map(function (d) { var v = byDate[d].close; return v == null ? null : Math.round(v * 100) / 100; });
-    var scores = dates.map(function (d) { var v = byDate[d].score; return v == null ? null : Math.round(v * 1000) / 1000; });
+
+    /* Sumbu-x HANYA dari hari bursa, lalu sentimen ditempelkan ke hari bursa
+       berikutnya oleh A.rapikanKeHariBursa. Sebelumnya sumbu-x digabung dari
+       tanggal sentimen DAN tanggal harga, sehingga hari yang hanya punya salah
+       satunya tampil sebagai celah: pada jendela 180 hari, garis harga kosong
+       selama 56 hari pertama karena harga baru mulai 2026-07-06 sementara
+       sentimen sudah ada sejak Desember. */
+    var rapi = A.rapikanKeHariBursa(payload.sentiments || [], payload.prices || []);
+    var dates = rapi.tanggal;
+    var closes = rapi.tutup.map(function (v) { return v == null ? null : Math.round(v * 100) / 100; });
+    var scores = rapi.skor.map(function (v) { return v == null ? null : Math.round(v * 1000) / 1000; });
     var gapCount = scores.filter(function (v) { return v === null; }).length;
 
     /* Elemen legenda bisa tidak ada (mis. halaman lain memuat skrip ini).
