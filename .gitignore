@@ -35,3 +35,8 @@ venv/
 # Artefak model terlatih — dilatih ulang oleh `python -m model.common.train_baseline`
 # (pickling sklearn terikat versi Python/scikit-learn, jangan di-commit)
 model/common/*.joblib
+
+# Figcraft: alat bantu tangkapan layar + manifest desain, bukan bagian aplikasi.
+# Hasilnya PNG/JSON besar dan bisa dibangun ulang kapan saja.
+frontend/figcraft/
+scripts/figcraft_*
