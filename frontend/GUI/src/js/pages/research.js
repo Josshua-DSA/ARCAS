@@ -169,6 +169,58 @@
     }, true);
   }
 
+  /* ---------------- jejak harga setelah berita ----------------
+     Dihitung dari deret harga yang sudah dimuat. Tidak ada request baru dan
+     tidak ada angka karangan: kalau indeks T+n melewati ujung deret, sel itu
+     ditulis "belum tersedia". T+n memakai indeks baris deret harga, yang hanya
+     berisi hari bursa -- bukan hari kalender. */
+  var JENDELA = [1, 3, 5];
+  var KUNCI_JENDELA = { 1: "T+1", 3: "T+3", 5: "T+5" };
+
+  function jejakHarga(idx, dates, closes) {
+    var hasil = [];
+    for (var j = 0; j < JENDELA.length; j++) {
+      var n = JENDELA[j];
+      var target = idx + n;
+      var tersedia = idx >= 0 && target < closes.length &&
+        isFinite(closes[target]) && isFinite(closes[idx]);
+      hasil.push({
+        label: KUNCI_JENDELA[n],
+        persen: tersedia ? (closes[target] / closes[idx] - 1) * 100 : null,
+        tanggal: tersedia ? dates[target] : null
+      });
+    }
+    return hasil;
+  }
+
+  function renderJejak(n, near, dates, closes) {
+    var box = $("jejakHarga");
+    if (!box) return;
+    var idx = near ? dates.indexOf(near.date) : -1;
+    if (!near) {
+      box.innerHTML = "<p class='rl-empty'>Tanggal berita tidak jatuh di rentang harga mana pun, " +
+        "jadi jejak setelahnya tidak bisa dihitung.</p>";
+      return;
+    }
+    var arah = String(n.direction || "neutral").toLowerCase();
+    var komentar = arah === "netral" || arah === "neutral"
+      ? "Berita ini tanpa arah, jadi tidak ada yang bisa dicocokkan."
+      : "Arah berita " + arah + "; bandingkan dengan tanda persen di atas.";
+    box.innerHTML = "<div class='rl-after'>" +
+      jejakHarga(idx, dates, closes).map(function (c) {
+        var teks = c.persen == null ? "belum tersedia"
+          : (c.persen > 0 ? "+" : "") + c.persen.toFixed(2) + "%";
+        var warna = c.persen == null ? "var(--on-dark-muted)"
+          : c.persen > 0 ? "var(--up-dark)" : c.persen < 0 ? "var(--down-dark)" : "var(--on-dark-primary)";
+        return "<div class='rl-after-cell'>" +
+          "<p class='rl-after-k'>" + esc(c.label) + "</p>" +
+          "<p class='rl-after-v' style='color:" + warna + "'>" + esc(teks) + "</p>" +
+          "<p class='rl-after-sub'>" + esc(c.tanggal || "di luar deret") + "</p></div>";
+      }).join("") + "</div>" +
+      "<p class='rl-after-sub' style='margin-top:8px'>" + esc(komentar) +
+      " Perubahan dihitung dari harga tutup hari berita, bukan dari harga saat berita terbit.</p>";
+  }
+
   /* ---------------- pemilih berita ---------------- */
   function renderNews() {
     var box = $("newsPicker");
@@ -230,7 +282,12 @@
       "<dt>skor</dt><dd>" + fmt(n.score) + "</dd>" +
       "<dt>keyakinan</dt><dd>" + (n.confidence != null ? Number(n.confidence).toFixed(2) : "-") + "</dd>" +
       "</dl>" +
-      (n.rationale ? "<p class='rl-sel-note'>" + esc(n.rationale) + "</p>" : "");
+      (n.rationale ? "<p class='rl-sel-note'>" + esc(n.rationale) + "</p>" : "") +
+      "<div id='jejakHarga'></div>";
+
+    var dates = S.prices.map(function (p) { return p.date; });
+    var closes = S.prices.map(function (p) { return Number(p.close); });
+    renderJejak(n, near, dates, closes);
   }
 
   /* ---------------- uji statistik ---------------- */
@@ -347,6 +404,7 @@
       renderSelected();
       renderTests();
       drawPriceChart();
+      perbaruiPetunjuk();
     }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ });
   }
 
@@ -355,6 +413,40 @@
      salah layout. Konsekuensinya penggeseran harus disediakan sendiri:
      roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
      Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
+  /* Penghitung "kartu ke-1 dari 50" dan gradien tepi. Tanpa ini, 45 kartu di
+     kanan tidak punya petunjuk keberadaan: scrollbar disembunyikan dan tidak
+     ada panah. Dihitung dari posisi nyata, jadi tetap benar saat digeser. */
+  function perbaruiPetunjuk() {
+    var wrap = $("pickerWrap"), hitung = $("newsCount");
+    if (!wrap || !hitung) return;
+    var item = picker.querySelectorAll(".rl-item");
+    var total = item.length;
+    if (!total) { hitung.hidden = true; return; }
+    /* Dihitung dari posisi nyata tiap kartu lewat rect, bukan offsetLeft:
+       offsetLeft relatif terhadap kontainer dan tidak berubah saat digeser,
+       sehingga 50 kartu terbaca "terlihat" semua. Kartu yang terpotong di tepi
+       tetap dihitung: pembaca melihatnya, jadi menyebut 4 saat 5 tampak
+       membuat penghitung ini terbaca salah. */
+    var box = picker.getBoundingClientRect();
+    var terlihat = 0;
+    for (var i = 0; i < total; i++) {
+      var r = item[i].getBoundingClientRect();
+      if (r.right > box.left + 2 && r.left < box.right - 2) terlihat++;
+    }
+    terlihat = Math.max(1, terlihat);
+    var sampaiUjung = picker.scrollLeft + picker.clientWidth >= picker.scrollWidth - 4;
+    var diAwal = picker.scrollLeft <= 4;
+    hitung.hidden = false;
+    /* Jangan tawarkan "geser ke kanan" saat sudah di ujung: itu menyuruh
+       pembaca melakukan hal yang mustahil. */
+    hitung.textContent = picker.scrollWidth > picker.clientWidth + 4
+      ? "menampilkan " + terlihat + " dari " + total + " berita" +
+        (sampaiUjung ? " · sudah di ujung kanan" : " · geser ke kanan" +
+          (diAwal ? "" : " atau seret"))
+      : total + " berita";
+    wrap.classList.toggle("at-end", sampaiUjung);
+  }
+
   var picker = $("newsPicker");
   if (!picker) {
     /* Tanpa DOM (diuji lewat node) tidak ada kontrol untuk didaftari. */
@@ -400,6 +492,11 @@
   picker.addEventListener("pointerup", endDrag);
   picker.addEventListener("pointercancel", endDrag);
   picker.addEventListener("pointerleave", endDrag);
+  /* scrollLeft berubah juga saat roda mouse dan seret, bukan hanya saat
+     scrollbar dipakai; satu listener menutup ketiganya. */
+  picker.addEventListener("scroll", perbaruiPetunjuk, { passive: true });
+  window.addEventListener("resize", perbaruiPetunjuk);
+  perbaruiPetunjuk();
 
   picker.addEventListener("click", function (e) {
     /* Klik yang lahir dari seret diabaikan berdasarkan waktu, bukan flag yang
