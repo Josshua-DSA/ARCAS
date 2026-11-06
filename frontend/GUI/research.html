@@ -50,21 +50,12 @@
 
   #priceChart{width:100%;height:340px}
 
-  /* --- kolom kiri mengisi tinggi barisnya ---
-     .grid memakai align-items:start, sehingga panel kiri berhenti ~342px lebih
-     pendek dari panel uji dan meninggalkan lubang kosong di bawah grafik.
-     Panel dipaksa setinggi baris dan detail berita diberi flex:1, jadi sisa
-     ruang jatuh ke catatan di bawah, bukan jadi lubang. */
-  .grid.rl-grid{align-items:stretch}
-  .grid.rl-grid > .panel{display:flex;flex-direction:column}
-  .grid.rl-grid > .panel > .panel-body{display:flex;flex-direction:column;flex:1}
-  .grid.rl-grid > .panel > .panel-body > #selDetail{flex:1}
-
-  /* --- ruang kiri yang dulu menggantung ---
-     Panel grafik berhenti ~554px lebih pendek dari panel uji (.grid memakai
-     align-items:start). Sisa ruang dipakai untuk apa yang memang belum muat:
-     jejak harga setelah berita terpilih, dihitung di klien dari deret yang
-     sudah ada. Tidak ada request baru dan tidak ada angka karangan. */
+  /* --- grafik: satu kolom penuh ---
+     Dulu panel uji statistik duduk di kolom pendamping dan tinggal lubang
+     kosong di bawah. Panel itu dipindah ke besaran yang memang relevan:
+     kartu keputusan dari backtesting di bawah grafik. Grid memakai dua kolom
+     bawaan, jadi lebar satunya dipaksa lagi di sini. */
+  .grid.rl-grid{grid-template-columns:1fr}
   .rl-after{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
   .rl-after-cell{flex:1 1 92px;min-width:92px;padding:8px 10px;border-radius:8px;
     background:var(--surface-raised);border:1px solid var(--border-dark-subtle)}
@@ -100,34 +91,11 @@
     color:var(--on-dark-secondary);margin:10px 0 0}
   .rl-empty{font-family:var(--font-sans);font-size:13px;color:var(--on-dark-muted);margin:0}
 
-  /* --- daftar uji: satu baris per uji, bukan satu blok --- */
-  .rl-test{display:grid;grid-template-columns:auto 34px 1fr 1fr 1fr 34px 30px;
-    align-items:center;gap:8px;padding:7px 0;
-    font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums;
-    border-bottom:1px solid var(--border-dark-subtle);color:var(--on-dark-primary)}
-  .rl-test:last-of-type{border-bottom:0}
-  .rl-test--head{color:var(--on-dark-muted);font-size:10px;letter-spacing:.06em;
-    text-transform:uppercase;padding-bottom:6px}
-  .rl-test-name{font-family:var(--font-sans);font-size:12.5px;font-weight:600;
-    white-space:nowrap}
-  .rl-test-lag{color:var(--on-dark-muted)}
-  .rl-test-num{text-align:right}
-  .rl-test-ci{white-space:nowrap}
-  .rl-sig{display:inline-block;padding:1px 5px;border-radius:5px;
-    border:1px solid #56D364;color:#56D364;font-size:9.5px;text-align:center}
-
-  .rl-n-mini{font-size:11.5px;color:var(--on-dark-muted);margin-top:10px;
-    padding-top:8px;border-top:1px solid var(--border-dark-subtle)}
-
   /* Keputusan dari backtesting: satu berita terpilih diuji ke seluruh histori
-     90 hari berpasangan. Pill mengikuti warna arah di seluruh aplikasi
-     (hijau/merah/abu), dengan latar transparan supaya tidak jadi blok warna. */
-  .rl-decide{margin-top:16px;padding-top:14px;border-top:1px solid var(--border-dark-strong)}
-  .rl-decide-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px}
-  .rl-decide-head h3{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
-    text-transform:uppercase;font-weight:500;margin:0;color:var(--accent-text-on-dark)}
-  .rl-decide-head .hint{font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)}
-  .rl-decide-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+     90 hari berpasangan. Panel ini strip penuh di bawah grafik. Pill mengikuti
+     warna arah di seluruh aplikasi (hijau/merah/abu), dengan latar transparan
+     supaya tidak jadi blok warna. */
+  .rl-decide-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
   .rl-decide-pill{font-family:var(--font-sans);font-size:14px;font-weight:700;
     letter-spacing:.03em;border-radius:10px;padding:7px 14px}
   .rl-decide-pill.rl-up{background:rgba(86,211,100,.14);color:var(--up-dark)}
@@ -144,12 +112,6 @@
   @media (max-width:960px){
     #priceChart{height:300px}
     .rl-item{flex:0 0 220px}
-  }
-  @media (max-width:600px){
-    /* Kolom n dan badge sig dibuang: p_adj sudah memberi tahu signifikansi,
-       dan tujuh kolom tidak muat di 390px. */
-    .rl-test{grid-template-columns:auto 26px 1fr 1fr 1fr;gap:6px;font-size:11px}
-    .rl-test > :nth-child(6),.rl-test > :nth-child(7){display:none}
   }
 </style>
 </head>
@@ -203,7 +165,7 @@
 <main class="wrap">
   <section class="hero" aria-labelledby="resTitle">
     <h1 id="resTitle">Pilih berita, lihat ia jatuh di titik mana pada grafik harga.</h1>
-    <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Di sebelah grafik tampil uji statistik yang benar-benar tersimpan untuk target ini. Yang belum tersedia ditulis belum tersedia.</p>
+    <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Halaman ini bukan meja uji statistik; fokusnya keputusan yang lahir dari bukti historis harga dan sentimennya.</p>
   </section>
 
   <!-- ============ 1. Pilih berita ============ -->
@@ -219,7 +181,7 @@
     <p class="rl-count" id="newsCount" aria-live="polite" hidden></p>
   </section>
 
-  <!-- ============ 2. Grafik pasar + uji ============ -->
+  <!-- ============ 2. Grafik pasar: satu kolom penuh ============ -->
   <div class="grid rl-grid">
     <section class="panel dark" aria-labelledby="chartTitle">
       <div class="panel-head">
@@ -232,23 +194,18 @@
         <div id="selDetail" style="margin-top:14px"></div>
       </div>
     </section>
-
-    <section class="panel dark" aria-labelledby="testTitle">
-      <div class="panel-head">
-        <h2 id="testTitle">Uji statistik tersimpan</h2>
-        <span class="hint">hanya yang sudah dihitung</span>
-      </div>
-      <div class="panel-body">
-        <div class="state" id="testState" hidden></div>
-        <div id="testList"></div>
-        <div id="keputusanBox" aria-live="polite"></div>
-        <p class="rl-sel-meta" style="margin:12px 0 0">
-          Asosiasi historis, bukan bukti sebab. p_adj sudah dikoreksi Benjamini-Hochberg.
-          Bukan nasihat investasi.
-        </p>
-      </div>
-    </section>
   </div>
+
+  <!-- ============ 3. Keputusan dari backtesting ============ -->
+  <section class="panel dark" id="decPanel" aria-labelledby="decideTitle">
+    <div class="panel-head">
+      <h2 id="decideTitle">Decision making</h2>
+      <span class="hint">dari backtesting &middot; mengikuti berita terpilih</span>
+    </div>
+    <div class="panel-body">
+      <div id="keputusanBox" aria-live="polite"></div>
+    </div>
+  </section>
 </main>
 
 <footer>

@@ -1,5 +1,5 @@
-/* Research Lab: pilih berita, lihat titiknya di grafik pasar, baca uji
-   statistik yang tersimpan untuk target itu.
+/* Research Lab: pilih berita, lihat titiknya di grafik pasar, lalu baca
+   keputusan yang lahir dari backtesting harga dan sentimennya.
 
    Halaman ini hanya fetch dan render. Semua angka dari API; tidak ada data
    contoh. Yang belum tersedia ditulis belum tersedia, bukan dikarang. */
@@ -7,65 +7,10 @@
   "use strict";
   var esc = A.esc, fmt = A.fmt;
 
-  var S = { prices: [], sents: [], news: [], tests: [], selected: null };
+  var S = { prices: [], sents: [], news: [], selected: null };
 
   function $(id) { return document.getElementById(id); }
 
-  /* ---------------- perapian daftar uji ----------------
-
-     `stat_results` menyimpan baris kembar persis: menjalankan ulang `cli
-     stats` menambah baris baru tanpa membuang yang lama. Untuk XAU itu berarti
-     28 baris padahal hanya 24 kombinasi (uji, lag, estimate, p_adj, n) yang
-     berbeda -- tabel menampilkan uji yang sama dua kali dan pembaca mengira
-     rangkaiannya lebih panjang dari kenyataan.
-
-     Kunci dedup memakai nilai yang benar-benar tampil di baris, bukan run_id:
-     dua baris identik dari run berbeda adalah satu bukti yang sama.
-     `JSON.stringify` memisahkan null dari 0, jadi p_adj null tidak tertukar
-     dengan p_adj 0. */
-  function dedupUji(rows) {
-    var terlihat = {}, hasil = [];
-    (rows || []).forEach(function (r) {
-      var kunci = JSON.stringify([r.test, r.market_metric, r.lag,
-        r.estimate, r.p_adjusted, r.n_obs, r.ci_low, r.ci_high]);
-      if (terlihat[kunci]) return;
-      terlihat[kunci] = true;
-      hasil.push(r);
-    });
-    return hasil;
-  }
-
-  /* Urut berdasarkan kekuatan bukti: p_adj terkecil dulu, yang tidak punya
-     p_adj paling bawah. Di 24 baris mono 10px, dua baris signifikan tenggelam
-     kalau urutannya mengikuti jenis uji. Pengurutan stabil supaya dua baris
-     setara tidak bertukar posisi tiap kali target diganti. */
-  function urutUji(rows) {
-    return (rows || []).map(function (r, i) { return { r: r, i: i }; })
-      .sort(function (a, b) {
-        var pa = a.r.p_adjusted == null ? Infinity : Number(a.r.p_adjusted);
-        var pb = b.r.p_adjusted == null ? Infinity : Number(b.r.p_adjusted);
-        if (pa !== pb) return pa - pb;
-        return a.i - b.i;
-      })
-      .map(function (x) { return x.r; });
-  }
-
-  /* Rentang n_obs per jenis uji. Baris tanpa n_obs dilewati, bukan dihitung
-     nol: nol akan menakut-nakuti tanpa alasan. Mengembalikan "tidak tersedia"
-     bila jenis uji itu memang tidak dihitung untuk target ini. */
-  function rentangN(rows, test) {
-    var v = rows.filter(function (r) { return r.test === test; })
-      .map(function (r) { return r.n_obs; })
-      .filter(function (n) { return n != null && isFinite(Number(n)); })
-      .map(Number);
-    if (!v.length) return "tidak tersedia";
-    var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
-    return lo === hi ? String(lo) : lo + "–" + hi;
-  }
-
-  /* Tanggal berita bisa jatuh di hari bursa tutup. Marker digeser ke tanggal
-     bursa terdekat yang tersedia, dan UI menyebut pergeserannya supaya tidak
-     terbaca sebagai presisi palsu. */
   function nearestTradingDate(iso, dates) {
     if (!iso || !dates.length) return null;
     var d = String(iso).slice(0, 10);
@@ -299,26 +244,30 @@
 
   /* ---------------- keputusan dari backtesting ----------------
 
-     Kartu uji statistik memeriksa asosiasi harian sentimen dan harga; kartu
-     ini menjawab pertanyaan tindak lanjutnya: "kalau berita seperti ini
-     keluar, arah apa yang terbukti menguntungkan?" Persis alur keputusan di
-     Simulations, hanya tanpa lima persona: basisnya riset kuantitatif penuh,
-     dan bukti yang tipis diakui sebagai bukti tipis. */
+     Panel penuh di bawah grafik dan uji statistik. Kartu uji memeriksa
+     asosiasi harian sentimen dan harga; panel ini menjawab pertanyaan tindak
+     lanjutnya: "kalau berita seperti ini keluar, arah apa yang terbukti
+     menguntungkan?" Persis alur keputusan di Simulations, hanya tanpa lima
+     persona: basisnya riset kuantitatif penuh, dan bukti yang tipis diakui
+     sebagai bukti tipis. */
   function renderKeputusan() {
     var box = $("keputusanBox");
     if (!box) return;
     var n = (S.selected != null) ? S.news[S.selected] : null;
-    if (!n) { box.innerHTML = ""; return; }
+    if (!n) {
+      box.innerHTML = "<p class='rl-k-note' style='margin:0'>Pilih satu berita " +
+        "di atas untuk melihat keputusannya.</p>";
+      return;
+    }
 
     var arah = n.direction === "bullish" ? "naik"
              : n.direction === "bearish" ? "turun" : "netral";
 
     if (!S.prices.length || !S.sents.length) {
       box.innerHTML =
-        "<div class='rl-decide'><header class='rl-decide-head'><h3>Decision making</h3>" +
-        "<span class='hint'>dari backtesting</span></header>" +
+        "<h3 class='rl-sel-title'>" + esc(judulBerita(n)) + "</h3>" +
         "<p class='rl-k-note'>Keputusan belum bisa dihitung: deret harga atau " +
-        "sentimen harian target ini tidak tersedia. Tidak ada angka pengganti.</p></div>";
+        "sentimen harian target ini tidak tersedia. Tidak ada angka pengganti.</p>";
       return;
     }
 
@@ -332,23 +281,22 @@
     var label = d.keputusan === "beli" ? "BELI"
               : d.keputusan === "jual" ? "JUAL"
               : d.keputusan === "tahan" ? "TAHAN" : "TIDAK ADA SINYAL";
-    var judul = n.title && n.title.length > 46
-      ? n.title.slice(0, 46) + "…"
-      : (n.title || n.article_id);
 
     box.innerHTML =
-      "<div class='rl-decide'><header class='rl-decide-head'><h3>Decision making</h3>" +
-        "<span class='hint'>dari backtesting &middot; 90 hari</span></header>" +
-      "<p class='rl-k-note' style='margin:0 0 10px'>" + esc(judul) + "</p>" +
+      "<h3 class='rl-sel-title'>" + esc(judulBerita(n)) + "</h3>" +
       "<div class='rl-decide-body'><span class='rl-decide-pill " + kls + "'>" + label + "</span>" +
-        "<span class='hint'>" + esc(d.label) + "</span></div>" +
+        "<span class='rl-k-note' style='margin:0'>" + esc(d.label) + "</span></div>" +
       "<p class='rl-k-note'>" + esc(d.alasan) + "</p>" +
       barisBuktiKeputusan(d) +
       (d.catatan ? "<p class='rl-k-note'>" + esc(d.catatan) + "</p>" : "") +
       "<p class='rl-k-note rl-decide-src'>Keputusan ini dihitung dari hit-rate " +
         "historis sentimen-harga pada data bursa 90 hari, tanpa lima persona " +
-        "(alur persona ada di halaman Simulasi). Bukan nasihat investasi.</p>" +
-      "</div>";
+        "(alur persona ada di halaman Simulasi). Bukan nasihat investasi.</p>";
+  }
+
+  function judulBerita(n) {
+    if (!n.title || n.title.length <= 46) return n.title || n.article_id;
+    return n.title.slice(0, 46) + "…";
   }
 
   /* n kecil tetap ditampilkan: angka yang tidak layak disimpulkan berbohong
@@ -368,103 +316,6 @@
     return (p >= 0 ? "+" : "") + p.toFixed(2).replace(".", ",") + "%";
   }
 
-  /* ---------------- uji statistik ---------------- */
-  var TESTS = ["spearman", "ols", "granger", "event_study"];
-  /* Ambang signifikansi. p_adj 0.049 dan 0.051 tampil sama sebagai 0.05 di
-     UI, jadi statusnya dihitung dari nilai mentah, bukan dari angka bulat. */
-  var SIG_AMBANG = 0.05;
-
-  /* Nilai `est` tidak sama artinya antar uji, dan kolom CI tidak selalu ada:
-     - `granger` menyimpan statistik F (selalu >= 0, tanpa tanda), dan uji ini
-       memang tidak menghasilkan interval kepercayaan -> ci_low/ci_high NULL
-       untuk SEMUA baris Granger, bukan sebagian.
-     - `event_study` menyimpan CAR (jumlah return jendela event), punya CI.
-     - `ols` menyimpan koefisien sentimen, punya CI.
-     Tanpa label ini, kolom `est` terbaca seolah satu besaran yang sama di
-     semua baris, dan "—" di kolom CI terbaca sebagai data yang gagal dimuat. */
-  var KETERANGAN_UJI = {
-    ols: { estimasi: "koefisien sentimen", ada_ci: true },
-    granger: { estimasi: "statistik F", ada_ci: false },
-    event_study: { estimasi: "CAR jendela event", ada_ci: true },
-    spearman: { estimasi: "koefisien Spearman", ada_ci: false },
-    pearson: { estimasi: "koefisien Pearson", ada_ci: false }
-  };
-
-  function renderTests() {
-    var box = $("testList");
-    if (!box) return;
-    /* Urutan: dedup dulu (baris kembar dari run berulang), baru urut menurut
-       kekuatan bukti. Membalik urutannya membuat dedup memilih wakil yang
-       salah saat nilai yang sama muncul dari run berbeda. */
-    var rows = urutUji(dedupUji(S.tests.filter(function (r) {
-      return TESTS.indexOf(r.test) !== -1;
-    })));
-    if (!rows.length) {
-      box.innerHTML = "";
-      A.showState("testState", "Belum ada hasil uji tersimpan. Jalankan `cli stats` dulu agar panel terisi.");
-      return;
-    }
-    A.showState("testState", "");
-    /* Uji yang belum dihitung disebut namanya. Tanpa ini, panel terbaca
-       seolah dua uji itulah seluruh rangkaian yang dirancang. */
-    var missing = TESTS.filter(function (t) {
-      return !rows.some(function (r) { return r.test === t; });
-    });
-    /* Baris no. 1 adalah bukti terkuat; urutan mengikuti p_adj, bukan jenis
-       uji (lihat urutUji). */
-    box.innerHTML =
-      "<div class='rl-test rl-test--head' aria-hidden='true'>" +
-        "<span>uji</span><span>lag</span><span class='rl-test-num'>est</span>" +
-        "<span>95% CI</span><span class='rl-test-num'>p_adj</span>" +
-        "<span class='rl-test-num'>n</span><span></span></div>" +
-      rows.map(function (r) {
-        var sig = r.p_adjusted != null && Number(r.p_adjusted) < SIG_AMBANG;
-        var ket = KETERANGAN_UJI[r.test] || { estimasi: "estimasi", ada_ci: true };
-        /* Granger tidak punya CI: tulis "—" dengan judul yang menyebut alasannya,
-           supaya tidak terbaca sebagai data yang gagal dimuat. */
-        var ci = (r.ci_low != null && r.ci_high != null)
-          ? "[" + Number(r.ci_low).toFixed(2) + ", " + Number(r.ci_high).toFixed(2) + "]"
-          : "—";
-        var judulCi = ket.ada_ci ? "interval kepercayaan 95%"
-          : "uji ini tidak menghasilkan interval kepercayaan";
-        var crosses = r.ci_low != null && r.ci_high != null &&
-          Number(r.ci_low) <= 0 && Number(r.ci_high) >= 0;
-        return "<div class='rl-test'>" +
-          "<span class='rl-test-name'>" + esc(A.testLabel(r.test)) + "</span>" +
-          "<span class='rl-test-lag'>" + (r.lag != null ? "L" + esc(r.lag) : "—") + "</span>" +
-          "<span class='rl-test-num' title='" + esc(ket.estimasi) + "'>" +
-            fmt(r.estimate, 3) + "</span>" +
-          "<span class='rl-test-ci" + (crosses ? " rl-cross" : "") + "' title='" +
-            esc(judulCi) + "'>" + ci + "</span>" +
-          "<span class='rl-test-num'>" + (r.p_adjusted != null ? Number(r.p_adjusted).toFixed(3) : "—") + "</span>" +
-          "<span class='rl-test-num'>" + esc(r.n_obs) + "</span>" +
-          (sig ? "<span class='rl-sig'>sig</span>" : "<span></span>") +
-          "</div>";
-      }).join("") +
-      (missing.length
-        ? "<p class='rl-sel-note' style='color:var(--on-dark-muted)'>Belum dihitung untuk target ini: " +
-          esc(missing.map(function (t) { return A.testLabel(t); }).join(", ")) +
-          ". Tidak ada angkanya di sini karena memang belum ada.</p>"
-        : "") +
-      /* `n_obs` tidak sama artinya per uji: event_study menghitung jumlah
-         spike sentimen (bisa 2), sedangkan OLS/Granger menghitung hari
-         berpasangan (32-49). Menyebut satu rentang "2-46 hari berpasangan"
-         mencampur dua satuan dan membuat sampelnya terbaca lebih buruk dari
-         kenyataan untuk OLS. */
-      "<p class='rl-sel-note rl-n-mini'>Jumlah sampel berbeda satuan: OLS " +
-        esc(rentangN(rows, "ols")) + " hari berpasangan, Granger " +
-        esc(rentangN(rows, "granger")) + " hari berpasangan, CAR " +
-        esc(rentangN(rows, "event_study")) + " kejadian spike. p_adj kecil pada " +
-        "sampel sekecil ini berarti asosiasi lemah yang belum stabil, bukan " +
-        "kepastian.</p>" +
-      /* Tanpa kalimat ini, pembaca membandingkan est OLS (-0,007) dengan est
-         Granger (0,96) seolah keduanya besaran yang sama. */
-      "<p class='rl-sel-note rl-n-mini'>Arti kolom <code>est</code> berbeda per uji: " +
-        "OLS = koefisien sentimen, Granger = statistik F, CAR = jumlah return " +
-        "jendela event. Tanda “—” di kolom CI bukan data hilang: Granger memang " +
-        "tidak menghasilkan interval kepercayaan.</p>";
-  }
-
   /* ---------------- muat ----------------
      Pola sama dengan overview.js: request lama dibatalkan dan hasilnya
      diabaikan lewat nomor urut. Tanpa ini, ganti target cepat membuat berita
@@ -482,7 +333,6 @@
 
     A.showState("chartState", "Memuat deret harga...");
     A.showState("newsState", "Memuat berita...");
-    A.showState("testState", "Memuat hasil uji...");
 
     var start = new Date(Date.now() - 89 * 86400000).toISOString().slice(0, 10);
     var end = new Date().toISOString().slice(0, 10);
@@ -507,10 +357,7 @@
             return String(b.published_at || "").localeCompare(String(a.published_at || ""));
           });
         })
-        .catch(function (err) { fail(err); S.news = []; }),
-      A.api("/api/stats/" + t, signal)
-        .then(function (rows) { S.tests = rows || []; })
-        .catch(function (err) { fail(err); S.tests = []; })
+        .catch(function (err) { fail(err); S.news = []; })
     ]).then(function () {
       if (!live()) return;
       /* Indeks terpilih hanya bermakna di dalam satu target. Tanpa reset,
@@ -519,7 +366,6 @@
       renderNews();
       renderSelected();
       renderKeputusan();
-      renderTests();
       drawPriceChart();
       perbaruiPetunjuk();
     }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ });
@@ -552,8 +398,6 @@
   var picker = $("newsPicker");
   if (!picker) {
     /* Tanpa DOM (diuji lewat node) tidak ada kontrol untuk didaftari. */
-    A.dedupUji = dedupUji;
-    A.urutUji = urutUji;
     A.renderPage = loadData;
     return;
   }
@@ -613,8 +457,6 @@
     drawPriceChart();
   });
 
-  A.dedupUji = dedupUji;
-  A.urutUji = urutUji;
   A.renderPage = loadData;
   A.boot();
 })(window.ARCAS);
