@@ -1,5 +1,5 @@
 /* Market Overview (Upgrade.md 3): grafik harga vs sentimen, statistik ringkas,
-   strip alokasi profil aktif, dan berita teratas. Detail penuh ada di halaman
+   dan berita teratas. Detail penuh ada di halaman
    lain (research, evidence, simulations). Halaman ini hanya fetch dan render. */
 (function (A) {
   "use strict";
@@ -294,7 +294,6 @@
     var live = function () { return mySeq === seq; };
 
     A.showState("chartState", "Memuat deret " + t + "...");
-    A.showState("allocState", "Memuat strip alokasi...");
     A.showState("newsState", "Memuat berita...");
 
     A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal).then(function (payload) {
@@ -306,16 +305,6 @@
       if (!live() || (err && err.name === "AbortError")) return;
       A.state.apiOk = false; A.setStatus("err", "API tidak terjangkau : ilustrasi");
       renderChart(A.demoSeries(t, A.state.days));
-    });
-
-    A.api("/api/allocation?profile_id=" + A.state.profile + "&article_id=current_market", signal).then(function (payload) {
-      if (!live()) return;
-      A.renderAllocation(payload);
-    }).catch(function (err) {
-      if (!live() || (err && err.name === "AbortError")) return;
-      /* Tidak ada alokasi karangan: strip kosong + pesan apa adanya. */
-      A.renderAllocation({ lines: [] });
-      A.showState("allocState", "API alokasi tidak terjangkau : tidak ada angka alokasi untuk ditampilkan (bukan ilustrasi).");
     });
 
     loadPreloadStamp(signal, live);
