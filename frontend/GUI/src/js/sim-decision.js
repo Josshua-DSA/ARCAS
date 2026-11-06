@@ -130,6 +130,97 @@ window.ARCAS = window.ARCAS || {};
     return { n: n, hit_rate: benar / n, rata2: jumlah / n, horizon: horizon };
   }
 
+  /* ---------------- keputusan dari bukti historis (tanpa persona)
+
+     Cabang bersama dua pemakai:
+     - keputusanBerita(): persona sebagai dasar, bukti boleh membaliknya.
+     - halaman Lab Riset: keputusan murni dari backtesting, tanpa lima persona.
+     Rule-nya sama persis; bedanya hanya "siapa yang berbicara kalau bukti
+     tipis". Di halaman riset tidak ada persona, jadi "bukti tipis" jujur
+     berarti TIDAK ADA SINYAL, bukan sedemikian "mengikuti persona". */
+  function keputusanDariBukti(arah, bukti, persentil) {
+    bukti = bukti || {};
+    var t3 = bukti.T3 || null;
+    var t1 = bukti.T1 || null;
+
+    var hasil = {
+      keputusan: null,
+      label: "",
+      alasan: "",
+      n: t3 ? t3.n : 0,
+      hit_rate: t3 ? t3.hit_rate : null,
+      horizon: 3,
+      rata2: t3 ? t3.rata2 : null,
+      rata2_t1: t1 ? t1.rata2 : null,
+      catatan: null,
+      layak: false
+    };
+
+    /* Tanpa arah berita, tidak ada yang bisa diuji terhadap histori. Ini kasus
+       nyata: server mengirim direction="netral" untuk teks yang tidak menyebut
+       asetnya, walau skornya ekstrem. Memaksakan hit-rate di situ akan
+       menghasilkan "sell on news" untuk berita yang arahnya tidak ada. */
+    if (arah !== "naik" && arah !== "turun") {
+      hasil.keputusan = "tidak_ada_sinyal";
+      hasil.label = "tanpa arah berita";
+      hasil.alasan = "Berita ini tidak punya arah jelas untuk target ini, " +
+        "jadi tidak ada uji historis yang bisa mengubah apa pun.";
+      hasil.n = 0;
+      hasil.hit_rate = null;
+      hasil.rata2 = null;
+      hasil.rata2_t1 = null;
+      return hasil;
+    }
+
+    var nLayak = !!(t3 && t3.n >= AMBANG_LAYAK && t3.hit_rate !== null);
+    hasil.layak = nLayak;
+
+    if (!nLayak) {
+      hasil.keputusan = "tidak_ada_sinyal";
+      hasil.label = "bukti tipis";
+      hasil.alasan = "Bukti historis belum cukup (" + hasil.n + " kejadian, " +
+        "ambang " + AMBANG_LAYAK + "), jadi belum ada keputusan dari backtesting.";
+    } else if (t3.hit_rate >= HIT_TINGGI) {
+      /* Historis searah berita lebih sering benar. */
+      hasil.keputusan = arah === "turun" ? "jual" : "beli";
+      hasil.alasan = "Arah ini benar " + persen(t3.hit_rate) + " dari " +
+        t3.n + " kejadian serupa, jadi mengikuti arah berita.";
+    } else if (t3.hit_rate <= HIT_RENDAH) {
+      /* Historis berbalik arah: ini inti sell on news. */
+      hasil.keputusan = arah === "turun" ? "beli" : "jual";
+      hasil.alasan = "Arah ini hanya benar " + persen(t3.hit_rate) + " dari " +
+        t3.n + " kejadian serupa, jadi dibalik dari arah berita.";
+    } else {
+      hasil.keputusan = "tahan";
+      hasil.label = "tanpa keunggulan";
+      hasil.alasan = "Hit-rate " + persen(t3.hit_rate) + " masih di sekitar " +
+        "lempar koin, jadi tidak ada keunggulan arah yang bisa dipakai.";
+    }
+
+    /* Label mengikuti KEPUTUSAN, bukan cabang yang menghasilkannya: "buy on
+       news" berarti tindakannya membeli karena berita ini. Cabang hit-rate
+       rendah pada berita buruk juga menghasilkan BELI, dan menyebutnya
+       "sell on news" akan menamai tindakan dengan kebalikannya.
+       Kasus bukti tipis dibiarkan berlabel "bukti tipis": di situ keputusan
+       datang dari persona, bukan dari berita, jadi menamainya "on news" bohong. */
+    if (nLayak) {
+      if (hasil.keputusan === "beli") hasil.label = "buy on news";
+      else if (hasil.keputusan === "jual") hasil.label = "sell on news";
+    }
+
+    /* Keterangan, bukan keputusan: "priced in" belum diuji di data ini. */
+    var pers = persentil;
+    if (pers !== null && pers !== undefined) {
+      if (arah === "naik" && Number(pers) >= 0.90) {
+        hasil.catatan = "harga sudah di puncak 20 hari";
+      } else if (arah === "turun" && Number(pers) <= 0.10) {
+        hasil.catatan = "harga sudah di dasar 20 hari";
+      }
+    }
+
+    return hasil;
+  }
+
   /* ---------------- keputusan: persona x bukti ----------------
 
      Urutan wewenang: keyakinan model dulu (kalau modelnya sendiri tidak yakin,
@@ -185,49 +276,21 @@ window.ARCAS = window.ARCAS || {};
       return hasil;
     }
 
-    var nLayak = !!(t3 && t3.n >= AMBANG_LAYAK && t3.hit_rate !== null);
-    hasil.layak = nLayak;
-
-    if (!nLayak) {
-      hasil.alasan = "Bukti historis belum cukup (" + hasil.n + " kejadian, " +
-        "ambang " + AMBANG_LAYAK + "), jadi keputusan mengikuti lima persona.";
-      hasil.label = "bukti tipis";
-    } else if (t3.hit_rate >= HIT_TINGGI) {
-      /* Historis searah berita lebih sering benar. */
-      hasil.keputusan = arah === "turun" ? "jual" : "beli";
-      hasil.alasan = "Arah ini benar " + persen(t3.hit_rate) + " dari " +
-        t3.n + " kejadian serupa, jadi mengikuti arah berita.";
-    } else if (t3.hit_rate <= HIT_RENDAH) {
-      /* Historis berbalik arah: ini inti sell on news. */
-      hasil.keputusan = arah === "turun" ? "beli" : "jual";
-      hasil.alasan = "Arah ini hanya benar " + persen(t3.hit_rate) + " dari " +
-        t3.n + " kejadian serupa, jadi dibalik dari arah berita.";
+    /* Dari sini keputusan murni hasil cabang bukti; bukti tipis berarti
+       keputusan tetap di persona, sisanya persona ditinggalkan. */
+    var ev = keputusanDariBukti(arah, bukti, input.persentil);
+    hasil.layak = ev.layak;
+    hasil.label = ev.label;
+    hasil.alasan = ev.alasan;
+    hasil.catatan = ev.catatan;
+    if (ev.layak) {
+      hasil.keputusan = ev.keputusan;
+      hasil.n = ev.n;
+      hasil.hit_rate = ev.hit_rate;
+      hasil.rata2 = ev.rata2;
+      hasil.rata2_t1 = ev.rata2_t1;
     } else {
-      hasil.keputusan = "tahan";
-      hasil.label = "tanpa keunggulan";
-      hasil.alasan = "Hit-rate " + persen(t3.hit_rate) + " masih di sekitar " +
-        "lempar koin, jadi tidak ada keunggulan arah yang bisa dipakai.";
-    }
-
-    /* Label mengikuti KEPUTUSAN, bukan cabang yang menghasilkannya: "buy on
-       news" berarti tindakannya membeli karena berita ini. Cabang hit-rate
-       rendah pada berita buruk juga menghasilkan BELI, dan menyebutnya
-       "sell on news" akan menamai tindakan dengan kebalikannya.
-       Kasus bukti tipis dibiarkan berlabel "bukti tipis": di situ keputusan
-       datang dari persona, bukan dari berita, jadi menamainya "on news" bohong. */
-    if (nLayak) {
-      if (hasil.keputusan === "beli") hasil.label = "buy on news";
-      else if (hasil.keputusan === "jual") hasil.label = "sell on news";
-    }
-
-    /* Keterangan, bukan keputusan: "priced in" belum diuji di data ini. */
-    var pers = input.persentil;
-    if (pers !== null && pers !== undefined) {
-      if (arah === "naik" && Number(pers) >= 0.90) {
-        hasil.catatan = "harga sudah di puncak 20 hari";
-      } else if (arah === "turun" && Number(pers) <= 0.10) {
-        hasil.catatan = "harga sudah di dasar 20 hari";
-      }
+      hasil.label = ev.label;   /* "bukti tipis": dasarnya persona, judulnya bukti */
     }
 
     return hasil;
@@ -309,6 +372,7 @@ window.ARCAS = window.ARCAS || {};
   A.agregasiStance = agregasiStance;
   A.hitungBukti = hitungBukti;
   A.keputusanBerita = keputusanBerita;
+  A.keputusanDariBukti = keputusanDariBukti;
   A.rapikanKeHariBursa = rapikanKeHariBursa;
   A.AMBANG_AGREGAT = AMBANG_AGREGAT;
   A.AMBANG_LAYAK = AMBANG_LAYAK;

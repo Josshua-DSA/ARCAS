@@ -119,6 +119,28 @@
   .rl-n-mini{font-size:11.5px;color:var(--on-dark-muted);margin-top:10px;
     padding-top:8px;border-top:1px solid var(--border-dark-subtle)}
 
+  /* Keputusan dari backtesting: satu berita terpilih diuji ke seluruh histori
+     90 hari berpasangan. Pill mengikuti warna arah di seluruh aplikasi
+     (hijau/merah/abu), dengan latar transparan supaya tidak jadi blok warna. */
+  .rl-decide{margin-top:16px;padding-top:14px;border-top:1px solid var(--border-dark-strong)}
+  .rl-decide-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px}
+  .rl-decide-head h3{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;font-weight:500;margin:0;color:var(--accent-text-on-dark)}
+  .rl-decide-head .hint{font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)}
+  .rl-decide-body{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+  .rl-decide-pill{font-family:var(--font-sans);font-size:14px;font-weight:700;
+    letter-spacing:.03em;border-radius:10px;padding:7px 14px}
+  .rl-decide-pill.rl-up{background:rgba(86,211,100,.14);color:var(--up-dark)}
+  .rl-decide-pill.rl-down{background:rgba(255,123,114,.14);color:var(--down-dark)}
+  .rl-decide-pill.rl-hold{background:rgba(189,183,183,.12);color:var(--hold-dark)}
+  .rl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    border-bottom:1px dashed var(--border-dark-subtle);padding:6px 0;
+    font-family:var(--font-mono);font-size:12px;color:var(--on-dark-secondary)}
+  .rl-row b{color:var(--on-dark-primary);font-variant-numeric:tabular-nums;font-weight:600}
+  .rl-k-note{font-family:var(--font-sans);font-size:12px;line-height:1.5;
+    color:var(--on-dark-muted);margin:6px 0 0}
+  .rl-decide-src{margin-top:8px}
+
   @media (max-width:960px){
     #priceChart{height:300px}
     .rl-item{flex:0 0 220px}
@@ -219,6 +241,7 @@
       <div class="panel-body">
         <div class="state" id="testState" hidden></div>
         <div id="testList"></div>
+        <div id="keputusanBox" aria-live="polite"></div>
         <p class="rl-sel-meta" style="margin:12px 0 0">
           Asosiasi historis, bukan bukti sebab. p_adj sudah dikoreksi Benjamini-Hochberg.
           Bukan nasihat investasi.
@@ -239,6 +262,7 @@
 <script src="src/js/splash.js"></script>
 <script src="src/js/api.js"></script>
 <script src="src/js/state.js"></script>
+<script src="src/js/sim-decision.js"></script>
 <script src="src/js/shell.js"></script>
 <script src="src/js/pages/research.js"></script>
 </body>

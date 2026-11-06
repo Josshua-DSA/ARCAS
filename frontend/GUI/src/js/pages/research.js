@@ -7,7 +7,7 @@
   "use strict";
   var esc = A.esc, fmt = A.fmt;
 
-  var S = { prices: [], news: [], tests: [], selected: null };
+  var S = { prices: [], sents: [], news: [], tests: [], selected: null };
 
   function $(id) { return document.getElementById(id); }
 
@@ -143,7 +143,9 @@
 
     priceChart.setOption({
       backgroundColor: "transparent",
-      grid: { left: 58, right: 22, top: 26, bottom: 44 },
+      /* containLabel: tanpa ini label sumbu "4,700" kepotong digit pertama
+         karena left 58px tidak cukup memuat angka emapatan. */
+      grid: { left: 58, right: 22, top: 26, bottom: 44, containLabel: true },
       tooltip: {
         trigger: "axis", backgroundColor: "#2C2727", borderWidth: 0,
         textStyle: { color: "#F6F4F4", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }
@@ -295,6 +297,77 @@
     renderJejak(n, near, dates, closes);
   }
 
+  /* ---------------- keputusan dari backtesting ----------------
+
+     Kartu uji statistik memeriksa asosiasi harian sentimen dan harga; kartu
+     ini menjawab pertanyaan tindak lanjutnya: "kalau berita seperti ini
+     keluar, arah apa yang terbukti menguntungkan?" Persis alur keputusan di
+     Simulations, hanya tanpa lima persona: basisnya riset kuantitatif penuh,
+     dan bukti yang tipis diakui sebagai bukti tipis. */
+  function renderKeputusan() {
+    var box = $("keputusanBox");
+    if (!box) return;
+    var n = (S.selected != null) ? S.news[S.selected] : null;
+    if (!n) { box.innerHTML = ""; return; }
+
+    var arah = n.direction === "bullish" ? "naik"
+             : n.direction === "bearish" ? "turun" : "netral";
+
+    if (!S.prices.length || !S.sents.length) {
+      box.innerHTML =
+        "<div class='rl-decide'><header class='rl-decide-head'><h3>Decision making</h3>" +
+        "<span class='hint'>dari backtesting</span></header>" +
+        "<p class='rl-k-note'>Keputusan belum bisa dihitung: deret harga atau " +
+        "sentimen harian target ini tidak tersedia. Tidak ada angka pengganti.</p></div>";
+      return;
+    }
+
+    var bukti = {
+      T1: A.hitungBukti(S.sents, S.prices, arah, 1),
+      T3: A.hitungBukti(S.sents, S.prices, arah, 3)
+    };
+    var d = A.keputusanDariBukti(arah, bukti);
+    var kls = d.keputusan === "beli" ? "rl-up"
+            : d.keputusan === "jual" ? "rl-down" : "rl-hold";
+    var label = d.keputusan === "beli" ? "BELI"
+              : d.keputusan === "jual" ? "JUAL"
+              : d.keputusan === "tahan" ? "TAHAN" : "TIDAK ADA SINYAL";
+    var judul = n.title && n.title.length > 46
+      ? n.title.slice(0, 46) + "…"
+      : (n.title || n.article_id);
+
+    box.innerHTML =
+      "<div class='rl-decide'><header class='rl-decide-head'><h3>Decision making</h3>" +
+        "<span class='hint'>dari backtesting &middot; 90 hari</span></header>" +
+      "<p class='rl-k-note' style='margin:0 0 10px'>" + esc(judul) + "</p>" +
+      "<div class='rl-decide-body'><span class='rl-decide-pill " + kls + "'>" + label + "</span>" +
+        "<span class='hint'>" + esc(d.label) + "</span></div>" +
+      "<p class='rl-k-note'>" + esc(d.alasan) + "</p>" +
+      barisBuktiKeputusan(d) +
+      (d.catatan ? "<p class='rl-k-note'>" + esc(d.catatan) + "</p>" : "") +
+      "<p class='rl-k-note rl-decide-src'>Keputusan ini dihitung dari hit-rate " +
+        "historis sentimen-harga pada data bursa 90 hari, tanpa lima persona " +
+        "(alur persona ada di halaman Simulasi). Bukan nasihat investasi.</p>" +
+      "</div>";
+  }
+
+  /* n kecil tetap ditampilkan: angka yang tidak layak disimpulkan berbohong
+     kalau n-nya disembunyikan. Salinan baris bukti Simulations. */
+  function barisBuktiKeputusan(d) {
+    if (d.hit_rate === null || d.hit_rate === undefined) return "";
+    var pers = Math.round(Number(d.hit_rate) * 100) + "%";
+    return "<div class='rl-row'><span>kejadian serupa</span><b>n " + d.n + "</b></div>" +
+      "<div class='rl-row'><span>searah berita (T+3)</span><b>" + pers + "</b></div>" +
+      "<div class='rl-row'><span>rata-rata T+3</span><b>" + persenBertanda(d.rata2) + "</b></div>" +
+      "<div class='rl-row'><span>rata-rata T+1</span><b>" + persenBertanda(d.rata2_t1) + "</b></div>";
+  }
+
+  function persenBertanda(v) {
+    if (v === null || v === undefined || !isFinite(Number(v))) return "n/a";
+    var p = Number(v) * 100;
+    return (p >= 0 ? "+" : "") + p.toFixed(2).replace(".", ",") + "%";
+  }
+
   /* ---------------- uji statistik ---------------- */
   var TESTS = ["spearman", "ols", "granger", "event_study"];
   /* Ambang signifikansi. p_adj 0.049 dan 0.051 tampil sama sebagai 0.05 di
@@ -420,8 +493,13 @@
 
     return Promise.all([
       A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal)
-        .then(function (p) { S.prices = (p && p.prices) || []; })
-        .catch(function (err) { fail(err); S.prices = []; }),
+        .then(function (p) {
+          /* Sentimen harian ikut disimpan: keputusan dari backtesting
+             menghitung hit-rate dari pasangan (skor harian, harga tutup). */
+          S.prices = (p && p.prices) || [];
+          S.sents = (p && p.sentiments) || [];
+        })
+        .catch(function (err) { fail(err); S.prices = []; S.sents = []; }),
       A.api("/api/impacts/" + t + "?limit=50", signal)
         .then(function (rows) {
           /* Urut terbaru dulu supaya berita yang baru masuk langsung terlihat. */
@@ -440,6 +518,7 @@
       S.selected = S.news.length ? 0 : null;
       renderNews();
       renderSelected();
+      renderKeputusan();
       renderTests();
       drawPriceChart();
       perbaruiPetunjuk();
@@ -530,6 +609,7 @@
     S.selected = Number(btn.getAttribute("data-i"));
     renderNews();
     renderSelected();
+    renderKeputusan();
     drawPriceChart();
   });
 
