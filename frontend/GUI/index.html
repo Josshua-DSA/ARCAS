@@ -47,9 +47,16 @@
   </nav>
 </header>
 
-<div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
-  <div class="wrap">
-    <div id="targetTabs">
+<main class="wrap">
+  <section class="hero" aria-labelledby="heroTitle">
+    <h1 id="heroTitle">Arah sentimen tiga pasar makro, dibaca dari beritanya lalu diuji ke harganya.</h1>
+    <p class="lead" id="heroLead">Memuat ringkasan…</p>
+  </section>
+
+  <!-- Pilihan target adalah isi halaman, bukan bilah ketiga di header.
+       Header cukup merek + navigasi; kontrol aset duduk dekat yang ia ubah. -->
+  <div class="target-bar" id="targetBar">
+    <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
       <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
         <img class="ticon" src="src/assets/gold.svg" alt="">
         <span class="tick">Emas</span>
@@ -65,13 +72,6 @@
     </div>
     <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
   </div>
-</div>
-
-<main class="wrap">
-  <section class="hero" aria-labelledby="heroTitle">
-    <h1 id="heroTitle">Arah sentimen tiga pasar makro, dibaca dari beritanya lalu diuji ke harganya.</h1>
-    <p class="lead" id="heroLead">Memuat ringkasan…</p>
-  </section>
 
   <div class="grid overview">
     <section class="panel dark" id="grafik" aria-labelledby="chartTitle">

@@ -73,12 +73,14 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .ticker .t-chg.flat{color:var(--text-muted)}
 .ticker .t-date{color:var(--text-muted);font-size:11px}
 
-/* Tab target: satu aksen oranye hanya di tab aktif (anti overuse) */
-.target-bar{background:var(--bg-sunken)}
-/* Baris tab: kontrol di kiri, pita harga di kanan pada satu baris yang sama.
-   Di layar sempit pita membungkus ke baris kedua tanpa memotong angka. */
-.target-bar .wrap{padding-top:14px;padding-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-card);overflow:hidden;flex:none}
+/* Tab target: satu aksen oranye hanya di tab aktif (anti overuse).
+   Ini kontrol isi halaman, bukan bilah ketiga di header: satu kartu ringkas
+   di bawah pengantar, tab di kiri dan pita harga di kanan. */
+.target-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:var(--bg-card);border:1px solid var(--border-subtle);
+  border-radius:12px;padding:10px 12px;margin:14px 0 0}
+/* Di layar sempit pita harga membungkus ke baris kedua tanpa memotong angka. */
+#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--base);overflow:hidden;flex:none}
 .target-tab{display:flex;gap:9px;align-items:center;justify-content:center;cursor:pointer;border:0;border-left:1px solid var(--border-subtle);
   background:transparent;padding:0 20px;min-height:46px;font-family:var(--font-sans);font-size:15px;color:var(--text-secondary)}
 .target-tab:first-child{border-left:0}
@@ -268,9 +270,6 @@ footer{background:var(--surface);color:var(--on-dark-primary);margin-top:26px}
 footer .wrap{padding:20px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px}
 footer a{color:var(--accent-text-on-dark)}
 
-/* Bilah target menempel saat gulir (ganti target tanpa gulir ke atas) */
-.target-bar{position:sticky;top:0;z-index:50;box-shadow:0 1px 0 var(--border-subtle)}
-#targetTabs{background:var(--base)}
 /* Tabel data boleh gulir mendatar di wadahnya (kolom angka tidak remuk di HP) */
 #statTables,#topList,#personaList,#wbTables{overflow-x:auto}
 #statTables table.data,#topList table.data,#wbTables table.data{min-width:280px}
@@ -295,7 +294,8 @@ footer a{color:var(--accent-text-on-dark)}
   .news-item h3{font-size:19px}
   .news-src{margin-left:0;flex-basis:100%}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
-  #targetTabs{display:flex;width:auto;margin:10px 14px}
+  .target-bar{padding:8px;gap:10px}
+  #targetTabs{display:flex;width:100%;margin:0}
   .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}
   .target-tab .tick{font-size:14px}
   .target-tab .ticon{width:18px;height:18px}
