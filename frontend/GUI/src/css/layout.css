@@ -47,8 +47,8 @@ header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
 /* Sub-label pada nama merek: menjelaskan produk apa ini tanpa harus
    membaca hero. Ukurannya kecil dan redup supaya tidak bersaing dengan
    nama, tapi tetap terbaca sebagai keterangan, bukan hiasan. */
-.brand-sub{display:block;font-family:var(--font-mono);font-size:10px;font-weight:400;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:4px}
+.brand-sub{display:block;font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.10em;text-transform:uppercase;color:var(--on-dark-secondary);margin-top:4px}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
@@ -125,6 +125,21 @@ main{display:block}
   margin:0 0 7px;max-width:64ch;text-wrap:balance}
 .hero p.lead{font-family:var(--font-serif);font-size:14px;line-height:1.55;color:var(--text-secondary);
   max-width:80ch;margin:0;text-align:left;hyphens:none}
+/* Ringkasan hero berupa dua kartu angka, bukan satu kalimat panjang.
+   Insight utamanya (perubahan harga dan hitungan hari negatif) harus jadi
+   elemen terbesar setelah judul, bukan teks 14px yang terlewat. */
+.hero-facts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+.fact{flex:1 1 210px;max-width:300px;background:var(--bg-card);border:1px solid var(--border-subtle);
+  border-radius:10px;padding:11px 16px 12px;display:flex;flex-direction:column;gap:1px}
+.fact-label{font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary)}
+.fact-value{display:flex;align-items:baseline;gap:7px;font-family:var(--font-mono);
+  font-size:30px;line-height:1.15;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.fact-value.up{color:var(--up)}
+.fact-value.down{color:var(--down)}
+.fact-value.flat,.fact-value.na{color:var(--text-secondary)}
+.fact-dir{font-size:15px;line-height:1}
+.fact-unit{font-family:var(--font-sans);font-size:13px;font-weight:400;color:var(--text-secondary)}
+.fact-note{font-family:var(--font-sans);font-size:12px;line-height:1.35;color:var(--text-muted);margin:0}
 .hero-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
 
 /* Grid asimetris: panel primer lebar, pendamping sempit (fokus baca deret dulu) */
@@ -144,11 +159,9 @@ main{display:block}
 .panel-head .hint{font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)}
 .panel.light .hint{color:var(--text-muted)}
 .panel-body{padding:16px 18px}
-/* Grafik dipendekkan dari 380px ke 300px. Pada layar 900px tinggi, tinggi
-   lama mendorong berita sampai 1048px -- jauh di bawah lipatan, padahal
-   berita adalah bukti yang membuat angka di grafik bisa dipercaya. Dengan
-   300px, grafik + kontrol + legenda + judul berita masuk satu layar. */
-#chart{width:100%;height:260px}
+/* Grafik 340px: batang sentimen butuh ruang vertikal supaya tidak kalah
+   dari garis harga. Label sumbu 12px juga menambah kebutuhan tinggi. */
+#chart{width:100%;height:340px}
 .chart-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .range-btn{font-family:var(--font-mono);font-size:12px;background:transparent;color:var(--on-dark-primary);
   border:1px solid var(--border-dark-strong);border-radius:8px;padding:8px 14px;min-height:44px;cursor:pointer}
@@ -297,7 +310,7 @@ footer a{color:var(--accent-text-on-dark)}
 @media (max-width:960px){
   .grid,.grid.flip,.grid.overview{grid-template-columns:1fr}
   .hero{padding:30px 0 8px}
-  #chart{height:320px}
+  #chart{height:340px}
   .brand-name{font-size:38px}
   /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit.
      Pemisah "|" dimatikan saat membungkus supaya tidak menggantung di awal
@@ -311,8 +324,10 @@ footer a{color:var(--accent-text-on-dark)}
   .wrap{padding:0 14px}
   .hero{padding:20px 0 4px}
   .hero p.lead{text-align:left;font-size:17px;line-height:1.6}
+  .hero-facts{gap:8px}
+  .fact{flex-basis:100%;max-width:none}
   .panel-body{padding:12px}
-  #chart{height:300px}
+  #chart{height:320px}
   .news-card h3{font-size:19px}
   .news-item h3{font-size:19px}
   .news-src{margin-left:0;flex-basis:100%}
