@@ -96,11 +96,15 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
 
 /* Di kepala panel gelap, kontrol ikut tema gelap supaya tidak jadi blok
-   putih yang menarik perhatian lebih dari grafiknya. */
+   putih yang menarik perhatian lebih dari grafiknya. Ikon aset berwarna tinta
+   gelap, jadi di panel gelap dibalik terang saat tidak aktif dan kembali
+   gelap saat tab aktif (latar peach). */
 .panel.dark .panel-head #targetTabs{background:var(--surface-deep);border-color:var(--border-dark-subtle)}
 .panel.dark .panel-head .target-tab{border-left-color:var(--border-dark-subtle);color:var(--on-dark-secondary)}
+.panel.dark .panel-head .target-tab .ticon{filter:brightness(0) invert(1)}
 .panel.dark .panel-head .target-tab:hover{background:var(--surface-raised);color:var(--on-dark-primary)}
 .panel.dark .panel-head .target-tab[aria-selected="true"]{background:var(--accent-subtle);color:var(--text-primary)}
+.panel.dark .panel-head .target-tab[aria-selected="true"] .ticon{filter:none}
 
 /* Kepala panel grafik: judul + hint di kiri, pemilih target di pojok kanan.
    Bila ruang tidak cukup, tab turun ke baris kedua tanpa memotong judul. */
