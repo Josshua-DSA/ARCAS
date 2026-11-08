@@ -39,10 +39,13 @@
        Hotkey 1-4 memindahkan halaman; target pakai tombol arah pada tab fokus. -->
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
-      <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
-      <a href="research.html" data-page="research.html">Lab Riset</a>
-      <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      <div class="nav-links">
+        <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
     </div>
   </nav>
 </header>
@@ -53,31 +56,27 @@
     <p class="lead" id="heroLead">Memuat ringkasan…</p>
   </section>
 
-  <!-- Pilihan target adalah isi halaman, bukan bilah ketiga di header.
-       Header cukup merek + navigasi; kontrol aset duduk dekat yang ia ubah. -->
-  <div class="target-bar" id="targetBar">
-    <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
-      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <img class="ticon" src="src/assets/gold.svg" alt="">
-        <span class="tick">Emas</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-        <span class="tick">Suku Bunga</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <img class="ticon" src="src/assets/spx.svg" alt="">
-        <span class="tick">S&amp;P 500</span>
-      </button>
-    </div>
-    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-  </div>
-
   <div class="grid overview">
     <section class="panel dark" id="grafik" aria-labelledby="chartTitle">
-      <div class="panel-head">
-        <h2 id="chartTitle">Harga vs sentimen harian</h2>
-        <span class="hint">sumbu kiri harga : sumbu kanan skor -1 sampai +1</span>
+      <div class="panel-head has-tabs">
+        <div class="panel-head-text">
+          <h2 id="chartTitle">Harga vs sentimen harian</h2>
+          <span class="hint">sumbu kiri harga : sumbu kanan skor -1 sampai +1</span>
+        </div>
+        <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
+          <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+            <img class="ticon" src="src/assets/gold.svg" alt="">
+            <span class="tick">Emas</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+            <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+            <span class="tick">Suku Bunga</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+            <img class="ticon" src="src/assets/spx.svg" alt="">
+            <span class="tick">S&amp;P 500</span>
+          </button>
+        </div>
       </div>
       <div class="panel-body">
         <div id="chart" role="img" aria-label="Grafik harga dan sentimen harian"></div>

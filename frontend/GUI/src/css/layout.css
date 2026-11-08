@@ -53,14 +53,17 @@ header.brand{background:var(--surface)}
    tiga garis bertumpuk dalam satu layar.
    Halaman aktif ditandai tebal + warna tinta penuh, bukan garis bawah. */
 nav.sections{background:var(--base);border-bottom:1px solid var(--border-subtle)}
-nav.sections .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 20px}
+nav.sections .wrap{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:0 20px}
+/* Tautan tetap satu baris (digeser mendatar bila sempit); hanya pita harga
+   yang boleh turun ke baris kedua. */
+.nav-links{display:flex;gap:4px;overflow-x:auto}
 nav.sections a{font-family:var(--font-sans);font-size:14px;font-weight:400;color:var(--text-secondary);
   text-decoration:none;padding:12px 14px;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 nav.sections a[aria-current="page"]{font-weight:600;color:var(--text-primary)}
 nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 
-/* Pita harga ringkas: angka tabular, bukan kartu. Nama target tidak diulang
-   sebagai kotak agar tidak bersaing dengan tab di sebelahnya. */
+/* Pita harga ringkas di ujung kanan baris navigasi: angka tabular, bukan
+   kartu. Di layar sempit ia membungkus ke baris kedua di dalam nav. */
 .ticker{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:nowrap;
   font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap}
 .ticker .t{display:inline-flex;align-items:center;gap:5px}
@@ -73,13 +76,9 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .ticker .t-chg.flat{color:var(--text-muted)}
 .ticker .t-date{color:var(--text-muted);font-size:11px}
 
-/* Tab target: satu aksen oranye hanya di tab aktif (anti overuse).
-   Ini kontrol isi halaman, bukan bilah ketiga di header: satu kartu ringkas
-   di bawah pengantar, tab di kiri dan pita harga di kanan. */
-.target-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-  background:var(--bg-card);border:1px solid var(--border-subtle);
-  border-radius:12px;padding:10px 12px;margin:14px 0 0}
-/* Di layar sempit pita harga membungkus ke baris kedua tanpa memotong angka. */
+/* Pemilih target: segmented control di kepala panel grafik (Ikhtisar, Lab
+   Riset) dan di ujung baris filter Berita & Bukti. Satu aksen oranye hanya
+   di tab aktif, supaya kontrol ini tidak bersaing dengan isi. */
 #targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--base);overflow:hidden;flex:none}
 .target-tab{display:flex;gap:9px;align-items:center;justify-content:center;cursor:pointer;border:0;border-left:1px solid var(--border-subtle);
   background:transparent;padding:0 20px;min-height:46px;font-family:var(--font-sans);font-size:15px;color:var(--text-secondary)}
@@ -93,6 +92,20 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab[aria-selected="true"]:hover{background:var(--accent-subtle)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
+
+/* Di kepala panel gelap, kontrol ikut tema gelap supaya tidak jadi blok
+   putih yang menarik perhatian lebih dari grafiknya. */
+.panel.dark .panel-head #targetTabs{background:var(--surface-deep);border-color:var(--border-dark-subtle)}
+.panel.dark .panel-head .target-tab{border-left-color:var(--border-dark-subtle);color:var(--on-dark-secondary)}
+.panel.dark .panel-head .target-tab:hover{background:var(--surface-raised);color:var(--on-dark-primary)}
+.panel.dark .panel-head .target-tab[aria-selected="true"]{background:var(--accent-subtle);color:var(--text-primary)}
+
+/* Kepala panel grafik: judul + hint di kiri, pemilih target di pojok kanan.
+   Bila ruang tidak cukup, tab turun ke baris kedua tanpa memotong judul. */
+.panel-head.has-tabs{align-items:center;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+.panel-head-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+/* Berita & Bukti: pemilih target di ujung kanan baris filter. */
+.news-tools #targetTabs{margin-left:auto}
 
 main{display:block}
 /* Hero dikecilkan supaya grafik dan berita masuk ke layar pertama.
@@ -280,8 +293,12 @@ footer a{color:var(--accent-text-on-dark)}
   .hero{padding:30px 0 8px}
   #chart{height:320px}
   .brand-name{font-size:38px}
-  /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit */
-  .ticker{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start;margin-left:0;gap:4px 12px}
+  /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit.
+     Pemisah "|" dimatikan saat membungkus supaya tidak menggantung di awal
+     baris; jarak antarentri sudah memisahkan. */
+  .ticker{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start;margin-left:0;
+    gap:4px 12px;padding:2px 0 8px}
+  .ticker .t + .t::before{display:none}
 }
 /* HP kecil: ruang napas dirampingkan, grafik dipendekkan */
 @media (max-width:600px){
@@ -294,7 +311,6 @@ footer a{color:var(--accent-text-on-dark)}
   .news-item h3{font-size:19px}
   .news-src{margin-left:0;flex-basis:100%}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
-  .target-bar{padding:8px;gap:10px}
   #targetTabs{display:flex;width:100%;margin:0}
   .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}
   .target-tab .tick{font-size:14px}

@@ -34,10 +34,13 @@
   </div>
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
-      <a href="evidence.html" data-page="evidence.html" aria-current="page">Berita &amp; Bukti</a>
-      <a href="research.html" data-page="research.html">Lab Riset</a>
-      <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      <div class="nav-links">
+        <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html" aria-current="page">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
     </div>
   </nav>
 </header>
@@ -47,26 +50,6 @@
     <h1 id="evTitle">Dari kutipan persis ke stance persona, semua bisa dilacak.</h1>
     <p class="lead">Dari kalimat asli di berita sampai stance lima profil investor, setiap lapisan punya jejak. Baca kutipan yang memicu skor, waktu terbit yang menentukan sesi pasar, dan probabilitas model di baliknya. Semua transparan, semua bisa diperiksa.</p>
   </section>
-
-  <!-- Pilihan target adalah isi halaman, bukan bilah ketiga di header.
-       Header cukup merek + navigasi; kontrol aset duduk dekat yang ia ubah. -->
-  <div class="target-bar" id="targetBar">
-    <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
-      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <img class="ticon" src="src/assets/gold.svg" alt="">
-        <span class="tick">Emas</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-        <span class="tick">Suku Bunga</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <img class="ticon" src="src/assets/spx.svg" alt="">
-        <span class="tick">S&amp;P 500</span>
-      </button>
-    </div>
-    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-  </div>
 
   <section id="evBerita" aria-labelledby="evListTitle">
     <div class="hero-meta" style="margin-bottom:0">
@@ -81,6 +64,20 @@
         <option value="neutral">Netral</option>
         <option value="mixed">Mixed</option>
       </select>
+      <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
+        <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+          <img class="ticon" src="src/assets/gold.svg" alt="">
+          <span class="tick">Emas</span>
+        </button>
+        <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+          <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+          <span class="tick">Suku Bunga</span>
+        </button>
+        <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+          <img class="ticon" src="src/assets/spx.svg" alt="">
+          <span class="tick">S&amp;P 500</span>
+        </button>
+      </div>
     </div>
     <div class="state" id="newsState" hidden style="border-color:var(--border-strong);color:var(--text-secondary)"></div>
     <div id="newsList"></div>

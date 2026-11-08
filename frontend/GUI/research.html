@@ -134,10 +134,13 @@
   </div>
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
-      <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
-      <a href="research.html" data-page="research.html" aria-current="page">Lab Riset</a>
-      <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      <div class="nav-links">
+        <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html" aria-current="page">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
     </div>
   </nav>
 </header>
@@ -147,26 +150,6 @@
     <h1 id="resTitle">Pilih berita, lihat ia jatuh di titik mana pada grafik harga.</h1>
     <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila terbit saat pasar tutup. Halaman ini bukan meja uji statistik; fokusnya keputusan yang lahir dari bukti historis harga dan sentimennya.</p>
   </section>
-
-  <!-- Pilihan target adalah isi halaman, bukan bilah ketiga di header.
-       Header cukup merek + navigasi; kontrol aset duduk dekat yang ia ubah. -->
-  <div class="target-bar" id="targetBar">
-    <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
-      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <img class="ticon" src="src/assets/gold.svg" alt="">
-        <span class="tick">Emas</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-        <span class="tick">Suku Bunga</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <img class="ticon" src="src/assets/spx.svg" alt="">
-        <span class="tick">S&amp;P 500</span>
-      </button>
-    </div>
-    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-  </div>
 
   <!-- ============ 1. Pilih berita ============ -->
   <section aria-labelledby="pickTitle">
@@ -184,9 +167,25 @@
   <!-- ============ 2. Grafik pasar: satu kolom penuh ============ -->
   <div class="grid rl-grid">
     <section class="panel dark" aria-labelledby="chartTitle">
-      <div class="panel-head">
-        <h2 id="chartTitle">Grafik harga dan titik berita</h2>
-        <span class="hint">90 hari terakhir</span>
+      <div class="panel-head has-tabs">
+        <div class="panel-head-text">
+          <h2 id="chartTitle">Grafik harga dan titik berita</h2>
+          <span class="hint">90 hari terakhir</span>
+        </div>
+        <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
+          <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+            <img class="ticon" src="src/assets/gold.svg" alt="">
+            <span class="tick">Emas</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+            <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+            <span class="tick">Suku Bunga</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+            <img class="ticon" src="src/assets/spx.svg" alt="">
+            <span class="tick">S&amp;P 500</span>
+          </button>
+        </div>
       </div>
       <div class="panel-body">
         <div id="priceChart" role="img" aria-label="Grafik harga harian dengan penanda berita"></div>
