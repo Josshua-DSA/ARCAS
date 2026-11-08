@@ -39,7 +39,9 @@ body{margin:0}
 /* Header merek: pita coklat tua (surface tema) dengan teks kertas.
    Oranye sengaja disisakan untuk aksen kecil: tab aktif, tautan, penanda.
    Kontras putih di #3E3939 = 11,36:1. */
-header.brand{background:var(--surface)}
+/* Merek + navigasi menempel di atas: logo dan pemilih halaman tetap terlihat
+   saat isi digulir. Z-index di bawah splash (9999), di atas panel isi. */
+header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
 .brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:14px 20px 12px;flex-wrap:wrap}
 .brand-name{font-family:var(--font-serif);font-weight:400;font-size:34px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
 /* Sub-label pada nama merek: menjelaskan produk apa ini tanpa harus
