@@ -44,10 +44,20 @@ def test_dasbor_tetap_terjangkau_di_overview(tmp_path, monkeypatch) -> None:
         assert "targetTabs" in d.text
 
 
-def test_landing_menautkan_ke_empat_halaman() -> None:
+def test_landing_menautkan_ke_tiga_tujuan_nav() -> None:
+    """Nav atas: Pricing, Documentation, Contribute. Tombol kepala ke dasbor."""
     html = (GUI / "index.html").read_text(encoding="utf-8")
-    for tujuan in ("overview.html", "evidence.html", "research.html", "simulations.html"):
-        assert f'href="{tujuan}' in html, f"landing tidak menautkan {tujuan}"
+    for tujuan in ("pricing.html", "localhost:8000/docs", "github.com/Josshua-DSA/ARCAS"):
+        assert tujuan in html, f"landing tidak menautkan {tujuan}"
+    # Tombol kepala menuju dasbor.
+    assert 'href="overview.html">Explore' in html
+
+
+def test_pricing_tersaji_dan_bernavigasi_sama() -> None:
+    halaman = (GUI / "pricing.html").read_text(encoding="utf-8")
+    assert "lp-tier-grid" in halaman
+    for tujuan in ("pricing.html", "localhost:8000/docs", "github.com/Josshua-DSA/ARCAS"):
+        assert tujuan in halaman, f"pricing tidak menautkan {tujuan}"
 
 
 def test_dasbor_tidak_lagi_menautkan_index_sebagai_halaman() -> None:
