@@ -141,6 +141,15 @@ def create_app(db_path: Path | str = Path("data/finews.db")) -> FastAPI:
                 logger.info("Retensi simulasi: %d jejak lama dihapus", terhapus)
         except Exception as exc:  # pragma: no cover - DB belum ada
             logger.warning("Gagal membersihkan jejak simulasi lama: %s", exc)
+        # Run ingest yatim: proses yang mati di tengah preload meninggalkan
+        # baris 'running' selamanya. Ditutup di sini, bukan dibiarkan
+        # mengotori cap waktu GUI.
+        try:
+            yatim = Database(db_path=db_path).close_orphan_ingest_runs()
+            if yatim:
+                logger.warning("Menutup %d run ingest yatim", yatim)
+        except Exception as exc:  # pragma: no cover - DB belum ada
+            logger.warning("Gagal menutup run ingest yatim: %s", exc)
         # P1-9: panaskan model di thread agar loop event tidak diblokir, dengan
         # batas tunggu. Bila lewat batas, server tetap hidup; model dimuat
         # lazy pada request pertama seperti sebelumnya.

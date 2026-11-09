@@ -16,6 +16,15 @@ body{margin:0}
    prefers-reduced-motion. Durasi pendek supaya tidak terasa lambat. */
 @keyframes arcas-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes arcas-fade{from{opacity:0}to{opacity:1}}
+@keyframes arcas-out{from{opacity:1}to{opacity:0}}
+@keyframes arcas-in{from{opacity:0}to{opacity:1}}
+/* Fade isi halaman, dua animasi eksplisit. Animasi dipakai (bukan transisi)
+   karena animationend pasti datang tepat di durasi yang diminta, sedangkan
+   transitionend bergantung frame dan bisa tiba saat opacity masih 0,08.
+   Tanpa kelas, opacity 1: halaman tetap terlihat kalau JS mati. */
+body{opacity:1}
+body.is-fading-out{animation:arcas-out .16s ease forwards}
+body.is-fading-in{animation:arcas-in .16s ease forwards}
 .hero,.news-section,.panel{animation:arcas-rise .5s cubic-bezier(.22,.61,.36,1) both}
 .hero{animation-delay:.02s}
 .grid .panel:nth-child(1){animation-delay:.08s}
@@ -30,6 +39,7 @@ body{margin:0}
 @media (prefers-reduced-motion:reduce){
   .hero,.news-section,.panel,.news-item{animation:none}
   html{scroll-behavior:auto}
+  body.is-fading-out,body.is-fading-in{animation:none}
 }
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
 /* Teks hanya untuk pembaca layar */
@@ -129,7 +139,10 @@ main{display:block}
    Insight utamanya (perubahan harga dan hitungan hari negatif) harus jadi
    elemen terbesar setelah judul, bukan teks 14px yang terlewat. */
 .hero-facts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
-.fact{flex:1 1 210px;max-width:300px;background:var(--bg-card);border:1px solid var(--border-subtle);
+/* Tiga kartu berbagai lebar. `max-width` dinaikkan dari 300px: dengan tiga
+   kartu, 3x300 = 900px menyisakan 288px kosong di panel 1200px. Batas 420px
+   membuat ketiganya mengisi baris (3x~392) tanpa melar sampai isinya tenggelam. */
+.fact{flex:1 1 210px;max-width:420px;background:var(--bg-card);border:1px solid var(--border-subtle);
   border-radius:10px;padding:11px 16px 12px;display:flex;flex-direction:column;gap:1px}
 .fact-label{font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary)}
 .fact-value{display:flex;align-items:baseline;gap:7px;font-family:var(--font-mono);

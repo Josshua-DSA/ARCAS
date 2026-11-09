@@ -98,6 +98,14 @@ window.ARCAS = window.ARCAS || {};
   }
   function splashDone() {
     if (window.Splash && typeof window.Splash.done === "function") window.Splash.done();
+    /* Halaman baru memudar masuk: body mulai transparan lalu naik ke 1.
+       Splash menutupi sebagian besar proses, jadi fade ini hanya menyentuh
+       sisa 0-180ms pertama setelah konten siap. */
+    if (!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+      var b = document.body;
+      b.classList.add("is-fading-in");
+      setTimeout(function () { b.classList.remove("is-fading-in"); }, 200);
+    }
   }
   A.setStatus = setStatus;
 
@@ -165,7 +173,7 @@ window.ARCAS = window.ARCAS || {};
           "<span class='t-val'>" + esc(fmtPrice(close)) + "</span>" +
           "<span class='t-chg " + dir + "'>" + esc(chgText) + "</span></span>";
       });
-      if (lastDate) parts.push("<span class='t t-date'>data pasar per " + esc(lastDate) + "</span>");
+      if (lastDate) parts.push("<span class='t t-date'>" + esc(lastDate) + "</span>");
       box.innerHTML = parts.join("");
     });
   };
@@ -283,12 +291,44 @@ window.ARCAS = window.ARCAS || {};
     if (!active.length && rows.length) { A.state.target = rows[0].asset_id; } /* target URL tidak dikenal: pilih pertama */
     return rows;
   }
+  /* Fade isi halaman saat diganti tanpa muat ulang: ganti aset, ganti rentang,
+     dan pindah halaman. Hanya opacity, 180ms, dan dilewati sepenuhnya saat
+     prefers-reduced-motion. Tidak menunda render: kelas dipasang, render
+     berjalan, lalu dilepas pada frame berikutnya supaya transisinya terlihat. */
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function fadeLalu(kerja) {
+    if (reduce || typeof kerja !== "function") { if (kerja) kerja(); return; }
+    var b = document.body;
+    var sudah = false;
+    function jalan(e) {
+      /* Hanya animationend milik body sendiri. `.panel`/`.news-item` juga
+         memakai arcas-rise dan event-nya menggelembung ke body; tanpa cek ini
+         fade terpotong di tengah (terukur: berhenti 40ms, bukan 160ms). */
+      if (e && e.target !== b) return;
+      if (sudah) return;
+      sudah = true;
+      b.removeEventListener("animationend", jalan);
+      kerja();
+      b.classList.remove("is-fading-out");
+      b.classList.add("is-fading-in");
+      setTimeout(function () { b.classList.remove("is-fading-in"); }, 200);
+    }
+    /* animationend, bukan transitionend: durasi animasi CSS pasti sama dengan
+       yang diminta, sedangkan transitionend bergantung pada frame dan bisa
+       datang saat opacity masih 0,08. */
+    b.addEventListener("animationend", jalan);
+    b.classList.add("is-fading-out");
+    void b.offsetHeight;
+    setTimeout(jalan, 260);
+  }
+  A.fadeLalu = fadeLalu;
+
   function selectTarget(btn) {
     document.querySelectorAll(".target-tab").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
     btn.setAttribute("aria-selected", "true");
     A.state.target = btn.getAttribute("data-target");
     A.syncUrl();
-    if (typeof A.renderPage === "function") A.renderPage();
+    fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
   }
   function bindTabs() {
     var box = $("targetTabs");
@@ -314,7 +354,7 @@ window.ARCAS = window.ARCAS || {};
       var PAGES = ["index.html", "evidence.html", "research.html", "simulations.html"];
       var idx = Number(e.key) - 1;
       if (idx >= 0 && idx < PAGES.length && location.pathname.split("/").pop() !== PAGES[idx]) {
-        location.href = A.qhref(PAGES[idx]);
+        fadeLalu(function () { location.href = A.qhref(PAGES[idx]); });
       }
     });
   }
@@ -336,7 +376,7 @@ window.ARCAS = window.ARCAS || {};
         b.setAttribute("aria-pressed", "true");
         A.state.days = Number(b.getAttribute("data-days"));
         A.syncUrl();
-        if (typeof A.renderPage === "function") A.renderPage();
+        fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
       });
     });
     document.querySelectorAll(".profile-btn").forEach(function (b) {
@@ -345,7 +385,7 @@ window.ARCAS = window.ARCAS || {};
         b.setAttribute("aria-pressed", "true");
         A.state.profile = b.getAttribute("data-profile");
         A.syncUrl();
-        if (typeof A.renderPage === "function") A.renderPage();
+        fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
       });
     });
     /* href statis diset agar menu benar saat middle-click; saat klik biasa,
@@ -356,9 +396,12 @@ window.ARCAS = window.ARCAS || {};
       a.addEventListener("click", function (e) {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; /* tab baru: href statis dipakai */
         e.preventDefault();
-        location.href = A.qhref(a.getAttribute("data-page"));
+        var tujuan = A.qhref(a.getAttribute("data-page"));
         document.querySelectorAll("a[data-page]").forEach(function (x) { x.removeAttribute("aria-current"); });
         a.setAttribute("aria-current", "page");
+        /* Fade keluar dulu, baru pindah. Muat ulang halaman tetap ditangani
+           splash: halaman baru memudar masuk sendiri. */
+        fadeLalu(function () { location.href = tujuan; });
       });
     });
     bindPersonaModal();

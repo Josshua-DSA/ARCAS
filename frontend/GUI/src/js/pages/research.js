@@ -116,9 +116,16 @@
 
   /* ---------------- jejak harga setelah berita ----------------
      Dihitung dari deret harga yang sudah dimuat. Tidak ada request baru dan
-     tidak ada angka karangan: kalau indeks T+n melewati ujung deret, sel itu
-     ditulis "belum tersedia". T+n memakai indeks baris deret harga, yang hanya
-     berisi hari bursa -- bukan hari kalender. */
+     tidak ada angka karangan. T+n memakai indeks baris deret harga, yang hanya
+     berisi hari bursa -- bukan hari kalender.
+
+     Dua sebab kosong dibedakan karena artinya berbeda jauh:
+       "sesi belum terjadi"    -> T+n melewati ujung deret, harganya memang
+                                  belum ada. Bukan cacat data.
+       "tanggal tidak di deret" -> idx = -1, tanggal berita tidak ada di
+                                  rentang harga yang dimuat. Data bolong.
+     Dulu keduanya tampil "di luar deret", jadi cacat data tak bisa dibedakan
+     dari sesi yang belum berjalan. */
   var JENDELA = [1, 3, 5];
   var KUNCI_JENDELA = { 1: "T+1", 3: "T+3", 5: "T+5" };
 
@@ -127,16 +134,29 @@
     for (var j = 0; j < JENDELA.length; j++) {
       var n = JENDELA[j];
       var target = idx + n;
-      var tersedia = idx >= 0 && target < closes.length &&
-        isFinite(closes[target]) && isFinite(closes[idx]);
+      var sebab = null;
+      if (idx < 0) {
+        sebab = "tanggal tidak di deret";
+      } else if (target >= closes.length) {
+        sebab = "sesi belum terjadi";
+      } else if (!isFinite(closes[target]) || !isFinite(closes[idx])) {
+        sebab = "harga tidak tersedia";
+      }
+      var tersedia = sebab === null;
       hasil.push({
         label: KUNCI_JENDELA[n],
         persen: tersedia ? (closes[target] / closes[idx] - 1) * 100 : null,
-        tanggal: tersedia ? dates[target] : null
+        tanggal: tersedia ? dates[target] : null,
+        sebab: sebab
       });
     }
     return hasil;
   }
+
+  /* Hanya untuk tes node: logika jejak menentukan angka yang dilihat pembaca.
+     Didaftarkan di sini, bukan di akhir berkas, karena guard `if (!picker)`
+     di bawah membuat eksekusi berhenti lebih awal saat tanpa DOM. */
+  A.__ujiJejak = jejakHarga;
 
   function renderJejak(n, near, dates, closes) {
     var box = $("jejakHarga");
@@ -157,10 +177,12 @@
           : (c.persen > 0 ? "+" : "") + c.persen.toFixed(2) + "%";
         var warna = c.persen == null ? "var(--on-dark-muted)"
           : c.persen > 0 ? "var(--up-dark)" : c.persen < 0 ? "var(--down-dark)" : "var(--on-dark-primary)";
+        /* Sebab kosong ditulis apa adanya: "sesi belum terjadi" wajar,
+           "tanggal tidak di deret" menandakan data bolong. */
         return "<div class='rl-after-cell'>" +
           "<p class='rl-after-k'>" + esc(c.label) + "</p>" +
           "<p class='rl-after-v' style='color:" + warna + "'>" + esc(teks) + "</p>" +
-          "<p class='rl-after-sub'>" + esc(c.tanggal || "di luar deret") + "</p></div>";
+          "<p class='rl-after-sub'>" + esc(c.tanggal || c.sebab || "") + "</p></div>";
       }).join("") + "</div>" +
       "<p class='rl-after-sub' style='margin-top:8px'>" + esc(komentar) +
       " Perubahan dihitung dari harga tutup hari berita, bukan dari harga saat berita terbit.</p>";

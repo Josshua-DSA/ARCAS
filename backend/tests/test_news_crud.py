@@ -130,7 +130,12 @@ def test_save_article_targets_and_query(db: Database):
         TargetTag(asset_id="XAU", basis=Basis.EXPLICIT, matched_text="gold"),
         TargetTag(asset_id="SPX", basis=Basis.SECTOR_INFERRED, matched_text="market"),
     ]
-    assert db.save_article_targets("abc123", tags, {"XAU": date(2026, 10, 21)}) == 2
+    # Kedua aset wajib punya tanggal bursa; dulu SPX tersimpan NULL diam-diam.
+    assert db.save_article_targets(
+        "abc123",
+        tags,
+        {"XAU": date(2026, 10, 21), "SPX": date(2026, 10, 21)},
+    ) == 2
 
     rows = db.query_article_targets("abc123")
     assert len(rows) == 2
@@ -142,7 +147,9 @@ def test_save_article_targets_and_query(db: Database):
 def test_query_articles_by_target_joins_articles(db: Database):
     db.save_article(_article())
     db.save_article_targets(
-        "abc123", [TargetTag(asset_id="XAU", basis=Basis.EXPLICIT)]
+        "abc123",
+        [TargetTag(asset_id="XAU", basis=Basis.EXPLICIT)],
+        {"XAU": date(2026, 10, 21)},
     )
     rows = db.query_articles_by_target("XAU")
     assert len(rows) == 1

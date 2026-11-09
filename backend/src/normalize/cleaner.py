@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 from backend.src.schema import Article, Lang, RawArticle
+from backend.src.tagging.router import LOCKED_UNIVERSE
 
 
 class ArticleCleaner:
@@ -150,12 +151,16 @@ class ArticleCleaner:
         art_id = cls.compute_article_id(clean_title, clean_body)
         lang = cls.detect_language(clean_title, clean_body)
 
-        # Basic effective dates
-        effective_dates: dict[str, date] = {}
-        if raw.query_target:
-            effective_dates[raw.query_target] = cls.compute_effective_trading_date(
-                raw.published_at, raw.query_target
-            )
+        # Tanggal bursa dihitung untuk SETIAP aset universe, bukan hanya
+        # `raw.query_target`. Sumber seperti finnhub:headline:SPY tidak punya
+        # query_target sama sekali, dan satu artikel kerap menandai beberapa
+        # aset (XAU + SPX + RATE_UST). Menghitung satu aset saja membuat
+        # article_targets menyimpan NULL untuk sisanya (227/310 baris bolong
+        # pada data 2026-11-09). Cut-off berbeda per aset, jadi peta per aset.
+        effective_dates: dict[str, date] = {
+            asset_id: cls.compute_effective_trading_date(raw.published_at, asset_id)
+            for asset_id in sorted(LOCKED_UNIVERSE)
+        }
 
         return Article(
             article_id=art_id,

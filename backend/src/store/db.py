@@ -647,16 +647,20 @@ class Database:
             return row is not None
 
     def last_ingest_run(self) -> dict | None:
-        """Run terakhir yang selesai (status != 'running'), untuk cap waktu GUI.
+        """Run terakhir yang benar-benar membawa hasil, untuk cap waktu GUI.
 
-        Mengembalikan None bila belum pernah ada preload. GUI memakai ini untuk
-        menyatakan "data per <waktu>", bukan mengarang saat API mati.
+        Mengembalikan None bila belum pernah ada preload sukses. GUI memakai ini
+        untuk menyatakan "data per <waktu>", bukan mengarang saat API mati.
+
+        `failed` ikut dilewati: run yatim yang ditutup saat startup punya
+        `finished_at` paling baru, dan memakainya sebagai cap waktu berarti
+        menyatakan data segar padahal tidak ada yang tertarik.
         """
         with self.get_connection() as conn:
             row = conn.execute(
                 """
                 SELECT * FROM ingest_runs
-                 WHERE status != 'running'
+                 WHERE status NOT IN ('running', 'failed')
                  ORDER BY finished_at DESC
                  LIMIT 1;
                 """
@@ -1047,8 +1051,21 @@ class Database:
         tags: list[TargetTag],
         effective_dates: dict[str, date] | None = None,
     ) -> int:
-        """Bulk insert mappings untuk satu artikel. Returns jumlah baris."""
+        """Bulk insert mappings untuk satu artikel. Returns jumlah baris.
+
+        Setiap tag WAJIB punya entri tanggal di `effective_dates`. Sebelumnya
+        aset tanpa entri disimpan dengan effective_trading_date = NULL tanpa
+        suara; itu sumber 227/310 baris bolong (2026-11-09) dan membuat jejak
+        harga di UI mustahil dihitung. Lebih baik menolak daripada menyimpan
+        baris yang tidak bisa dipakai.
+        """
         dates = effective_dates or {}
+        kurang = sorted({t.asset_id for t in tags if t.asset_id not in dates})
+        if kurang:
+            raise ValueError(
+                f"tanggal bursa tidak tersedia untuk aset {kurang} "
+                f"(artikel {article_id}); tidak menyimpan NULL"
+            )
         with self.get_connection() as conn:
             conn.executemany(
                 """
@@ -1064,7 +1081,7 @@ class Database:
                         t.basis.value,
                         t.matched_text,
                         t.routed_from,
-                        dates[t.asset_id].isoformat() if t.asset_id in dates else None,
+                        dates[t.asset_id].isoformat(),
                     )
                     for t in tags
                 ],
@@ -1865,6 +1882,36 @@ class Database:
             except (TypeError, ValueError):
                 data[kolom] = []
         return data
+
+    def close_orphan_ingest_runs(self, timeout_seconds: int | None = None) -> int:
+        """Tutup run ingest yang ditinggal proses mati. Kembalikan jumlah baris.
+
+        Proses yang mati antara `claim_ingest_slot` dan `finish_ingest_run`
+        meninggalkan baris 'running' dengan `finished_at` NULL yang tidak
+        pernah ditutup siapa pun. Ambangnya sama dengan ambang klaim slot:
+        selama klaim belum kedaluwarsa, proses lain mungkin masih hidup.
+
+        Dipanggil dari lifespan saat startup. Idempoten.
+        """
+        batas_detik = (
+            self.CLAIM_TIMEOUT_SECONDS if timeout_seconds is None else int(timeout_seconds)
+        )
+        batas = (datetime.now() - timedelta(seconds=batas_detik)).isoformat()
+        sekarang = datetime.now().isoformat()
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                """
+                UPDATE ingest_runs
+                   SET status = 'failed',
+                       finished_at = ?,
+                       detail = 'run yatim: proses berhenti sebelum selesai'
+                 WHERE status = 'running'
+                   AND finished_at IS NULL
+                   AND started_at < ?;
+                """,
+                (sekarang, batas),
+            )
+            return int(cur.rowcount or 0)
 
     def purge_sim_runs(self, days: int | None = None) -> int:
         """Hapus jejak simulasi lebih tua dari `days`. Kembalikan jumlah baris.

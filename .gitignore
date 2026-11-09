@@ -40,3 +40,8 @@ model/common/*.joblib
 # Hasilnya PNG/JSON besar dan bisa dibangun ulang kapan saja.
 frontend/figcraft/
 scripts/figcraft_*
+
+# Catatan kerja agen (rencana, skrip ukur sekali pakai) dan bahan riset lokal.
+# Bukan bagian aplikasi; isinya bergantung mesin dan sesi.
+.hermes/
+Research/
