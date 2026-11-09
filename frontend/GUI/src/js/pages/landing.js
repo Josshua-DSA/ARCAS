@@ -15,10 +15,11 @@
     });
   }
 
-  function kartu(label, nilai, catatan) {
+  function kartu(label, nilai, catatan, tanggalKah) {
     return "<div class='lp-fact'>" +
       "<span class='lp-fact-label'>" + esc(label) + "</span>" +
-      "<span class='lp-fact-value'>" + esc(nilai) + "</span>" +
+      "<span class='lp-fact-value" + (tanggalKah ? " is-date" : "") + "'>" +
+        esc(nilai) + "</span>" +
       (catatan ? "<span class='lp-fact-sub'>" + esc(catatan) + "</span>" : "") +
     "</div>";
   }
@@ -46,7 +47,7 @@
       if (c.articles) html += kartu("Artikel tersimpan", c.articles.toLocaleString("id-ID"));
       if (c.days_with_news) html += kartu("Hari berita", c.days_with_news.toLocaleString("id-ID"));
       if (c.sources) html += kartu("Sumber", c.sources.toLocaleString("id-ID"));
-      if (c.last_price_date) html += kartu("Harga terakhir", tanggal(c.last_price_date));
+      if (c.last_price_date) html += kartu("Harga terakhir", tanggal(c.last_price_date), "", true);
       if (!html) {
         kotak.innerHTML = "<p class='lp-fact-note'>Cakupan data belum tersedia.</p>";
         return;
@@ -139,7 +140,6 @@
         "' y2='" + tengah.toFixed(1) + "' stroke='var(--border-dark-strong)' " +
         "stroke-width='1' stroke-dasharray='3 3'/>" +
       "<text x='0' y='" + (PAD + 8) + "' class='lp-ax'>" + fmt(max) + "</text>" +
-      "<text x='0' y='" + (tengah - 4).toFixed(1) + "' class='lp-ax'>" + fmt((min + max) / 2) + "</text>" +
       "<text x='0' y='" + (H - PAD - 12).toFixed(1) + "' class='lp-ax'>" + fmt(min) + "</text>" +
       "<text x='" + (W - PR) + "' y='" + (tengah - 4).toFixed(1) +
         "' class='lp-ax lp-ax-zero' text-anchor='end'>skor 0</text>" +
