@@ -146,15 +146,18 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   padding:1px 5px;border-radius:3px;color:var(--text-primary)}
 
 /* ---------- 3. target ---------- */
+/* Kartu potret: ilustrasi mengisi penuh lebar kartu, meta di bawahnya. */
 .lp-tgt-grid{display:grid;gap:16px;
   grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-.lp-tgt{display:flex;flex-direction:column;gap:7px;padding:24px;
+.lp-tgt{display:flex;flex-direction:column;overflow:hidden;
   background:var(--bg-card);border:1px solid var(--border-subtle);
   border-radius:8px;text-decoration:none;color:inherit;
   transition:border-color .14s ease,transform .14s ease}
 .lp-tgt:hover,.lp-tgt:focus-visible{border-color:var(--border-strong);
   transform:translateY(-1px)}
-.lp-tgt img{width:28px;height:28px;margin-bottom:8px}
+.lp-tgt-art{display:block;width:100%;height:auto;aspect-ratio:4/5;
+  object-fit:cover;border-bottom:1px solid var(--border-subtle)}
+.lp-tgt-meta{display:flex;flex-direction:column;gap:6px;padding:18px 20px 20px}
 .lp-tgt-name{font-family:var(--font-serif);font-size:22px;font-weight:400;
   line-height:1.1;color:var(--text-primary)}
 .lp-tgt-id{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;
