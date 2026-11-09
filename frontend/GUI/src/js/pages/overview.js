@@ -243,6 +243,30 @@
      frasa "0 dari 8" ambigu. Kartu memisahkan dua fakta yang berbeda:
      perubahan harga pada rentang aktif, dan berapa hari berita terakhir
      yang skornya negatif. Bila datanya tidak cukup, tulis n/a -- bukan 0. */
+  /* Cakupan berita: berapa hari bursa yang benar-benar punya berita.
+     Kartu ketiga sengaja mengukur KETEBALAN DATA, bukan mengulang arah.
+     Hari tanpa berita bukan nol sentimen, jadi tidak dihitung netral. */
+  function hitungCakupan(sentiments, hariBursa) {
+    var berisi = (sentiments || []).filter(function (s) {
+      return s && s.score_mean != null;
+    });
+    var totalArtikel = berisi.reduce(function (a, s) {
+      return a + Number(s.n_articles || 0);
+    }, 0);
+    var persen = null;
+    if (hariBursa && hariBursa > 0) {
+      persen = Math.round(berisi.length / hariBursa * 1000) / 10;
+    }
+    return {
+      hariBerita: berisi.length,
+      totalArtikel: totalArtikel,
+      hariBursa: hariBursa || null,
+      persen: persen
+    };
+  }
+  /* Diekspor untuk tes node; dijalankan sebelum A.boot() di akhir berkas. */
+  A.__ujiCakupan = hitungCakupan;
+
   function renderHeroLead(target, payload) {
     var el = A.$("heroLead");
     if (!el) return;
@@ -293,6 +317,23 @@
       catatanSent = "dari " + akhir.length + " hari terakhir yang punya berita";
     }
 
+    /* Kartu cakupan: tebal dasar dua kartu di atasnya. */
+    var cakupan = hitungCakupan(sent, rows.length);
+    var isiCakup, kelasCakup = "", catatanCakup;
+    if (cakupan.hariBerita) {
+      isiCakup = "<span class='sr-only'>" + cakupan.hariBerita + " hari berita</span>" +
+        "<span aria-hidden='true'>" + cakupan.hariBerita + "</span>" +
+        "<span class='fact-unit' aria-hidden='true'>hari berita</span>";
+      catatanCakup = cakupan.persen == null
+        ? cakupan.totalArtikel + " artikel"
+        : String(cakupan.persen).replace(".", ",") + "% dari " + cakupan.hariBursa +
+          " hari bursa · " + cakupan.totalArtikel + " artikel";
+    } else {
+      kelasCakup = "na";
+      isiCakup = "<span class='sr-only'>tidak tersedia</span><span aria-hidden='true'>n/a</span>";
+      catatanCakup = "belum ada berita pada rentang ini";
+    }
+
     el.innerHTML =
       "<div class='fact'>" +
         "<span class='fact-label'>Perubahan harga</span>" +
@@ -303,6 +344,11 @@
         "<span class='fact-label'>Sentimen berita</span>" +
         "<span class='fact-value " + kelasSent + "'>" + isiSent + "</span>" +
         "<p class='fact-note'>" + catatanSent + "</p>" +
+      "</div>" +
+      "<div class='fact'>" +
+        "<span class='fact-label'>Cakupan berita</span>" +
+        "<span class='fact-value " + kelasCakup + "'>" + isiCakup + "</span>" +
+        "<p class='fact-note'>" + esc(catatanCakup) + "</p>" +
       "</div>";
   }
 
