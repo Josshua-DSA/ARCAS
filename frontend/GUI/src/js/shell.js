@@ -351,7 +351,7 @@ window.ARCAS = window.ARCAS || {};
     document.addEventListener("keydown", function (e) {
       if (e.target.matches("input, select, textarea")) return;
       /* Hotkey halaman 1-4 (Upgrade.md 3): pindah halaman membawa state URL. */
-      var PAGES = ["index.html", "evidence.html", "research.html", "simulations.html"];
+      var PAGES = ["overview.html", "evidence.html", "research.html", "simulations.html"];
       var idx = Number(e.key) - 1;
       if (idx >= 0 && idx < PAGES.length && location.pathname.split("/").pop() !== PAGES[idx]) {
         fadeLalu(function () { location.href = A.qhref(PAGES[idx]); });

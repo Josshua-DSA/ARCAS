@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F6F4F4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>ARCAS : Ikhtisar Pasar</title>
+<meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="src/css/theme.css">
+<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
+<link rel="stylesheet" href="src/css/splash.css">
+<script>
+  /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
+  window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
+</script>
+</head>
+<body>
+
+<div id="splash" class="splash" role="status" aria-live="polite" hidden>
+  <div class="splash__title">ARCAS · Prototipe Riset</div>
+  <div class="splash__log" id="splash-log"></div>
+  <div class="splash__bar"><i></i></div>
+  <div class="splash__pct">0%</div>
+  <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
+</div>
+
+
+<header class="brand">
+  <div class="wrap brand-row">
+    <div>
+      <p class="brand-name"><a class="brand-home" href="./" title="Kembali ke halaman muka">ARCAS</a><span class="brand-sub">Riset sentimen pasar</span></p>
+    </div>
+  </div>
+  <!-- Navigasi 4 halaman (Upgrade.md 3): tautan biasa, state dibawa URL.
+       Hotkey 1-4 memindahkan halaman; target pakai tombol arah pada tab fokus. -->
+  <nav class="sections" aria-label="Halaman">
+    <div class="wrap">
+      <div class="nav-links">
+        <a href="overview.html" data-page="overview.html" aria-current="page">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero" aria-labelledby="heroTitle">
+    <h1 id="heroTitle">Tiga pasar makro, satu arah sentimen harian.</h1>
+    <div class="hero-facts" id="heroLead" role="group" aria-label="Ringkasan data" aria-live="polite">
+      <p class="fact-note">Memuat ringkasan…</p>
+    </div>
+  </section>
+
+  <div class="grid overview">
+    <section class="panel dark" id="grafik" aria-labelledby="chartTitle">
+      <div class="panel-head has-tabs">
+        <div class="panel-head-text">
+          <h2 id="chartTitle">Harga vs sentimen harian</h2>
+          <span class="hint">harga (kiri) · skor sentimen (kanan, −1…+1)</span>
+        </div>
+        <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
+          <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+            <img class="ticon" src="src/assets/gold.svg" alt="">
+            <span class="tick">Emas</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+            <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+            <span class="tick">Suku Bunga</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+            <img class="ticon" src="src/assets/spx.svg" alt="">
+            <span class="tick">S&amp;P 500</span>
+          </button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="chart" role="img" aria-label="Grafik harga dan sentimen harian"></div>
+        <div class="legend" aria-hidden="true">
+          <span><i id="lgPrice" style="background:#FFD33D"></i>Harga tutup</span>
+          <span><i style="background:#3FB950"></i>Sentimen positif</span>
+          <span><i style="background:#F85149"></i>Sentimen negatif</span>
+          <span>Hari tanpa berita tidak diberi nilai</span>
+        </div>
+        <div class="chart-controls" role="group" aria-label="Rentang waktu">
+          <button class="range-btn" data-days="30" aria-pressed="false">30 hari</button>
+          <button class="range-btn" data-days="90" aria-pressed="true">90 hari</button>
+          <button class="range-btn" data-days="180" aria-pressed="false">180 hari</button>
+        </div>
+        <div class="state" id="chartState" hidden></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="news-section" id="berita" aria-labelledby="newsTitle">
+    <div class="news-head">
+      <h2 id="newsTitle">Berita pendukung</h2>
+      <span class="hint" id="newsKick">memuat...</span>
+      <span class="hint" id="preloadStamp"></span>
+    </div>
+    <div class="state" id="newsState" hidden></div>
+    <div id="newsList"></div>
+    <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
+  </div>
+</footer>
+
+<script src="src/js/echarts.min.js"></script>
+<script src="src/js/splash.js"></script>
+<script src="src/js/api.js"></script>
+<script src="src/js/state.js"></script>
+<script src="src/js/shell.js"></script>
+<script src="src/js/sim-decision.js"></script>
+<script src="src/js/pages/overview.js?v=20261109a"></script>
+</body>
+</html>

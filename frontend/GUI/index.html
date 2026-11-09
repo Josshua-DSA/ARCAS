@@ -4,126 +4,119 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F4F4">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ARCAS : Ikhtisar Pasar</title>
-<meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
+<title>ARCAS : Sentimen Berita vs Harga</title>
+<meta name="description" content="Skor sentimen berita keuangan diuji terhadap return harian Emas, Suku Bunga, dan S&amp;P 500. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
-<link rel="stylesheet" href="src/css/splash.css">
-<script>
-  /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
-  window.SPLASH_CONFIG = { alwaysFull: true, waitForApp: true };
-</script>
+<link rel="stylesheet" href="src/css/landing.css">
 </head>
-<body>
+<body class="landing">
 
-<div id="splash" class="splash" role="status" aria-live="polite" hidden>
-  <div class="splash__title">ARCAS · Prototipe Riset</div>
-  <div class="splash__log" id="splash-log"></div>
-  <div class="splash__bar"><i></i></div>
-  <div class="splash__pct">0%</div>
-  <div class="splash__note">Asosiasi historis. Bukan nasihat investasi.</div>
-</div>
-
-
-<header class="brand">
-  <div class="wrap brand-row">
-    <div>
-      <p class="brand-name">ARCAS<span class="brand-sub">Riset sentimen pasar</span></p>
-    </div>
+<header class="lp-head">
+  <div class="wrap lp-head-row">
+    <a class="lp-brand" href="./">ARCAS</a>
+    <nav class="lp-nav" aria-label="Halaman">
+      <a href="pricing.html">Pricing</a>
+      <a href="http://localhost:8000/docs">Documentation</a>
+      <a href="https://github.com/Josshua-DSA/ARCAS">Contribute</a>
+    </nav>
+    <a class="lp-head-btn" href="overview.html">Explore</a>
   </div>
-  <!-- Navigasi 4 halaman (Upgrade.md 3): tautan biasa, state dibawa URL.
-       Hotkey 1-4 memindahkan halaman; target pakai tombol arah pada tab fokus. -->
-  <nav class="sections" aria-label="Halaman">
-    <div class="wrap">
-      <div class="nav-links">
-        <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
-        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
-        <a href="research.html" data-page="research.html">Lab Riset</a>
-        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
-      </div>
-      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-    </div>
-  </nav>
 </header>
 
-<main class="wrap">
-  <section class="hero" aria-labelledby="heroTitle">
-    <h1 id="heroTitle">Tiga pasar makro, satu arah sentimen harian.</h1>
-    <div class="hero-facts" id="heroLead" role="group" aria-label="Ringkasan data" aria-live="polite">
-      <p class="fact-note">Memuat ringkasan…</p>
+<main>
+
+  <!-- 1. Hero: judul, penjelasan, aksi, cakupan, bukti -->
+  <section class="wrap lp-hero">
+    <h1>Skor sentimen berita diuji terhadap return harian.</h1>
+    <p class="lp-lead">
+      Setiap berita keuangan berbahasa Inggris mendapat skor sentimen tiga
+      kelas. Skornya diuji dengan korelasi Spearman per lag terhadap return
+      Emas, Suku Bunga, dan S&amp;P 500.
+    </p>
+    <div class="lp-facts" id="lpFacts" aria-live="polite">
+      <p class="lp-fact-note">Memuat cakupan data&hellip;</p>
+    </div>
+
+    <!-- Bukti visual: sparkline dari data nyata, digambar SVG di klien. -->
+    <figure class="lp-proof" id="lpProof" hidden>
+      <figcaption class="lp-proof-cap">
+        <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
+        <span class="lp-proof-s" id="lpProofSub"></span>
+      </figcaption>
+      <svg class="lp-proof-svg" id="lpProofSvg" viewBox="0 0 720 176"
+           role="img"
+           aria-label="Garis harga penutupan dan batang skor sentimen harian"></svg>
+      <div class="lp-proof-legend">
+        <span><i class="lp-lg-line"></i>Harga penutupan</span>
+        <span><i class="lp-lg-up"></i>Sentimen positif</span>
+        <span><i class="lp-lg-down"></i>Sentimen negatif</span>
+        <span class="lp-proof-warn" id="lpProofWarn"></span>
+      </div>
+    </figure>
+  </section>
+
+  <!-- 2. Cara kerja -->
+  <section class="wrap lp-section lp-how" id="cara-kerja" aria-labelledby="lpHowTitle">
+    <h2 id="lpHowTitle">Cara kerja</h2>
+    <ol class="lp-steps">
+      <li>
+        <span class="lp-step-n">01</span>
+        <h3>Baca</h3>
+        <p>Berita dari API dan RSS dinormalisasi. <code>article_id</code>
+          adalah SHA-256 teksnya, jadi duplikat tidak terhitung dua kali.</p>
+      </li>
+      <li>
+        <span class="lp-step-n">02</span>
+        <h3>Skor</h3>
+        <p>Model NLP mengeluarkan probabilitas positif, netral, dan negatif.
+          Tidak ada LLM generatif di jalur inferensi.</p>
+      </li>
+      <li>
+        <span class="lp-step-n">03</span>
+        <h3>Uji</h3>
+        <p>Skor diuji terhadap return T+1, T+3, dan T+5. Uji dengan kurang dari
+          10 pengamatan tidak dilaporkan.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 3. Target -->
+  <section class="wrap lp-section lp-targets" aria-labelledby="lpTgtTitle">
+    <h2 id="lpTgtTitle">Universe</h2>
+    <div class="lp-tgt-grid">
+      <a class="lp-tgt" href="overview.html?target=XAU">
+        <img class="lp-tgt-art" src="public/emas.jpeg" alt="Batangan emas 999,9" width="320" height="400">
+        <span class="lp-tgt-meta">
+          <span class="lp-tgt-name">Emas</span>
+          <span class="lp-tgt-id">XAU</span>
+        </span>
+      </a>
+      <a class="lp-tgt" href="overview.html?target=RATE_UST">
+        <img class="lp-tgt-art is-doc" src="public/suku_bunga.jpeg" alt="Grafik suku bunga acuan AS, UK, dan zona euro 2020-2025" width="320" height="400">
+        <span class="lp-tgt-meta">
+          <span class="lp-tgt-name">Suku Bunga</span>
+          <span class="lp-tgt-id">RATE_UST</span>
+        </span>
+      </a>
+      <a class="lp-tgt" href="overview.html?target=SPX">
+        <img class="lp-tgt-art" src="public/Snp500.jpeg" alt="Perbandingan S&P 500 dan S&P 500 Equal Weight 2020-2024" width="320" height="400">
+        <span class="lp-tgt-meta">
+          <span class="lp-tgt-name">S&amp;P 500</span>
+          <span class="lp-tgt-id">SPX</span>
+        </span>
+      </a>
     </div>
   </section>
 
-  <div class="grid overview">
-    <section class="panel dark" id="grafik" aria-labelledby="chartTitle">
-      <div class="panel-head has-tabs">
-        <div class="panel-head-text">
-          <h2 id="chartTitle">Harga vs sentimen harian</h2>
-          <span class="hint">harga (kiri) · skor sentimen (kanan, −1…+1)</span>
-        </div>
-        <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
-          <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-            <img class="ticon" src="src/assets/gold.svg" alt="">
-            <span class="tick">Emas</span>
-          </button>
-          <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-            <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-            <span class="tick">Suku Bunga</span>
-          </button>
-          <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-            <img class="ticon" src="src/assets/spx.svg" alt="">
-            <span class="tick">S&amp;P 500</span>
-          </button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div id="chart" role="img" aria-label="Grafik harga dan sentimen harian"></div>
-        <div class="legend" aria-hidden="true">
-          <span><i id="lgPrice" style="background:#FFD33D"></i>Harga tutup</span>
-          <span><i style="background:#3FB950"></i>Sentimen positif</span>
-          <span><i style="background:#F85149"></i>Sentimen negatif</span>
-          <span>Hari tanpa berita tidak diberi nilai</span>
-        </div>
-        <div class="chart-controls" role="group" aria-label="Rentang waktu">
-          <button class="range-btn" data-days="30" aria-pressed="false">30 hari</button>
-          <button class="range-btn" data-days="90" aria-pressed="true">90 hari</button>
-          <button class="range-btn" data-days="180" aria-pressed="false">180 hari</button>
-        </div>
-        <div class="state" id="chartState" hidden></div>
-      </div>
-    </section>
-
-  </div>
-
-  <section class="news-section" id="berita" aria-labelledby="newsTitle">
-    <div class="news-head">
-      <h2 id="newsTitle">Berita pendukung</h2>
-      <span class="hint" id="newsKick">memuat...</span>
-      <span class="hint" id="preloadStamp"></span>
-    </div>
-    <div class="state" id="newsState" hidden></div>
-    <div id="newsList"></div>
-    <nav class="pager" id="newsPager" aria-label="Halaman berita" hidden></nav>
-  </section>
 </main>
 
-<footer>
+<footer class="lp-foot">
   <div class="wrap">
-    <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>Angka dihitung dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
   </div>
 </footer>
 
-<script src="src/js/echarts.min.js"></script>
-<script src="src/js/splash.js"></script>
-<script src="src/js/api.js"></script>
-<script src="src/js/state.js"></script>
-<script src="src/js/shell.js"></script>
-<script src="src/js/sim-decision.js"></script>
-<script src="src/js/pages/overview.js?v=20261109a"></script>
+<script src="src/js/pages/landing.js"></script>
 </body>
 </html>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-label="Ilustrasi S&amp;P 500: candlestick dan volume menanjak">
+  <defs>
+    <linearGradient id="spxCandle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A4545"/>
+      <stop offset="1" stop-color="#2C2727"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="400" fill="#E8E6E3"/>
+
+  <!-- Kisi -->
+  <g stroke="#2C2727" stroke-width="1" opacity="0.09">
+    <line x1="52" y1="112" x2="272" y2="112"/>
+    <line x1="52" y1="164" x2="272" y2="164"/>
+    <line x1="52" y1="216" x2="272" y2="216"/>
+    <line x1="52" y1="268" x2="272" y2="268"/>
+  </g>
+  <!-- Sumbu, margin sama dengan kartu suku bunga -->
+  <g stroke="#2C2727" stroke-width="1.5" opacity="0.55">
+    <line x1="52" y1="88" x2="52" y2="296"/>
+    <line x1="52" y1="296" x2="272" y2="296"/>
+  </g>
+
+  <!-- Volume -->
+  <g fill="#2C2727" opacity="0.12">
+    <rect x="56" y="272" width="24" height="24"/>
+    <rect x="90" y="262" width="24" height="34"/>
+    <rect x="124" y="250" width="24" height="46"/>
+    <rect x="158" y="234" width="24" height="62"/>
+    <rect x="192" y="216" width="24" height="80"/>
+    <rect x="226" y="192" width="24" height="104"/>
+    <rect x="248" y="162" width="16" height="134"/>
+  </g>
+
+  <!-- Lilin; yang terakhir diberi jarak dari sumbu kanan -->
+  <g stroke="#2C2727" stroke-width="2">
+    <line x1="68" y1="222" x2="68" y2="272"/>
+    <line x1="102" y1="212" x2="102" y2="258"/>
+    <line x1="136" y1="220" x2="136" y2="246"/>
+    <line x1="170" y1="182" x2="170" y2="228"/>
+    <line x1="204" y1="170" x2="204" y2="212"/>
+    <line x1="238" y1="180" x2="238" y2="188"/>
+    <line x1="256" y1="118" x2="256" y2="156"/>
+  </g>
+  <g fill="url(#spxCandle)">
+    <rect x="60" y="232" width="16" height="32" rx="1.5"/>
+    <rect x="94" y="224" width="16" height="28" rx="1.5"/>
+    <rect x="128" y="228" width="16" height="12" rx="1.5"/>
+    <rect x="162" y="190" width="16" height="34" rx="1.5"/>
+    <rect x="196" y="178" width="16" height="28" rx="1.5"/>
+    <rect x="230" y="176" width="16" height="8" rx="1.5"/>
+    <rect x="248" y="126" width="16" height="24" rx="1.5"/>
+  </g>
+
+  <!-- Tren -->
+  <path d="M68 268 L102 254 L136 240 L170 206 L204 194 L238 184 L256 132"
+        fill="none" stroke="#C2410C" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5"/>
+
+  <!-- Ujung tren ditandai titik, konsisten dengan kartu suku bunga -->
+  <circle cx="256" cy="132" r="3.5" fill="#C2410C"/>
+
+  <!-- Label waktu -->
+  <g font-family="ui-monospace,monospace" font-size="10" fill="#5E5757" opacity="0.9"
+     text-anchor="middle">
+    <text x="68" y="316">1Mgg</text>
+    <text x="136" y="316">1Bln</text>
+    <text x="204" y="316">6Bln</text>
+    <text x="256" y="316">1Th</text>
+  </g>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-label="Ilustrasi emas: batangan logam bertumpuk">
+  <defs>
+    <linearGradient id="gldFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2C85C"/>
+      <stop offset="0.45" stop-color="#D9A32B"/>
+      <stop offset="1" stop-color="#9C6F12"/>
+    </linearGradient>
+    <linearGradient id="gldTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FBE7A0"/>
+      <stop offset="1" stop-color="#E8BC4E"/>
+    </linearGradient>
+    <linearGradient id="gldSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A87A15"/>
+      <stop offset="1" stop-color="#6E4D08"/>
+    </linearGradient>
+    <linearGradient id="gldBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3E3939"/>
+      <stop offset="1" stop-color="#4A4545"/>
+    </linearGradient>
+  </defs>
+  <!-- Panel gelap: emas kontras tinggi terhadap latar, sejalan lapisan DATA. -->
+  <rect width="320" height="400" fill="url(#gldBg)"/>
+
+  <defs>
+    <filter id="gldSoft" x="-25%" y="-60%" width="150%" height="220%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+
+  <!-- Satu sumber cahaya atas-kiri: tiap batang punya kontak bayangan sendiri,
+       dilembutkan agar bahasanya sama dengan bayangan kartu. -->
+  <g filter="url(#gldSoft)" fill="#141413" opacity="0.30">
+    <ellipse cx="104" cy="312" rx="80" ry="11"/>
+    <ellipse cx="216" cy="312" rx="80" ry="11"/>
+    <ellipse cx="160" cy="244" rx="72" ry="9"/>
+  </g>
+
+  <!-- Batang bawah kiri -->
+  <g>
+    <path d="M28 268 L104 242 L180 268 L180 300 L104 326 L28 300 Z" fill="url(#gldFace)"/>
+    <path d="M28 268 L104 242 L180 268 L104 294 Z" fill="url(#gldTop)"/>
+    <path d="M180 268 L180 300 L104 326 L104 294 Z" fill="url(#gldSide)"/>
+  </g>
+  <!-- Batang bawah kanan -->
+  <g>
+    <path d="M140 268 L216 242 L292 268 L292 300 L216 326 L140 300 Z" fill="url(#gldFace)"/>
+    <path d="M140 268 L216 242 L292 268 L216 294 Z" fill="url(#gldTop)"/>
+    <path d="M292 268 L292 300 L216 326 L216 294 Z" fill="url(#gldSide)"/>
+  </g>
+  <!-- Batang atas -->
+  <g>
+    <path d="M84 196 L160 168 L236 196 L236 228 L160 256 L84 228 Z" fill="url(#gldFace)"/>
+    <path d="M84 196 L160 168 L236 196 L160 224 Z" fill="url(#gldTop)"/>
+    <path d="M236 196 L236 228 L160 256 L160 224 Z" fill="url(#gldSide)"/>
+    <text x="152" y="213" text-anchor="middle" font-family="ui-monospace,monospace"
+          font-size="16" font-weight="500" fill="#4A3406" opacity="0.85">999,9</text>
+  </g>
+
+  <!-- Kilau tepi atas -->
+  <path d="M84 196 L160 168 L236 196" fill="none" stroke="#FFF6D4" stroke-width="2" opacity="0.95"/>
+  <path d="M28 268 L104 242 L180 268" fill="none" stroke="#FFE9A8" stroke-width="1.4" opacity="0.7"/>
+  <path d="M140 268 L216 242 L292 268" fill="none" stroke="#FFE9A8" stroke-width="1.4" opacity="0.7"/>
+</svg>

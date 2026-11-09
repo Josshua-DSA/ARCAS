@@ -59,6 +59,10 @@ header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
    nama, tapi tetap terbaca sebagai keterangan, bukan hiasan. */
 .brand-sub{display:block;font-family:var(--font-mono);font-size:11px;font-weight:500;
   letter-spacing:.10em;text-transform:uppercase;color:var(--on-dark-secondary);margin-top:4px}
+/* Nama merek jadi tautan ke halaman muka. Mewarisi warna dan ukuran supaya
+   tidak terbaca sebagai tautan biasa di dalam judul. */
+.brand-home{color:inherit;text-decoration:none}
+.brand-home:hover,.brand-home:focus-visible{text-decoration:underline;text-underline-offset:3px}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
