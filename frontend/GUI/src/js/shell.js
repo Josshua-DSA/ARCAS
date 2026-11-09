@@ -300,7 +300,11 @@ window.ARCAS = window.ARCAS || {};
     if (reduce || typeof kerja !== "function") { if (kerja) kerja(); return; }
     var b = document.body;
     var sudah = false;
-    function jalan() {
+    function jalan(e) {
+      /* Hanya animationend milik body sendiri. `.panel`/`.news-item` juga
+         memakai arcas-rise dan event-nya menggelembung ke body; tanpa cek ini
+         fade terpotong di tengah (terukur: berhenti 40ms, bukan 160ms). */
+      if (e && e.target !== b) return;
       if (sudah) return;
       sudah = true;
       b.removeEventListener("animationend", jalan);
