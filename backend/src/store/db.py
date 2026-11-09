@@ -1047,8 +1047,21 @@ class Database:
         tags: list[TargetTag],
         effective_dates: dict[str, date] | None = None,
     ) -> int:
-        """Bulk insert mappings untuk satu artikel. Returns jumlah baris."""
+        """Bulk insert mappings untuk satu artikel. Returns jumlah baris.
+
+        Setiap tag WAJIB punya entri tanggal di `effective_dates`. Sebelumnya
+        aset tanpa entri disimpan dengan effective_trading_date = NULL tanpa
+        suara; itu sumber 227/310 baris bolong (2026-11-09) dan membuat jejak
+        harga di UI mustahil dihitung. Lebih baik menolak daripada menyimpan
+        baris yang tidak bisa dipakai.
+        """
         dates = effective_dates or {}
+        kurang = sorted({t.asset_id for t in tags if t.asset_id not in dates})
+        if kurang:
+            raise ValueError(
+                f"tanggal bursa tidak tersedia untuk aset {kurang} "
+                f"(artikel {article_id}); tidak menyimpan NULL"
+            )
         with self.get_connection() as conn:
             conn.executemany(
                 """
@@ -1064,7 +1077,7 @@ class Database:
                         t.basis.value,
                         t.matched_text,
                         t.routed_from,
-                        dates[t.asset_id].isoformat() if t.asset_id in dates else None,
+                        dates[t.asset_id].isoformat(),
                     )
                     for t in tags
                 ],
