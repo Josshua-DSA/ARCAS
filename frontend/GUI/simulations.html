@@ -8,7 +8,7 @@
 <meta name="description" content="Uji satu berita atau rumor, lihat arahnya, backtest historisnya, dan keputusan yang diturunkan dari lima persona. Simulasi, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css">
+<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
 <link rel="stylesheet" href="src/css/splash.css">
 <link rel="stylesheet" href="src/css/simulations.css">
 <script>
@@ -35,10 +35,13 @@
   </div>
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
-      <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
-      <a href="research.html" data-page="research.html">Lab Riset</a>
-      <a href="simulations.html" data-page="simulations.html" aria-current="page">Simulasi</a>
+      <div class="nav-links">
+        <a href="index.html" data-page="index.html">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html" aria-current="page">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
     </div>
   </nav>
 </header>
