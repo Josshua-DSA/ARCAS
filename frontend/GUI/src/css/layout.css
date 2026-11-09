@@ -129,7 +129,10 @@ main{display:block}
    Insight utamanya (perubahan harga dan hitungan hari negatif) harus jadi
    elemen terbesar setelah judul, bukan teks 14px yang terlewat. */
 .hero-facts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
-.fact{flex:1 1 210px;max-width:300px;background:var(--bg-card);border:1px solid var(--border-subtle);
+/* Tiga kartu berbagai lebar. `max-width` dinaikkan dari 300px: dengan tiga
+   kartu, 3x300 = 900px menyisakan 288px kosong di panel 1200px. Batas 420px
+   membuat ketiganya mengisi baris (3x~392) tanpa melar sampai isinya tenggelam. */
+.fact{flex:1 1 210px;max-width:420px;background:var(--bg-card);border:1px solid var(--border-subtle);
   border-radius:10px;padding:11px 16px 12px;display:flex;flex-direction:column;gap:1px}
 .fact-label{font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary)}
 .fact-value{display:flex;align-items:baseline;gap:7px;font-family:var(--font-mono);
