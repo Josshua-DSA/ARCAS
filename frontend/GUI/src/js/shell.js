@@ -165,7 +165,7 @@ window.ARCAS = window.ARCAS || {};
           "<span class='t-val'>" + esc(fmtPrice(close)) + "</span>" +
           "<span class='t-chg " + dir + "'>" + esc(chgText) + "</span></span>";
       });
-      if (lastDate) parts.push("<span class='t t-date'>data pasar per " + esc(lastDate) + "</span>");
+      if (lastDate) parts.push("<span class='t t-date'>" + esc(lastDate) + "</span>");
       box.innerHTML = parts.join("");
     });
   };
