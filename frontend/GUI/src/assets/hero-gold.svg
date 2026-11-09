@@ -21,7 +21,19 @@
   <!-- Panel gelap: emas kontras tinggi terhadap latar, sejalan lapisan DATA. -->
   <rect width="320" height="400" fill="url(#gldBg)"/>
 
-  <ellipse cx="160" cy="316" rx="126" ry="18" fill="#141413" opacity="0.34"/>
+  <defs>
+    <filter id="gldSoft" x="-25%" y="-60%" width="150%" height="220%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+
+  <!-- Satu sumber cahaya atas-kiri: tiap batang punya kontak bayangan sendiri,
+       dilembutkan agar bahasanya sama dengan bayangan kartu. -->
+  <g filter="url(#gldSoft)" fill="#141413" opacity="0.30">
+    <ellipse cx="104" cy="312" rx="80" ry="11"/>
+    <ellipse cx="216" cy="312" rx="80" ry="11"/>
+    <ellipse cx="160" cy="244" rx="72" ry="9"/>
+  </g>
 
   <!-- Batang bawah kiri -->
   <g>
