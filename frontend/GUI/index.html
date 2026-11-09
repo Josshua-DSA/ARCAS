@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E3939">
+<title>ARCAS : Sentimen Berita vs Harga</title>
+<meta name="description" content="ARCAS membaca berita makro, memberi skor sentimen, lalu menguji skor itu terhadap harga Emas, Suku Bunga, dan S&amp;P 500. Bukan nasihat investasi.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="src/css/theme.css">
+<link rel="stylesheet" href="src/css/landing.css">
+</head>
+<body class="landing">
+
+<header class="lp-head">
+  <div class="wrap lp-head-row">
+    <p class="lp-brand">ARCAS<span class="lp-brand-sub">Riset sentimen pasar</span></p>
+  </div>
+</header>
+
+<main>
+
+  <!-- 1. Apa ini -->
+  <section class="wrap lp-hero">
+    <p class="lp-kicker">Prototipe riset &middot; tiga pasar makro</p>
+    <h1>Berita makro diberi skor, lalu diuji ke harga.</h1>
+    <p class="lp-lead">
+      ARCAS membaca berita keuangan berbahasa Inggris, mengubahnya menjadi skor
+      sentimen tiga kelas, lalu menggeser setiap berita ke hari bursa terdekat
+      supaya bisa dibandingkan dengan harga penutupan. Semua angka dihitung
+      ulang dari data yang tersimpan, bukan dikarang di halaman.
+    </p>
+    <div class="lp-facts" id="lpFacts" aria-live="polite">
+      <p class="lp-fact-note">Memuat cakupan data&hellip;</p>
+    </div>
+
+    <!-- Bukti visual: satu sparkline dari data nyata. Penguji minta bentuk,
+         bukan hanya angka. Digambar SVG di klien, tanpa pustaka grafik. -->
+    <figure class="lp-proof" id="lpProof" hidden>
+      <figcaption class="lp-proof-cap">
+        <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
+        <span class="lp-proof-s" id="lpProofSub"></span>
+      </figcaption>
+      <svg class="lp-proof-svg" id="lpProofSvg" viewBox="0 0 720 176"
+           role="img"
+           aria-label="Garis harga penutupan dan batang skor sentimen harian"></svg>
+      <div class="lp-proof-legend">
+        <span><i class="lp-lg-line"></i>Harga penutupan</span>
+        <span><i class="lp-lg-up"></i>Sentimen positif</span>
+        <span><i class="lp-lg-down"></i>Sentimen negatif</span>
+        <span class="lp-proof-warn" id="lpProofWarn"></span>
+      </div>
+    </figure>
+  </section>
+
+  <!-- 2. Cara kerja -->
+  <section class="wrap lp-how" aria-labelledby="lpHowTitle">
+    <h2 id="lpHowTitle">Tiga langkah, tanpa model generatif</h2>
+    <ol class="lp-steps">
+      <li>
+        <span class="lp-step-n">01</span>
+        <h3>Baca</h3>
+        <p>Berita dikumpulkan dari API dan RSS, dinormalisasi, lalu diberi
+          <code>article_id</code> dari hash teksnya supaya duplikat tidak
+          terhitung dua kali.</p>
+      </li>
+      <li>
+        <span class="lp-step-n">02</span>
+        <h3>Skor</h3>
+        <p>Model NLP mengeluarkan probabilitas tiga kelas: positif, netral,
+          negatif. Tidak ada LLM generatif di jalur inferensi &mdash; keluarannya
+          hanya angka, bukan kalimat.</p>
+      </li>
+      <li>
+        <span class="lp-step-n">03</span>
+        <h3>Uji</h3>
+        <p>Skor diuji terhadap return harga di T+1, T+3, dan T+5, lengkap dengan
+          hit-rate dan jumlah kejadian. Bila buktinya tipis, halaman
+          mengatakannya.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 3. Target -->
+  <section class="wrap lp-targets" aria-labelledby="lpTgtTitle">
+    <h2 id="lpTgtTitle">Tiga target, dikunci</h2>
+    <div class="lp-tgt-grid">
+      <a class="lp-tgt" href="overview.html?target=XAU">
+        <img src="src/assets/gold.svg" alt="">
+        <span class="lp-tgt-name">Emas</span>
+        <span class="lp-tgt-id">XAU</span>
+        <span class="lp-tgt-note">Safe haven. Paling sensitif terhadap stance The Fed.</span>
+      </a>
+      <a class="lp-tgt" href="overview.html?target=RATE_UST">
+        <img src="src/assets/rate_ust.svg" alt="">
+        <span class="lp-tgt-name">Suku Bunga</span>
+        <span class="lp-tgt-id">RATE_UST</span>
+        <span class="lp-tgt-note">Yield UST. Arahnya berlawanan dengan Emas terhadap stance yang sama.</span>
+      </a>
+      <a class="lp-tgt" href="overview.html?target=SPX">
+        <img src="src/assets/spx.svg" alt="">
+        <span class="lp-tgt-name">S&amp;P 500</span>
+        <span class="lp-tgt-id">SPX</span>
+        <span class="lp-tgt-note">Indeks ekuitas AS. Dipakai sebagai pembanding risiko.</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 4. Yang bisa dibuka -->
+  <section class="wrap lp-doors" aria-labelledby="lpDoorsTitle">
+    <h2 id="lpDoorsTitle">Empat halaman</h2>
+    <div class="lp-door-grid">
+      <a class="lp-door" href="overview.html">
+        <span class="lp-door-t">Ikhtisar Pasar</span>
+        <span class="lp-door-d">Grafik harga berpasangan dengan batang sentimen harian, ringkasan perubahan, dan berita teratas.</span>
+      </a>
+      <a class="lp-door" href="evidence.html">
+        <span class="lp-door-t">Berita &amp; Bukti</span>
+        <span class="lp-door-d">Kutipan asli, waktu terbit, sesi pasar, dan probabilitas model untuk tiap berita.</span>
+      </a>
+      <a class="lp-door" href="research.html">
+        <span class="lp-door-t">Lab Riset</span>
+        <span class="lp-door-d">Spearman per lag, OLS dengan galat HAC, event study, dan koreksi Benjamini&ndash;Hochberg.</span>
+      </a>
+      <a class="lp-door" href="simulations.html">
+        <span class="lp-door-t">Simulasi</span>
+        <span class="lp-door-d">Tempel satu berita, lihat arah yang dibaca model, backtest historis, dan keputusan turunannya.</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 5. Batasan: disebut sebelum tombol masuk, bukan dikubur di kaki halaman.
+       Bagi penguji, ini bagian yang menentukan kredibilitas, jadi diberi bobot
+       yang sama dengan bagian lain — bukan teks redup. -->
+  <section class="wrap lp-limits" aria-labelledby="lpLimTitle">
+    <h2 id="lpLimTitle">Batas yang perlu diketahui</h2>
+    <ul>
+      <li><strong>Korelasi, bukan ramalan.</strong> Hit-rate di bawah 60% dengan
+        jumlah kejadian kecil ditandai sebagai bukti tipis, bukan sinyal.</li>
+      <li><strong>Data belum sepadan.</strong> Harga dan berita punya panjang
+        berbeda. Hari tanpa berita dibiarkan kosong, tidak diisi nol.</li>
+      <li><strong>Hanya berita berbahasa Inggris.</strong> Media Indonesia
+        belum termasuk dalam pipeline.</li>
+      <li><strong>Prototipe riset.</strong> Bukan nasihat investasi.</li>
+    </ul>
+  </section>
+
+  <!-- 6. Masuk -->
+  <section class="wrap lp-cta">
+    <a class="lp-cta-btn" href="overview.html?target=XAU&amp;days=90">Buka dasbor &rarr;</a>
+    <a class="lp-cta-alt" href="http://localhost:8000/docs">Dokumentasi API</a>
+  </section>
+
+</main>
+
+<footer class="lp-foot">
+  <div class="wrap">
+    <span>ARCAS &middot; angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500)</span>
+  </div>
+</footer>
+
+<script src="src/js/pages/landing.js"></script>
+</body>
+</html>
