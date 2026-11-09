@@ -70,20 +70,102 @@
   }
 
   var impacts = [];
-  function applyNewsFilter() {
-    var q = A.$("newsFilter").value.toLowerCase();
-    var dir = A.$("dirFilter").value;
-    var cards = document.querySelectorAll("#newsList .news-card");
-    var visible = 0;
-    cards.forEach(function (c) {
-      var hitQ = !q || c.textContent.toLowerCase().indexOf(q) !== -1;
-      var art = impacts.find(function (x) { return x.article_id === c.getAttribute("data-id"); });
-      var hitD = !dir || (art && String(art.direction).toLowerCase() === dir);
-      var show = hitQ && hitD;
-      c.style.display = show ? "" : "none";
-      if (show) visible++;
+  var PER_HALAMAN = 10;
+  var halaman = 1;
+
+  /* Saringan atas SELURUH baris, bukan atas satu halaman. Memotong populasi
+     dulu akan membuat saringan arah kehilangan hasil di halaman lain. */
+  function saringBaris(rows, kata, arah) {
+    var q = String(kata || "").toLowerCase();
+    return (rows || []).filter(function (it) {
+      if (arah && String(it.direction).toLowerCase() !== arah) return false;
+      if (!q) return true;
+      return ((it.title || "") + " " + (it.source || "")).toLowerCase().indexOf(q) !== -1;
     });
-    A.showState("newsState", visible ? "" : "Tidak ada berita cocok dengan saringan. Kosongkan kata kunci atau ubah arah.");
+  }
+
+  /* Satu halaman potong. Nomor halaman di luar rentang dipangkas ke halaman
+     terakhir yang ada, supaya memperkecil saringan tidak menyisakan halaman
+     kosong. Tanpa baris -> satu halaman kosong, bukan nol halaman. */
+  function potongHalaman(rows, no, per) {
+    var semua = rows || [];
+    var perHal = per || PER_HALAMAN;
+    var jumlah = Math.max(1, Math.ceil(semua.length / perHal));
+    var n = Math.min(Math.max(1, no || 1), jumlah);
+    var dari = (n - 1) * perHal;
+    return {
+      baris: semua.slice(dari, dari + perHal),
+      jumlahHalaman: jumlah,
+      halaman: n,
+      total: semua.length
+    };
+  }
+  A.__ujiSaring = saringBaris;
+  A.__ujiPotong = potongHalaman;
+
+  function renderPager(jumlahHalaman) {
+    var pager = A.$("newsPager");
+    if (!pager) return;
+    if (jumlahHalaman <= 1) {
+      pager.hidden = true;
+      pager.innerHTML = "";
+      return;
+    }
+    var tombol = [];
+    for (var i = 1; i <= jumlahHalaman; i++) {
+      tombol.push("<button type='button' class='pager-btn' data-page-no='" + i + "'" +
+        (i === halaman ? " aria-current='page'" : "") + ">" + i + "</button>");
+    }
+    pager.innerHTML =
+      "<button type='button' class='pager-btn' data-step='-1'" +
+      (halaman === 1 ? " disabled" : "") + " aria-label='Halaman sebelumnya'>Sebelumnya</button>" +
+      tombol.join("") +
+      "<button type='button' class='pager-btn' data-step='1'" +
+      (halaman === jumlahHalaman ? " disabled" : "") +
+      " aria-label='Halaman berikutnya'>Berikutnya</button>";
+    pager.hidden = false;
+  }
+
+  function renderHalaman() {
+    var baris = saringBaris(impacts, A.$("newsFilter").value, A.$("dirFilter").value);
+    var potong = potongHalaman(baris, halaman, PER_HALAMAN);
+    halaman = potong.halaman;
+
+    var list = A.$("newsList");
+    list.innerHTML = potong.baris.map(impactCard).join("");
+    bindPersonaButtons();
+
+    var kick = A.$("evCount");
+    if (kick) {
+      kick.textContent = potong.total === 0
+        ? "0 artikel dampak"
+        : potong.total + " artikel dampak · halaman " + potong.halaman +
+          "/" + potong.jumlahHalaman;
+    }
+    A.showState("newsState", potong.total ? ""
+      : impacts.length ? "Tidak ada berita cocok dengan saringan. Kosongkan kata kunci atau ubah arah."
+      : "Belum ada dampak untuk target ini pada rentang ini.");
+    renderPager(potong.jumlahHalaman);
+  }
+
+  /* Saringan berubah -> selalu kembali ke halaman 1, karena halaman aktif
+     bisa saja tidak ada lagi setelah populasi menyusut. */
+  function applyNewsFilter() {
+    halaman = 1;
+    renderHalaman();
+  }
+
+  function bindPager() {
+    var pager = A.$("newsPager");
+    if (!pager) return;
+    pager.addEventListener("click", function (e) {
+      var b = e.target.closest(".pager-btn");
+      if (!b || b.disabled) return;
+      var step = b.getAttribute("data-step");
+      var no = b.getAttribute("data-page-no");
+      halaman = step ? halaman + Number(step) : Number(no);
+      renderHalaman();
+    });
   }
 
   function bindPersonaButtons() {
@@ -98,12 +180,6 @@
 
   function renderImpacts(rows) {
     impacts = rows || [];
-    var kick = A.$("evCount");
-    if (kick) kick.textContent = impacts.length + " artikel dampak";
-    var list = A.$("newsList");
-    list.innerHTML = impacts.map(impactCard).join("");
-    A.showState("newsState", impacts.length ? "" : "Belum ada dampak untuk target ini pada rentang ini.");
-    bindPersonaButtons();
     applyNewsFilter();
   }
 
@@ -120,6 +196,7 @@
 
   A.$("newsFilter").addEventListener("input", applyNewsFilter);
   A.$("dirFilter").addEventListener("change", applyNewsFilter);
+  bindPager();
   A.renderPage = renderAll;
   A.boot();
 })(window.ARCAS);
