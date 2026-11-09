@@ -29,8 +29,8 @@ def test_akar_menyajikan_landing_bukan_dasbor(tmp_path, monkeypatch) -> None:
         assert akar.status_code == 200
         html = akar.text
         # Penanda landing: judul pengantar dan etalase empat halaman.
-        assert "Berita makro diberi skor" in html
-        assert "lp-doors" in html
+        assert "Skor sentimen berita diuji" in html
+        assert "lp-targets" in html
         # Penanda dasbor yang TIDAK boleh ada di akar.
         assert "heroLead" not in html
         assert "targetTabs" not in html
