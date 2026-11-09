@@ -40,31 +40,41 @@
 
     chart.setOption({
       backgroundColor: "transparent",
-      grid: { left: 56, right: 56, top: 34, bottom: 30 },
+      grid: { left: 64, right: 64, top: 36, bottom: 34 },
       tooltip: { trigger: "axis", backgroundColor: "#2C2727", borderWidth: 0,
         textStyle: { color: "#F6F4F4", fontFamily: "JetBrains Mono, monospace", fontSize: 12 } },
       xAxis: { type: "category", data: dates, axisLine: { lineStyle: { color: "#5A5454" } },
-        axisLabel: { color: "#BDB7B7", fontFamily: "JetBrains Mono, monospace", fontSize: 10, hideOverlap: true } },
+        axisLabel: { color: "#D4CFCF", fontFamily: "JetBrains Mono, monospace", fontSize: 12, hideOverlap: true } },
       yAxis: [
         { type: "value", scale: true, splitLine: { lineStyle: { color: "#5A5454", opacity: 0.5 } },
-          axisLabel: { color: "#BDB7B7", fontFamily: "JetBrains Mono, monospace", fontSize: 10 } },
+          axisLabel: { color: "#D4CFCF", fontFamily: "JetBrains Mono, monospace", fontSize: 12,
+            formatter: function (v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); } } },
         { type: "value", min: -1, max: 1, splitNumber: 4, splitLine: { show: false },
-          axisLabel: { color: "#BDB7B7", fontFamily: "JetBrains Mono, monospace", fontSize: 10 } }
+          axisLabel: { color: "#D4CFCF", fontFamily: "JetBrains Mono, monospace", fontSize: 12,
+            formatter: function (v) {
+              var s = String(v).replace(".", ",");
+              return v > 0 ? "+" + s : s;
+            } } }
       ],
       series: [
         { name: "Tutup", type: "line", data: closes, yAxisIndex: 0, showSymbol: false, connectNulls: false,
-          lineStyle: { width: 2.5, color: info.color }, itemStyle: { color: info.color } },
+          lineStyle: { width: 2, color: info.color }, itemStyle: { color: info.color }, z: 3 },
         /* Bar sentimen diwarnai menurut TANDA skornya, bukan satu warna
            untuk semua. Sebelumnya seluruh bar putih, sehingga hari sentimen
            positif dan negatif tidak bisa dibedakan sekilas — padahal itu
            inti dari grafik ini. Hijau/merah dipilih yang tetap terbaca di
-           latar gelap; opasitas dinaikkan agar tidak tenggelam. */
+           latar gelap; opasitas penuh supaya tidak tenggelam di bawah garis
+           harga. Lebar 72% dari satu hari bursa (maks 12px) membuat batang
+           terbaca tanpa menutupi garis. */
         { name: "Skor", type: "bar", data: scores, yAxisIndex: 1, connectNulls: false,
+          barWidth: "72%", barMaxWidth: 12, z: 2,
           itemStyle: { color: function (p) {
             var v = p.value;
             if (v == null) return "transparent";
             return v > 0 ? "#3FB950" : v < 0 ? "#F85149" : "#BDB7B7";
-          }, opacity: 0.9 }, barMaxWidth: 5 }
+          }, opacity: 1, borderRadius: 2 },
+          markLine: { silent: true, symbol: "none", label: { show: false },
+            lineStyle: { color: "#8C8585", width: 1, opacity: 0.7 }, data: [{ yAxis: 0 }] } }
       ]
     }, true);
   }
@@ -228,45 +238,72 @@
       : "";
   }
 
-  /* Hero berbasis DATA, bukan filosofi produk.
-     Kalimat seperti "arah sentimen tiga pasar makro..." bisa ditempel di
-     dashboard apa pun dan tidak memberi tahu apa pun tentang hari ini.
-     Yang ditampilkan di sini: perubahan harga sebenarnya pada rentang
-     aktif, dan berapa hari terakhir sentimennya negatif. Bila datanya
-     tidak cukup, dikatakan apa adanya -- tidak dikarang. */
+  /* Ringkasan hero berupa dua kartu angka, bukan satu kalimat panjang.
+     Kalimat lama ("... negatif 0 dari 8 hari terakhir") mudah terlewat dan
+     frasa "0 dari 8" ambigu. Kartu memisahkan dua fakta yang berbeda:
+     perubahan harga pada rentang aktif, dan berapa hari berita terakhir
+     yang skornya negatif. Bila datanya tidak cukup, tulis n/a -- bukan 0. */
   function renderHeroLead(target, payload) {
     var el = A.$("heroLead");
     if (!el) return;
     var info = A.metaFor(target);
     var rows = (payload && payload.prices) || [];
     var sent = (payload && payload.sentiments) || [];
-    if (!rows.length) { el.textContent = "Data harga untuk rentang ini belum tersedia."; return; }
 
-    var first = Number(rows[0].close);
-    var last = Number(rows[rows.length - 1].close);
-    var bagian = [];
-    if (isFinite(first) && isFinite(last) && first !== 0) {
-      var pct = (last - first) / first * 100;
-      var arah = pct < 0 ? "turun" : pct > 0 ? "naik" : "datar";
-      bagian.push(info.name + " " + arah + " " +
-        Math.abs(pct).toFixed(1).replace(".", ",") + "% dalam " +
-        A.state.days + " hari");
+    /* Kartu harga. n/a dipakai saat deret kosong atau tidak valid; 0%
+       hanya muncul bila harga benar-benar datar. */
+    var isiHarga = "<span class='sr-only'>tidak tersedia</span><span aria-hidden='true'>n/a</span>";
+    var kelasHarga = "na";
+    var catatanHarga = "data harga belum tersedia";
+    if (rows.length) {
+      var firstRaw = rows[0] && rows[0].close;
+      var lastRaw = rows[rows.length - 1] && rows[rows.length - 1].close;
+      var first = Number(firstRaw);
+      var last = Number(lastRaw);
+      if (firstRaw != null && lastRaw != null && isFinite(first) && isFinite(last) && first !== 0) {
+        var pct = (last - first) / first * 100;
+        var datar = Math.abs(pct) < 0.005;
+        var arah = datar ? "datar" : pct < 0 ? "turun" : "naik";
+        var ikon = datar ? "●" : pct < 0 ? "▼" : "▲";
+        var desimal = Math.abs(pct) < 1 ? 2 : 1;
+        var angka = Math.abs(pct).toFixed(desimal).replace(".", ",");
+        var tanda = datar ? "" : pct < 0 ? "−" : "+";
+        kelasHarga = datar ? "flat" : pct < 0 ? "down" : "up";
+        isiHarga = "<span class='sr-only'>" + esc(arah + " " + angka + " persen") + "</span>" +
+          "<span class='fact-dir' aria-hidden='true'>" + ikon + "</span>" +
+          "<span aria-hidden='true'>" + tanda + angka + "%</span>";
+        catatanHarga = esc(info.name) + " · " + esc(String(A.state.days)) + " hari";
+      }
     }
 
-    /* Hitung hari berita terakhir yang skornya negatif/positif. Hanya
-       dihitung dari hari yang PUNYA berita; hari kosong tidak dianggap
-       netral. */
+    /* Kartu sentimen. Hanya dihitung dari hari yang PUNYA berita; hari
+       kosong tidak dianggap netral. Jumlah hari mengikuti data, bukan
+       dipaksa 8, supaya "dari x hari" selalu jujur. */
+    var isiSent = "<span class='sr-only'>tidak tersedia</span><span aria-hidden='true'>n/a</span>";
+    var kelasSent = "na";
+    var catatanSent = "belum ada berita pada rentang ini";
     var berisi = sent.filter(function (s) { return s && s.score_mean != null; });
     var akhir = berisi.slice(-8);
     if (akhir.length) {
       var neg = akhir.filter(function (s) { return Number(s.score_mean) < 0; }).length;
-      bagian.push("sentimen berita negatif " + neg + " dari " + akhir.length + " hari terakhir");
+      kelasSent = "";
+      isiSent = "<span class='sr-only'>" + neg + " hari negatif</span>" +
+        "<span aria-hidden='true'>" + neg + "</span>" +
+        "<span class='fact-unit' aria-hidden='true'>hari negatif</span>";
+      catatanSent = "dari " + akhir.length + " hari terakhir yang punya berita";
     }
 
-    var seri = rows.length;
-    el.textContent = bagian.length
-      ? bagian.join("; ") + "."
-      : "Ringkasan belum bisa dihitung: data harga " + seri + " baris.";
+    el.innerHTML =
+      "<div class='fact'>" +
+        "<span class='fact-label'>Perubahan harga</span>" +
+        "<span class='fact-value " + kelasHarga + "'>" + isiHarga + "</span>" +
+        "<p class='fact-note'>" + catatanHarga + "</p>" +
+      "</div>" +
+      "<div class='fact'>" +
+        "<span class='fact-label'>Sentimen berita</span>" +
+        "<span class='fact-value " + kelasSent + "'>" + isiSent + "</span>" +
+        "<p class='fact-note'>" + catatanSent + "</p>" +
+      "</div>";
   }
 
   function loadPreloadStamp(signal, live) {

@@ -11,7 +11,7 @@
 <meta name="description" content="Dasbor kuantitatif deterministik: sentimen berita makro vs harga untuk 3 target inti. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css">
+<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
 <link rel="stylesheet" href="src/css/splash.css">
 <script>
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
@@ -39,45 +39,46 @@
        Hotkey 1-4 memindahkan halaman; target pakai tombol arah pada tab fokus. -->
   <nav class="sections" aria-label="Halaman">
     <div class="wrap">
-      <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
-      <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
-      <a href="research.html" data-page="research.html">Lab Riset</a>
-      <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      <div class="nav-links">
+        <a href="index.html" data-page="index.html" aria-current="page">Ikhtisar Pasar</a>
+        <a href="evidence.html" data-page="evidence.html">Berita &amp; Bukti</a>
+        <a href="research.html" data-page="research.html">Lab Riset</a>
+        <a href="simulations.html" data-page="simulations.html">Simulasi</a>
+      </div>
+      <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
     </div>
   </nav>
 </header>
 
-<div class="target-bar" role="tablist" aria-label="Pilih target inti" id="targetBar">
-  <div class="wrap">
-    <div id="targetTabs">
-      <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
-        <img class="ticon" src="src/assets/gold.svg" alt="">
-        <span class="tick">Emas</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
-        <img class="ticon" src="src/assets/rate_ust.svg" alt="">
-        <span class="tick">Suku Bunga</span>
-      </button>
-      <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
-        <img class="ticon" src="src/assets/spx.svg" alt="">
-        <span class="tick">S&amp;P 500</span>
-      </button>
-    </div>
-    <span class="ticker" id="ticker" aria-label="Ringkasan harga terakhir"></span>
-  </div>
-</div>
-
 <main class="wrap">
   <section class="hero" aria-labelledby="heroTitle">
     <h1 id="heroTitle">Arah sentimen tiga pasar makro, dibaca dari beritanya lalu diuji ke harganya.</h1>
-    <p class="lead" id="heroLead">Memuat ringkasan…</p>
+    <div class="hero-facts" id="heroLead" role="group" aria-label="Ringkasan data" aria-live="polite">
+      <p class="fact-note">Memuat ringkasan…</p>
+    </div>
   </section>
 
   <div class="grid overview">
     <section class="panel dark" id="grafik" aria-labelledby="chartTitle">
-      <div class="panel-head">
-        <h2 id="chartTitle">Harga vs sentimen harian</h2>
-        <span class="hint">sumbu kiri harga : sumbu kanan skor -1 sampai +1</span>
+      <div class="panel-head has-tabs">
+        <div class="panel-head-text">
+          <h2 id="chartTitle">Harga vs sentimen harian</h2>
+          <span class="hint">garis harga (kiri) · batang skor sentimen (kanan, −1…+1)</span>
+        </div>
+        <div id="targetTabs" role="tablist" aria-label="Pilih target inti">
+          <button class="target-tab" role="tab" data-target="XAU" aria-selected="true">
+            <img class="ticon" src="src/assets/gold.svg" alt="">
+            <span class="tick">Emas</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="RATE_UST" aria-selected="false">
+            <img class="ticon" src="src/assets/rate_ust.svg" alt="">
+            <span class="tick">Suku Bunga</span>
+          </button>
+          <button class="target-tab" role="tab" data-target="SPX" aria-selected="false">
+            <img class="ticon" src="src/assets/spx.svg" alt="">
+            <span class="tick">S&amp;P 500</span>
+          </button>
+        </div>
       </div>
       <div class="panel-body">
         <div id="chart" role="img" aria-label="Grafik harga dan sentimen harian"></div>
@@ -123,6 +124,6 @@
 <script src="src/js/state.js"></script>
 <script src="src/js/shell.js"></script>
 <script src="src/js/sim-decision.js"></script>
-<script src="src/js/pages/overview.js"></script>
+<script src="src/js/pages/overview.js?v=20261109a"></script>
 </body>
 </html>

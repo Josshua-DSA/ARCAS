@@ -39,28 +39,33 @@ body{margin:0}
 /* Header merek: pita coklat tua (surface tema) dengan teks kertas.
    Oranye sengaja disisakan untuk aksen kecil: tab aktif, tautan, penanda.
    Kontras putih di #3E3939 = 11,36:1. */
-header.brand{background:var(--surface)}
+/* Merek + navigasi menempel di atas: logo dan pemilih halaman tetap terlihat
+   saat isi digulir. Z-index di bawah splash (9999), di atas panel isi. */
+header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
 .brand-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:14px 20px 12px;flex-wrap:wrap}
 .brand-name{font-family:var(--font-serif);font-weight:400;font-size:34px;line-height:1.02;letter-spacing:-0.015em;margin:0;color:var(--on-dark-primary)}
 /* Sub-label pada nama merek: menjelaskan produk apa ini tanpa harus
    membaca hero. Ukurannya kecil dan redup supaya tidak bersaing dengan
    nama, tapi tetap terbaca sebagai keterangan, bukan hiasan. */
-.brand-sub{display:block;font-family:var(--font-mono);font-size:10px;font-weight:400;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:4px}
+.brand-sub{display:block;font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.10em;text-transform:uppercase;color:var(--on-dark-secondary);margin-top:4px}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
    tiga garis bertumpuk dalam satu layar.
    Halaman aktif ditandai tebal + warna tinta penuh, bukan garis bawah. */
 nav.sections{background:var(--base);border-bottom:1px solid var(--border-subtle)}
-nav.sections .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 20px}
+nav.sections .wrap{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:0 20px}
+/* Tautan tetap satu baris (digeser mendatar bila sempit); hanya pita harga
+   yang boleh turun ke baris kedua. */
+.nav-links{display:flex;gap:4px;overflow-x:auto}
 nav.sections a{font-family:var(--font-sans);font-size:14px;font-weight:400;color:var(--text-secondary);
   text-decoration:none;padding:12px 14px;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 nav.sections a[aria-current="page"]{font-weight:600;color:var(--text-primary)}
 nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 
-/* Pita harga ringkas: angka tabular, bukan kartu. Nama target tidak diulang
-   sebagai kotak agar tidak bersaing dengan tab di sebelahnya. */
+/* Pita harga ringkas di ujung kanan baris navigasi: angka tabular, bukan
+   kartu. Di layar sempit ia membungkus ke baris kedua di dalam nav. */
 .ticker{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:nowrap;
   font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap}
 .ticker .t{display:inline-flex;align-items:center;gap:5px}
@@ -73,12 +78,10 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .ticker .t-chg.flat{color:var(--text-muted)}
 .ticker .t-date{color:var(--text-muted);font-size:11px}
 
-/* Tab target: satu aksen oranye hanya di tab aktif (anti overuse) */
-.target-bar{background:var(--bg-sunken)}
-/* Baris tab: kontrol di kiri, pita harga di kanan pada satu baris yang sama.
-   Di layar sempit pita membungkus ke baris kedua tanpa memotong angka. */
-.target-bar .wrap{padding-top:14px;padding-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--bg-card);overflow:hidden;flex:none}
+/* Pemilih target: segmented control di kepala panel grafik (Ikhtisar, Lab
+   Riset) dan di ujung baris filter Berita & Bukti. Satu aksen oranye hanya
+   di tab aktif, supaya kontrol ini tidak bersaing dengan isi. */
+#targetTabs{display:inline-flex;border:1px solid var(--border-subtle);border-radius:10px;background:var(--base);overflow:hidden;flex:none}
 .target-tab{display:flex;gap:9px;align-items:center;justify-content:center;cursor:pointer;border:0;border-left:1px solid var(--border-subtle);
   background:transparent;padding:0 20px;min-height:46px;font-family:var(--font-sans);font-size:15px;color:var(--text-secondary)}
 .target-tab:first-child{border-left:0}
@@ -92,6 +95,24 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab[aria-selected="true"]:hover{background:var(--accent-subtle)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
 
+/* Di kepala panel gelap, kontrol ikut tema gelap supaya tidak jadi blok
+   putih yang menarik perhatian lebih dari grafiknya. Ikon aset berwarna tinta
+   gelap, jadi di panel gelap dibalik terang saat tidak aktif dan kembali
+   gelap saat tab aktif (latar peach). */
+.panel.dark .panel-head #targetTabs{background:var(--surface-deep);border-color:var(--border-dark-subtle)}
+.panel.dark .panel-head .target-tab{border-left-color:var(--border-dark-subtle);color:var(--on-dark-secondary)}
+.panel.dark .panel-head .target-tab .ticon{filter:brightness(0) invert(1)}
+.panel.dark .panel-head .target-tab:hover{background:var(--surface-raised);color:var(--on-dark-primary)}
+.panel.dark .panel-head .target-tab[aria-selected="true"]{background:var(--accent-subtle);color:var(--text-primary)}
+.panel.dark .panel-head .target-tab[aria-selected="true"] .ticon{filter:none}
+
+/* Kepala panel grafik: judul + hint di kiri, pemilih target di pojok kanan.
+   Bila ruang tidak cukup, tab turun ke baris kedua tanpa memotong judul. */
+.panel-head.has-tabs{align-items:center;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+.panel-head-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+/* Berita & Bukti: pemilih target di ujung kanan baris filter. */
+.news-tools #targetTabs{margin-left:auto}
+
 main{display:block}
 /* Hero dikecilkan supaya grafik dan berita masuk ke layar pertama.
    Dulu h1 sampai 52px + lead 18px dengan padding 40px, sehingga di laptop
@@ -104,6 +125,21 @@ main{display:block}
   margin:0 0 7px;max-width:64ch;text-wrap:balance}
 .hero p.lead{font-family:var(--font-serif);font-size:14px;line-height:1.55;color:var(--text-secondary);
   max-width:80ch;margin:0;text-align:left;hyphens:none}
+/* Ringkasan hero berupa dua kartu angka, bukan satu kalimat panjang.
+   Insight utamanya (perubahan harga dan hitungan hari negatif) harus jadi
+   elemen terbesar setelah judul, bukan teks 14px yang terlewat. */
+.hero-facts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+.fact{flex:1 1 210px;max-width:300px;background:var(--bg-card);border:1px solid var(--border-subtle);
+  border-radius:10px;padding:11px 16px 12px;display:flex;flex-direction:column;gap:1px}
+.fact-label{font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary)}
+.fact-value{display:flex;align-items:baseline;gap:7px;font-family:var(--font-mono);
+  font-size:30px;line-height:1.15;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.fact-value.up{color:var(--up)}
+.fact-value.down{color:var(--down)}
+.fact-value.flat,.fact-value.na{color:var(--text-secondary)}
+.fact-dir{font-size:15px;line-height:1}
+.fact-unit{font-family:var(--font-sans);font-size:13px;font-weight:400;color:var(--text-secondary)}
+.fact-note{font-family:var(--font-sans);font-size:12px;line-height:1.35;color:var(--text-muted);margin:0}
 .hero-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
 
 /* Grid asimetris: panel primer lebar, pendamping sempit (fokus baca deret dulu) */
@@ -123,11 +159,9 @@ main{display:block}
 .panel-head .hint{font-family:var(--font-mono);font-size:11px;color:var(--on-dark-muted)}
 .panel.light .hint{color:var(--text-muted)}
 .panel-body{padding:16px 18px}
-/* Grafik dipendekkan dari 380px ke 300px. Pada layar 900px tinggi, tinggi
-   lama mendorong berita sampai 1048px -- jauh di bawah lipatan, padahal
-   berita adalah bukti yang membuat angka di grafik bisa dipercaya. Dengan
-   300px, grafik + kontrol + legenda + judul berita masuk satu layar. */
-#chart{width:100%;height:260px}
+/* Grafik 340px: batang sentimen butuh ruang vertikal supaya tidak kalah
+   dari garis harga. Label sumbu 12px juga menambah kebutuhan tinggi. */
+#chart{width:100%;height:340px}
 .chart-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .range-btn{font-family:var(--font-mono);font-size:12px;background:transparent;color:var(--on-dark-primary);
   border:1px solid var(--border-dark-strong);border-radius:8px;padding:8px 14px;min-height:44px;cursor:pointer}
@@ -268,9 +302,6 @@ footer{background:var(--surface);color:var(--on-dark-primary);margin-top:26px}
 footer .wrap{padding:20px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px}
 footer a{color:var(--accent-text-on-dark)}
 
-/* Bilah target menempel saat gulir (ganti target tanpa gulir ke atas) */
-.target-bar{position:sticky;top:0;z-index:50;box-shadow:0 1px 0 var(--border-subtle)}
-#targetTabs{background:var(--base)}
 /* Tabel data boleh gulir mendatar di wadahnya (kolom angka tidak remuk di HP) */
 #statTables,#topList,#personaList,#wbTables{overflow-x:auto}
 #statTables table.data,#topList table.data,#wbTables table.data{min-width:280px}
@@ -279,23 +310,29 @@ footer a{color:var(--accent-text-on-dark)}
 @media (max-width:960px){
   .grid,.grid.flip,.grid.overview{grid-template-columns:1fr}
   .hero{padding:30px 0 8px}
-  #chart{height:320px}
+  #chart{height:340px}
   .brand-name{font-size:38px}
-  /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit */
-  .ticker{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start;margin-left:0;gap:4px 12px}
+  /* Pita harga turun ke baris kedua di baris tab, membungkus bila sempit.
+     Pemisah "|" dimatikan saat membungkus supaya tidak menggantung di awal
+     baris; jarak antarentri sudah memisahkan. */
+  .ticker{flex-basis:100%;flex-wrap:wrap;justify-content:flex-start;margin-left:0;
+    gap:4px 12px;padding:2px 0 8px}
+  .ticker .t + .t::before{display:none}
 }
 /* HP kecil: ruang napas dirampingkan, grafik dipendekkan */
 @media (max-width:600px){
   .wrap{padding:0 14px}
   .hero{padding:20px 0 4px}
   .hero p.lead{text-align:left;font-size:17px;line-height:1.6}
+  .hero-facts{gap:8px}
+  .fact{flex-basis:100%;max-width:none}
   .panel-body{padding:12px}
-  #chart{height:300px}
+  #chart{height:320px}
   .news-card h3{font-size:19px}
   .news-item h3{font-size:19px}
   .news-src{margin-left:0;flex-basis:100%}
   /* Segmented control di HP: satu wadah penuh, tiga segmen sama lebar */
-  #targetTabs{display:flex;width:auto;margin:10px 14px}
+  #targetTabs{display:flex;width:100%;margin:0}
   .target-tab{flex:1 1 0;padding:0 8px;gap:6px;font-size:14px;min-height:48px}
   .target-tab .tick{font-size:14px}
   .target-tab .ticon{width:18px;height:18px}
