@@ -55,7 +55,8 @@
      OLS/Granger/CAR: angka itu sudah ada di Lab Riset, dan di sini yang
      dibutuhkan pembaca adalah bentuk pergerakan harganya. */
   function kartuBacktest(id, j) {
-    return "<section class='s-card s-card-backtest' data-target='" + esc(j.target) + "'>" +
+    return "<section class='s-card s-card-backtest' id='" + id + "-backtest'" +
+        " data-target='" + esc(j.target) + "'>" +
       "<header class='s-card-head'>" +
         "<span class='s-card-kicker'>Backtesting &middot; 180 hari</span>" +
         "<h3>" + esc(A.metaFor(j.target).name) + " &middot; " + esc(j.target) + "</h3>" +
@@ -67,12 +68,15 @@
   }
 
   function kartuKeputusan(id, j) {
-    return "<section class='s-card s-card-decision'>" +
+    return "<section class='s-card s-card-decision' id='" + id + "-keputusan'" +
+        " data-target='" + esc(j.target) + "'>" +
       "<header class='s-card-head'>" +
         "<span class='s-card-kicker'>Decision making</span>" +
         "<h3>Keputusan</h3>" +
       "</header>" +
-      "<div class='s-card-body' id='" + id + "-keputusan'>" +
+      /* -isi, bukan -keputusan: id section sudah memakai akhiran itu dan
+         getElementById hanya mengembalikan yang pertama. */
+      "<div class='s-card-body' id='" + id + "-keputusan-isi'>" +
         "<p class='s-card-note'>memuat bukti historis&hellip;</p>" +
       "</div>" +
     "</section>";
@@ -352,7 +356,7 @@
     var id = idKartuTerakhir;
     muatSeri(j.target, function (seri) {
       isiBacktest(id + "-grafik", j.target, seri);
-      isiKeputusan(id + "-keputusan", j, seri);
+      isiKeputusan(id + "-keputusan-isi", j, seri);
     });
   }
 
@@ -466,6 +470,12 @@
 
     setFase(1);
   }
+
+  /* Ekspor untuk tes: dua kartu satu giliran, tanpa DOM. */
+  A.__ujiKartu = function (id, target) {
+    var j = { target: target };
+    return { backtest: kartuBacktest(id, j), keputusan: kartuKeputusan(id, j) };
+  };
 
   A.renderPage = function () {
     /* Badge mengikuti hasil deteksi API yang sudah dilakukan A.boot(). */
