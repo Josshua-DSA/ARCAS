@@ -163,7 +163,10 @@
         "termuat (src/js/echarts.min.js).</p>";
       return;
     }
-    if (grafik[idKartu]) grafik[idKartu].dispose();
+    if (grafik[idKartu]) {
+      grafik[idKartu].dispose();
+      delete grafik[idKartu];
+    }
 
     var info = A.metaFor(target);
     var tanggal = [], tutup = [];
@@ -209,7 +212,6 @@
         areaStyle: { opacity: 0.08, color: info.color }
       }]
     });
-    window.addEventListener("resize", function () { c.resize(); });
   }
 
   /* Satu permintaan /api/series per target dipakai bersama: grafik butuh
@@ -431,6 +433,17 @@
     var ta = $("simNews");
     if (!ta) return; /* bukan halaman Simulations */
 
+    /* Satu listener resize untuk semua grafik, dipasang sekali per halaman.
+       Sebelumnya tiap gambarGrafik menambah satu listener milik dirinya dan
+       tidak pernah dilepas: empat giliran = empat listener yang menahan
+       instance ECharts lama tetap hidup. */
+    if (!pasang._resize) {
+      pasang._resize = true;
+      window.addEventListener("resize", function () {
+        for (var k in grafik) if (grafik[k]) grafik[k].resize();
+      });
+    }
+
     $("simSend").addEventListener("click", function () {
       kirim(ta.value, null);
     });
@@ -449,7 +462,11 @@
     });
 
     $("simUlang").addEventListener("click", function () {
-      /* Mulai percakapan baru: kosongkan riwayat, bukan menimpa satu kartu. */
+      /* Mulai percakapan baru: kosongkan riwayat, bukan menimpa satu kartu.
+         Instance ECharts dilepas dulu -- mengosongkan innerHTML saja
+         meninggalkan grafik yang masih memegang elemen DOM yang sudah hilang. */
+      for (var k in grafik) if (grafik[k]) grafik[k].dispose();
+      grafik = {};
       $("simThread").innerHTML = "";
       setFase(1);
     });
