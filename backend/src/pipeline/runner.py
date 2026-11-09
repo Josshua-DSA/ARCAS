@@ -512,8 +512,19 @@ class Pipeline:
 
                 tags = self._impacts_to_tags(impacts, article)
                 if tags:
+                    # Tanggal bursa dipastikan di sini, bukan diandalkan dari
+                    # normalizer: Article bisa masuk lewat jalur lain (CLI,
+                    # ingest manual) dengan peta tanggal kosong, dan aset yang
+                    # ditandai router belum tentu ada di peta itu. Tanpa ini
+                    # article_targets menyimpan NULL dan jejak harga di UI mati.
+                    tanggal = dict(article.effective_trading_date)
+                    for tag in tags:
+                        if tag.asset_id not in tanggal:
+                            tanggal[tag.asset_id] = ArticleCleaner.compute_effective_trading_date(
+                                article.published_at, tag.asset_id
+                            )
                     stats.target_tertulis += self.db.save_article_targets(
-                        article.article_id, tags, article.effective_trading_date
+                        article.article_id, tags, tanggal
                     )
 
             all_impacts.extend(impacts)
