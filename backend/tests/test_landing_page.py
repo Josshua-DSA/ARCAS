@@ -88,3 +88,20 @@ def test_landing_tidak_mengarang_angka() -> None:
     assert "lp-fact-note" in html
     # Tidak ada angka cakupan yang ditulis langsung.
     assert not re.search(r"lp-fact-value[^>]*>\s*\d", html)
+
+
+def test_setiap_halaman_punya_skip_link() -> None:
+    """Skip link wajib: nav 5 tautan berarti 5 Tab sebelum konten.
+
+    Tanpa ini pengguna keyboard harus melewati seluruh nav di setiap halaman.
+    Target diperiksa harus benar-benar ada — `simulations.html` memakai
+    `id="simRoot"` yang dipakai 91 selektor, jadi tidak boleh dipaksa `main`.
+    """
+    for nama in ("index.html", "overview.html", "evidence.html",
+                 "research.html", "simulations.html", "pricing.html"):
+        html = (GUI / nama).read_text(encoding="utf-8")
+        assert 'class="skip-link"' in html, f"{nama} tanpa skip link"
+        cocok = re.search(r'class="skip-link" href="#([\w-]+)"', html)
+        assert cocok, f"{nama} skip link tanpa target"
+        target = cocok.group(1)
+        assert f'id="{target}"' in html, f"{nama} skip link ke #{target} yang tidak ada"
