@@ -5,7 +5,10 @@
   --core-xau:#FFD33D;      /* emas, pembeda seri di panel gelap */
   --core-rate:#58A6FF;     /* yield, biru dingin untuk seri rate */
   --core-spx:#FF7517;      /* SPX memakai aksen merek, bukan untuk arah */
-  --buy:#10B981; --sell:#EF4444; --hold:#6B7280; /* arah, selalu plus ikon+teks */
+  /* Arah: selalu plus ikon+teks, jadi warna bukan satu-satunya pembeda.
+     Nilai digelapkan agar teks putih lolos AA 4,5:1 — sebelumnya
+     #10B981 = 2,54:1 dan #EF4444 = 3,76:1. */
+  --buy:#047857; --sell:#B91C1C; --hold:#6B7280; /* putih: 5,48 / 6,47 / 4,83 */
   --maxw:1240px;
 }
 *{box-sizing:border-box}
