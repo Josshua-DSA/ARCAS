@@ -8,7 +8,7 @@
 <meta name="description" content="Uji satu berita atau rumor, lihat arahnya, backtest historisnya, dan keputusan yang diturunkan dari lima persona. Simulasi, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
+<link rel="stylesheet" href="src/css/layout.css?v=20261110b">
 <link rel="stylesheet" href="src/css/splash.css">
 <link rel="stylesheet" href="src/css/simulations.css">
 <script>
@@ -17,6 +17,8 @@
 </script>
 </head>
 <body>
+
+<a class="skip-link" href="#simRoot">Lompat ke konten</a>
 
 <div id="splash" class="splash" role="status" aria-live="polite" hidden>
   <div class="splash__title">ARCAS · Prototipe Riset</div>
@@ -46,13 +48,16 @@
   </nav>
 </header>
 
-<main id="simRoot">
+<main id="simRoot" tabindex="-1">
 
   <!-- ================= FASE 1 ================= -->
   <div class="s-stage" id="simStage">
     <div class="s-wrap" style="display:flex;flex-direction:column;align-items:center">
       <p class="s-badge" id="simBadge" aria-live="polite"><span id="simBadgeText">menghubungi API</span></p>
       <h1 class="s-greet">Berita apa yang ingin <em>kamu</em> uji?</h1>
+      <!-- Halaman ini satu alur, jadi h2 tidak punya padanan visual. Tetap
+           ditulis untuk pembaca layar: tanpa ini struktur dokumen hanya h1. -->
+      <h2 class="sr-only">Formulir uji berita</h2>
       <p class="s-sub">Tempel judul atau isi berita. Sistem membaca arahnya, lalu menampilkan backtest historis dan keputusan turunannya.</p>
 
       <div class="s-composer">
@@ -89,6 +94,7 @@
   <!-- ================= FASE 2 ================= -->
   <div class="s-conv" id="simConv">
     <div class="s-wrap">
+      <h2 class="sr-only">Hasil pengujian</h2>
       <!-- Setiap uji menambah satu giliran di sini; yang lama tidak ditimpa.
            Riwayat hanya hidup selama tab terbuka: backend tidak menyimpan
            simulasi, dan halaman ini tidak menulis apa pun ke browser. -->
@@ -117,7 +123,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="documentation.html">dok API</a></span>
   </div>
 </footer>
 

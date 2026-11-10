@@ -8,7 +8,7 @@
 <meta name="description" content="Arus berita, kutipan bukti, audit waktu, dan stance persona. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
+<link rel="stylesheet" href="src/css/layout.css?v=20261110b">
 <link rel="stylesheet" href="src/css/splash.css">
 <script>
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
@@ -16,6 +16,8 @@
 </script>
 </head>
 <body>
+
+<a class="skip-link" href="#main">Lompat ke konten</a>
 
 <div id="splash" class="splash" role="status" aria-live="polite" hidden>
   <div class="splash__title">ARCAS · Prototipe Riset</div>
@@ -45,13 +47,14 @@
   </nav>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="main" tabindex="-1">
   <section class="hero" aria-labelledby="evTitle">
     <h1 id="evTitle">Setiap skor punya kutipan dan waktunya.</h1>
     <p class="lead">Kutipan asli, waktu terbit, sesi pasar, dan probabilitas model untuk tiap berita.</p>
   </section>
 
   <section id="evBerita" aria-labelledby="evListTitle">
+    <h2 class="sr-only" id="evListTitle">Daftar berita dan skornya</h2>
     <div class="hero-meta" style="margin-bottom:0">
       <span id="evCount">memuat...</span>
     </div>
@@ -88,7 +91,7 @@
 <dialog id="personaModal" aria-labelledby="personaTitle">
   <div class="modal-head">
     <div>
-      <h3 id="personaTitle">Stance lima persona</h3>
+      <h2 id="personaTitle">Stance lima persona</h2>
     </div>
     <button class="btn small" id="personaClose">Tutup</button>
   </div>
@@ -102,7 +105,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="documentation.html">dok API</a></span>
   </div>
 </footer>
 

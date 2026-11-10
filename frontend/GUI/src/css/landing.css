@@ -269,3 +269,10 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
 .lp-tier-card.is-primary .lp-tier-cta:hover,
 .lp-tier-card.is-primary .lp-tier-cta:focus-visible{background:var(--accent-hover);
   border-color:var(--accent-hover)}
+
+/* Skip link beranda & pricing: landing tidak memuat layout.css. */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;
+  background:var(--surface);color:var(--on-dark-primary);
+  padding:10px 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:0 0 8px 0;font-family:var(--font-sans);
+  font-size:14px;text-decoration:none}
+.skip-link:focus{left:0}

@@ -8,7 +8,7 @@
 <meta name="description" content="Pilih berita dan lihat titiknya di grafik pasar, lalu baca uji statistik yang tersimpan. Simulasi analitis, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css?v=20261109a">
+<link rel="stylesheet" href="src/css/layout.css?v=20261110b">
 <link rel="stylesheet" href="src/css/splash.css">
 <script>
   /* Splash penuh setiap refresh; log dan bar bergerak, tanpa timer palsu. */
@@ -46,7 +46,7 @@
   .rl-title{font-family:var(--font-sans);font-size:13.5px;font-weight:600;line-height:1.35;
     color:var(--text-primary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .rl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
-  .rl-src{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted)}
+  .rl-src{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
 
   #priceChart{width:100%;height:340px}
 
@@ -59,7 +59,7 @@
   .rl-after{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
   .rl-after-cell{flex:1 1 92px;min-width:92px;padding:8px 10px;border-radius:8px;
     background:var(--surface-raised);border:1px solid var(--border-dark-subtle)}
-  .rl-after-k{font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;
+  .rl-after-k{font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;
     text-transform:uppercase;color:var(--on-dark-muted);margin:0 0 3px}
   .rl-after-v{font-family:var(--font-mono);font-size:14px;font-variant-numeric:tabular-nums;
     margin:0;color:var(--on-dark-primary)}
@@ -117,6 +117,8 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main">Lompat ke konten</a>
+
 <div id="splash" class="splash" role="status" aria-live="polite" hidden>
   <div class="splash__title">ARCAS · Prototipe Riset</div>
   <div class="splash__log" id="splash-log"></div>
@@ -145,7 +147,7 @@
   </nav>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="main" tabindex="-1">
   <section class="hero" aria-labelledby="resTitle">
     <h1 id="resTitle">Berita mana yang menggerakkan harga?</h1>
     <p class="lead">Setiap berita ditandai pada tanggal terbitnya, lalu digeser ke hari bursa terdekat bila pasar sudah tutup.</p>
@@ -210,7 +212,7 @@
 <footer>
   <div class="wrap">
     <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="http://localhost:8000/docs">dok API</a></span>
+    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="documentation.html">dok API</a></span>
   </div>
 </footer>
 

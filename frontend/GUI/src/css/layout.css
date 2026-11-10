@@ -5,7 +5,10 @@
   --core-xau:#FFD33D;      /* emas, pembeda seri di panel gelap */
   --core-rate:#58A6FF;     /* yield, biru dingin untuk seri rate */
   --core-spx:#FF7517;      /* SPX memakai aksen merek, bukan untuk arah */
-  --buy:#10B981; --sell:#EF4444; --hold:#6B7280; /* arah, selalu plus ikon+teks */
+  /* Arah: selalu plus ikon+teks, jadi warna bukan satu-satunya pembeda.
+     Nilai digelapkan agar teks putih lolos AA 4,5:1 — sebelumnya
+     #10B981 = 2,54:1 dan #EF4444 = 3,76:1. */
+  --buy:#047857; --sell:#B91C1C; --hold:#6B7280; /* putih: 5,48 / 6,47 / 4,83 */
   --maxw:1240px;
 }
 *{box-sizing:border-box}
@@ -60,8 +63,9 @@ header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
 .brand-sub{display:block;font-family:var(--font-mono);font-size:11px;font-weight:500;
   letter-spacing:.10em;text-transform:uppercase;color:var(--on-dark-secondary);margin-top:4px}
 /* Nama merek jadi tautan ke halaman muka. Mewarisi warna dan ukuran supaya
-   tidak terbaca sebagai tautan biasa di dalam judul. */
-.brand-home{color:inherit;text-decoration:none}
+   tidak terbaca sebagai tautan biasa di dalam judul. min-height 44px: area
+   klik harus bisa dijangkau jari, bukan hanya kursor. */
+.brand-home{color:inherit;text-decoration:none;display:inline-flex;align-items:center;min-height:44px}
 .brand-home:hover,.brand-home:focus-visible{text-decoration:underline;text-underline-offset:3px}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
@@ -255,6 +259,9 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
 .pager-btn[aria-current="page"]{background:var(--accent-subtle);border-color:var(--accent);color:var(--text-primary);font-weight:500}
 .pager-btn:disabled{opacity:.45;cursor:not-allowed}
 .news-card h3{font-family:var(--font-serif);font-weight:400;font-size:21px;line-height:1.3;margin:0 0 8px}
+/* Judul berita sengaja TIDAK dipaksa 44px: inline-flex mematahkan pembungkusan
+   judul multi-baris. Lebar 800px+ x 28px sudah lolos WCAG 2.5.8 AA (24x24).
+   ponytail: naikkan ke 44px hanya kalau ada keluhan sentuh di ponsel. */
 .news-meta{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 /* Kutipan persis: tanda petik di tepi kiri, tanpa kotak berwarna. Latar oranye
    muda + garis tepi 3px adalah pola "card stripe" yang, diulang delapan kali,
@@ -288,7 +295,7 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
   background:var(--bg-card);color:var(--text-primary);text-decoration:none}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#2C2727}
 .btn.primary:hover{background:var(--accent-hover)}
-.btn.small{font-size:13px;padding:8px 12px;min-height:40px}
+.btn.small{font-size:13px;padding:8px 12px;min-height:44px}
 
 /* Aksi di dalam kartu: satu tombol netral per kartu, bukan tombol oranye
    penuh di setiap item. Aksen disimpan untuk aksi utama halaman saja; delapan
@@ -311,13 +318,13 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
 dialog#personaModal{border:1px solid var(--border-dark-strong);border-radius:12px;padding:0;max-width:640px;width:calc(100% - 32px);color:var(--text-primary)}
 dialog#personaModal::backdrop{background:rgba(44,39,39,.55)}
 .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-subtle)}
-.modal-head h3{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0}
+.modal-head h2,.modal-head h3{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0}
 .modal-body{padding:14px 18px}
 .modal-foot{padding:12px 18px;border-top:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)}
 
 footer{background:var(--surface);color:var(--on-dark-primary);margin-top:26px}
 footer .wrap{padding:20px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px}
-footer a{color:var(--accent-text-on-dark)}
+footer a{color:var(--accent-text-on-dark);display:inline-flex;align-items:center;min-height:44px}
 
 /* Tabel data boleh gulir mendatar di wadahnya (kolom angka tidak remuk di HP) */
 #statTables,#topList,#personaList,#wbTables{overflow-x:auto}
@@ -354,3 +361,11 @@ footer a{color:var(--accent-text-on-dark)}
   .target-tab .tick{font-size:14px}
   .target-tab .ticon{width:18px;height:18px}
 }
+
+/* Skip link: hanya muncul saat fokus keyboard. Tanpa ini pengguna Tab harus
+   melewati seluruh nav di setiap halaman sebelum mencapai konten. */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;
+  background:var(--surface);color:var(--on-dark-primary);
+  padding:10px 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:0 0 8px 0;font-family:var(--font-sans);
+  font-size:14px;text-decoration:none}
+.skip-link:focus{left:0}
