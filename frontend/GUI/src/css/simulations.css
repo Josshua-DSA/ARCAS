@@ -148,12 +148,13 @@
   align-items: center;
   gap: 7px;
   background: var(--accent);
-  color: #fff;
+  /* Teks gelap, bukan putih: putih di #FF7517 hanya 2,69:1. #2C2727 = 5,47:1. */
+  color: var(--surface-deep);
   border: 0;
   border-radius: 9px;
   padding: 8px 15px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   font-family: var(--font-sans);
 }
