@@ -1,0 +1,77 @@
+/* Halaman dokumentasi: sidebar tetap + badan artikel.
+   Memakai token theme.css apa adanya — tidak ada warna baru, supaya halaman
+   ini tidak jadi sistem desain kedua di dalam produk yang sama. */
+
+.docs-layout{display:grid;grid-template-columns:200px minmax(0,1fr);
+  gap:56px;padding:56px 0 88px;align-items:start}
+
+/* ---------- sidebar ---------- */
+.docs-side{position:sticky;top:24px;display:flex;flex-direction:column;gap:2px}
+.docs-side-title{font-family:var(--font-mono);font-size:11px;letter-spacing:.10em;
+  text-transform:uppercase;color:var(--text-muted);margin:0 0 10px}
+.docs-side a{font-family:var(--font-sans);font-size:14px;color:var(--text-secondary);
+  text-decoration:none;padding:8px 10px;border-radius:6px;min-height:44px;
+  display:flex;align-items:center;border-left:2px solid transparent}
+.docs-side a:hover{color:var(--text);background:var(--bg-sunken)}
+.docs-side a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- badan ---------- */
+.docs-body{max-width:74ch;min-width:0}
+.docs-body h1{font-family:var(--font-serif);font-weight:400;font-size:44px;
+  line-height:1.1;letter-spacing:-.02em;margin:0 0 16px;text-wrap:balance}
+.docs-lede{font-family:var(--font-serif);font-size:18px;line-height:1.65;
+  color:var(--text-secondary);margin:0 0 44px;max-width:62ch}
+.docs-body h2{font-family:var(--font-serif);font-weight:400;font-size:27px;
+  line-height:1.2;margin:52px 0 14px;padding-top:22px;
+  border-top:1px solid var(--border-subtle)}
+.docs-body h2:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.docs-body h3{font-family:var(--font-sans);font-weight:600;font-size:15px;
+  margin:30px 0 8px;color:var(--text)}
+.docs-body p{font-family:var(--font-serif);font-size:16.5px;line-height:1.7;
+  color:var(--text-secondary);margin:0 0 14px}
+.docs-body p code,.docs-list code,.docs-table code{font-family:var(--font-mono);
+  font-size:.88em;background:var(--bg-sunken);color:var(--text);
+  padding:1px 5px;border-radius:4px}
+
+/* ---------- blok kode ---------- */
+.docs-body pre{background:var(--surface);border-radius:8px;padding:16px 18px;
+  overflow-x:auto;margin:0 0 16px}
+.docs-body pre code{font-family:var(--font-mono);font-size:13px;line-height:1.65;
+  color:var(--on-dark-primary);background:none;padding:0;white-space:pre}
+
+/* ---------- daftar ---------- */
+.docs-list{margin:0 0 16px;padding-left:20px}
+.docs-list li{font-family:var(--font-serif);font-size:16.5px;line-height:1.7;
+  color:var(--text-secondary);margin-bottom:8px}
+.docs-list strong{color:var(--text);font-weight:600}
+
+/* ---------- tabel ---------- */
+.docs-table-wrap{overflow-x:auto;margin:0 0 18px}
+.docs-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);
+  font-size:12.5px;font-variant-numeric:tabular-nums}
+.docs-table th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-muted);
+  border-bottom:1px solid var(--border-strong);padding:8px 10px}
+.docs-table td{padding:10px;border-bottom:1px solid var(--border-subtle);
+  color:var(--text-secondary);vertical-align:top}
+.docs-table td code{background:none;padding:0;color:var(--text)}
+.docs-m{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:var(--text-muted);border:1px solid var(--border-strong);
+  border-radius:4px;padding:1px 5px}
+.docs-m.post{color:var(--accent-text);border-color:var(--accent-text)}
+
+.docs-note{font-family:var(--font-sans);font-size:14px;line-height:1.6;
+  color:var(--text-muted);border-left:2px solid var(--border-strong);
+  padding-left:14px;margin:0 0 16px}
+
+/* ---------- sempit ---------- */
+@media (max-width:860px){
+  .docs-layout{grid-template-columns:1fr;gap:28px;padding:32px 0 64px}
+  .docs-side{position:static;flex-direction:row;flex-wrap:wrap;gap:4px;
+    padding-bottom:16px;border-bottom:1px solid var(--border-subtle)}
+  .docs-side-title{width:100%;margin-bottom:4px}
+  .docs-side a{border-left:0;border:1px solid var(--border-subtle);padding:8px 12px}
+  .docs-body h1{font-size:32px}
+  .docs-body h2{font-size:23px;margin-top:38px}
+  .docs-body p,.docs-list li{font-size:16px}
+}
