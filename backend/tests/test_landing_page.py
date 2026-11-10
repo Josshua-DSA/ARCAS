@@ -47,7 +47,7 @@ def test_dasbor_tetap_terjangkau_di_overview(tmp_path, monkeypatch) -> None:
 def test_landing_menautkan_ke_tiga_tujuan_nav() -> None:
     """Nav atas: Pricing, Documentation, Contribute. Tombol kepala ke dasbor."""
     html = (GUI / "index.html").read_text(encoding="utf-8")
-    for tujuan in ("pricing.html", "localhost:8000/docs", "github.com/Josshua-DSA/ARCAS"):
+    for tujuan in ("pricing.html", "documentation.html", "github.com/Josshua-DSA/ARCAS"):
         assert tujuan in html, f"landing tidak menautkan {tujuan}"
     # Tombol kepala menuju dasbor.
     assert 'href="overview.html">Explore' in html
@@ -56,8 +56,32 @@ def test_landing_menautkan_ke_tiga_tujuan_nav() -> None:
 def test_pricing_tersaji_dan_bernavigasi_sama() -> None:
     halaman = (GUI / "pricing.html").read_text(encoding="utf-8")
     assert "lp-tier-grid" in halaman
-    for tujuan in ("pricing.html", "localhost:8000/docs", "github.com/Josshua-DSA/ARCAS"):
+    for tujuan in ("pricing.html", "documentation.html", "github.com/Josshua-DSA/ARCAS"):
         assert tujuan in halaman, f"pricing tidak menautkan {tujuan}"
+
+
+def test_dokumentasi_memuat_sebelas_endpoint() -> None:
+    """Halaman docs harus mencantumkan setiap route yang benar-benar ada.
+
+    Kalau route ditambah di app.py tanpa memperbarui halaman ini, dokumentasi
+    berbohong — lebih buruk daripada tidak punya dokumentasi.
+    """
+    docs = (GUI / "documentation.html").read_text(encoding="utf-8")
+    rute = ("/health", "/api/meta", "/api/universe", "/api/series/{target}",
+            "/api/impacts/{target}", "/api/stats/{target}", "/api/allocation",
+            "/api/persona/{article_id}", "/api/simulate",
+            "/api/simulate/{run_id}", "/api/preload/status")
+    for r in rute:
+        assert r in docs, f"documentation.html tidak mencantumkan {r}"
+
+
+def test_tidak_ada_tautan_dokumentasi_ke_localhost() -> None:
+    """Tautan navigasi tidak boleh menunjuk localhost: pengunjung lain akan
+    kena ERR_CONNECTION_REFUSED. Contoh curl di dalam docs dikecualikan."""
+    for nama in ("index.html", "pricing.html", "overview.html", "evidence.html",
+                 "research.html", "simulations.html"):
+        html = (GUI / nama).read_text(encoding="utf-8")
+        assert "localhost:8000" not in html, f"{nama} masih menautkan localhost"
 
 
 def test_dasbor_tidak_lagi_menautkan_index_sebagai_halaman() -> None:
