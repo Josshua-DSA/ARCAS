@@ -59,7 +59,7 @@
     .then(function (m) {
       var c = (m && m.coverage) || {};
       var html = "";
-      if (c.articles) html += kartu("Artikel tersimpan", c.articles.toLocaleString("id-ID"));
+      if (c.articles) html += kartu("Artikel", c.articles.toLocaleString("id-ID"));
       if (c.days_with_news) html += kartu("Hari berita", c.days_with_news.toLocaleString("id-ID"));
       if (c.sources) html += kartu("Sumber", c.sources.toLocaleString("id-ID"));
       if (c.last_price_date) html += kartu("Harga terakhir", tanggal(c.last_price_date), "", true);
@@ -79,13 +79,19 @@
 
   /* ---------------- bukti visual ---------------- */
 
-  var W = 720, H = 150, PAD = 8;
+  var W = 720, H = 210, PAD = 8;
   var PL = 46, PR = 6; /* kiri lega untuk label harga, kanan tipis */
   var svg = document.getElementById("lpProofSvg");
   var bungkus = document.getElementById("lpProof");
+  var fallback = document.getElementById("lpProofFallback");
   var warn = document.getElementById("lpProofWarn");
   var sub = document.getElementById("lpProofSub");
   if (!svg || !bungkus) return;
+
+  function buktiGagal(pesan) {
+    if (bungkus) bungkus.hidden = true;
+    if (fallback) { fallback.hidden = false; fallback.textContent = pesan; }
+  }
 
   function gambar(prices, sentiments) {
     var tutup = [], i;
@@ -178,15 +184,18 @@
         : "";
     }
     bungkus.hidden = false;
+    if (fallback) fallback.hidden = true;
     return true;
   }
 
   ambil("api/series/XAU")
     .then(function (s) {
-      gambar(s.prices || [], s.sentiments || []);
+      if (!gambar(s.prices || [], s.sentiments || [])) {
+        buktiGagal("Grafik bukti belum tersedia.");
+      }
     })
     .catch(function () {
       /* Tanpa grafik lebih baik daripada grafik karangan. */
-      if (bungkus) bungkus.hidden = true;
+      buktiGagal("Grafik bukti belum tersedia.");
     });
 })();
