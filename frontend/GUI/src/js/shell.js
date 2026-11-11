@@ -328,10 +328,13 @@ window.ARCAS = window.ARCAS || {};
      skeleton sempat dicoba tapi selalu terbaca sebagai kedipan karena API
      balas 17-74ms.
 
-     Yang dipakai sekarang sama dengan daftar berita di Home: isi panel masuk
+     Yang dipakai sekarang sama dengan daftar berita di Home: isi masuk
      bertahap (fade + delay bertingkat per anak). Tidak ada placeholder, tidak
      ada layar yang dikosongkan — konten baru langsung ada dan memudar masuk.
-     Kelas dipasang SETELAH render, jadi tidak menunda data. */
+     Kelas dipasang SETELAH render, jadi tidak menunda data.
+
+     Sasaran dipilih lewat `data-masuk` di HTML, bukan daftar id di sini:
+     halaman yang menambah blok baru cukup menandainya, tanpa menyentuh shell. */
   function masukLalu(kerja) {
     if (typeof kerja !== "function") return;
     if (reduce) { kerja(); return; }
@@ -344,16 +347,28 @@ window.ARCAS = window.ARCAS || {};
     /* Dipasang setelah render: saat promise selesai, DOM sudah berisi konten
        baru. Untuk halaman yang tidak mengembalikan promise, satu rAF cukup. */
     function tandai() {
-      document.querySelectorAll("#selDetail,#keputusanBox,#statTables,.rl-lag,.rl-picker").forEach(function (el) {
-        el.classList.remove("rl-masuk");
+      document.querySelectorAll("[data-masuk]").forEach(function (el) {
+        el.classList.remove("masuk");
         void el.offsetWidth;
-        el.classList.add("rl-masuk");
+        el.classList.add("masuk");
       });
     }
     if (hasil && typeof hasil.then === "function") hasil.then(tandai, function () {});
     else requestAnimationFrame(tandai);
   }
   A.masukLalu = masukLalu;
+
+  /* Dipakai halaman yang mengganti isi di luar alur ganti aset — misalnya
+     saringan dan pager di News & Evidence. Tanpa ini, dua perilaku berbeda
+     muncul di satu halaman: ganti aset memudar, saringan tidak. */
+  A.masukPanel = function () {
+    if (reduce) return;
+    document.querySelectorAll("[data-masuk]").forEach(function (el) {
+      el.classList.remove("masuk");
+      void el.offsetWidth;
+      el.classList.add("masuk");
+    });
+  };
 
   function selectTarget(btn) {
     document.querySelectorAll(".target-tab").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
