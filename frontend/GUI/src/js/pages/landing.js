@@ -34,13 +34,28 @@
     });
   }
 
+  /* Basis API: halaman statis (8181) tidak satu origin dengan API (8000).
+     Coba path relatif dulu untuk deploy, lalu localhost saat dev. */
+  var BASES = ["", "http://localhost:8000", "http://127.0.0.1:8000"];
+
+  function ambil(path) {
+    var i = 0;
+    function coba() {
+      if (i >= BASES.length) return Promise.reject(new Error("API tidak terjangkau"));
+      var base = BASES[i++];
+      return fetch(base + "/" + path, { headers: { Accept: "application/json" } })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .catch(coba);
+    }
+    return coba();
+  }
+
   /* Angka diambil dari /api/meta. Kalau API mati, halaman TIDAK mengarang
      angka: ia menyembunyikan deret fakta dan hanya menyisakan kalimat. */
-  fetch("api/meta", { headers: { Accept: "application/json" } })
-    .then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    })
+  ambil("api/meta")
     .then(function (m) {
       var c = (m && m.coverage) || {};
       var html = "";
@@ -166,11 +181,7 @@
     return true;
   }
 
-  fetch("api/series/XAU", { headers: { Accept: "application/json" } })
-    .then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    })
+  ambil("api/series/XAU")
     .then(function (s) {
       gambar(s.prices || [], s.sentiments || []);
     })

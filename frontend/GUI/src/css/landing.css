@@ -195,7 +195,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   .lp-head-btn{margin-left:auto}
   .lp-hero{padding:56px 20px 48px}
   .lp-section{padding:36px 20px 48px}
-  .wrap{padding:0 20px}
+  .wrap{padding-left:20px;padding-right:20px}
 }
 @media (max-width:620px){
   .lp-section::before{left:16px;right:16px}
@@ -206,8 +206,8 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   .lp-hero h1{max-width:none}
   .lp-lead{font-size:16.5px}
   .lp-section{padding:32px 16px 40px}
-  .wrap{padding:0 16px}
-  .lp-facts{margin-top:32px}
+  .wrap{padding-left:16px;padding-right:16px}
+  .lp-facts{margin-top:32px;grid-template-columns:repeat(2,1fr)}
   .lp-fact{padding:16px 18px}
   .lp-proof{padding:16px}
 }
