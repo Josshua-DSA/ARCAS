@@ -52,7 +52,7 @@
 
   /* Kartu kiri: harga aset 180 hari terakhir. Tanpa legenda -- hanya satu
      deret, legenda tidak menambah informasi apa pun. Bukan lagi tabel
-     OLS/Granger/CAR: angka itu sudah ada di Lab Riset, dan di sini yang
+     OLS/Granger/CAR: angka itu sudah ada di Research Lab, dan di sini yang
      dibutuhkan pembaca adalah bentuk pergerakan harganya. */
   function kartuBacktest(id, j) {
     return "<section class='s-card s-card-backtest' id='" + id + "-backtest'" +
