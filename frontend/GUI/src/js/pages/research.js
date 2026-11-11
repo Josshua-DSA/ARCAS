@@ -484,7 +484,11 @@
       renderKeputusan();
       drawPriceChart();
       perbaruiPetunjuk();
-    }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ });
+    }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ }).finally(function () {
+      /* Skeleton ditutup oleh shell, tapi loadData yang membatalkan sendiri
+         (abort) tidak memberi tahu lewat promise — pastikan dilepas di sini. */
+      if (!live()) document.body.classList.remove("is-skl");
+    });
   }
 
   /* ---------------- kontrol ----------------
