@@ -34,19 +34,41 @@ body.is-fading-in{animation:arcas-in .16s ease forwards}
    kedipan. Teks disembunyikan (bukan dihapus) dan diganti batang; judul panel,
    tab, dan bingkai tetap diam. */
 @keyframes arcas-skl{to{background-position:-200% 0}}
+/* Masuk halus untuk isi panel yang baru diganti. Ini yang sebenarnya dibutuhkan
+   saat ganti aset: API balas 17-74ms, jauh di bawah grace skeleton 120ms, jadi
+   skeleton tidak pernah tampil dan konten cuma ditukar seketika — terbaca
+   sebagai blip, bukan gerak. Animasi masuk dipasang setelah render, jadi tidak
+   menunda data dan tidak menahan konten lama. */
+@keyframes arcas-masuk{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel-body.is-masuk{animation:arcas-masuk .24s cubic-bezier(.22,.61,.36,1) both}
+@media (prefers-reduced-motion:reduce){
+  .panel-body.is-masuk{animation:none}
+}
 body.is-skl .panel-body *{color:transparent!important;border-color:transparent!important}
+/* Teks memudar, tidak dipotong. Tanpa transisi, kalimat hilang dalam satu
+   frame dan yang terlihat cuma kedipan — persis keluhan "ngeblip". */
+.panel-body :is(td,th,p,span,dd,dt,li,h3,b){transition:color .16s ease,background-image .16s ease}
+@media (prefers-reduced-motion:reduce){
+  .panel-body :is(td,th,p,span,dd,dt,li,h3,b){transition:none}
+}
 /* Batang hanya untuk simpul daun supaya gradien tidak bertumpuk. */
 body.is-skl .panel-body *:not(:has(*)){background-image:linear-gradient(90deg,var(--border-subtle) 25%,var(--bg-sunken) 50%,var(--border-subtle) 75%);
   background-size:200% 100%;animation:arcas-skl 1.1s linear infinite;
   border-radius:3px}
-/* Sel tabel: gradien per sel menghasilkan garis vertikal terpisah (terukur:
-   tiap sel punya fase sendiri, terbaca seperti render rusak). Satu lapis
-   gradien dipasang di wadah tabel, selnya transparan. */
+/* Tabel uji: satu lapis gradien di wadah, sel transparan. Gradien per sel
+   menghasilkan garis vertikal terpisah (tiap sel punya fase animasi sendiri,
+   terbaca seperti render rusak). */
 body.is-skl .panel-body :is(td,th){background:none!important;border-color:transparent!important}
 body.is-skl .panel-body :is(td,th)>*{visibility:hidden}
 body.is-skl .panel-body :is(table,tbody,thead,tr){background:none!important}
 body.is-skl .panel-body .isi{background-image:linear-gradient(90deg,var(--border-subtle) 25%,var(--bg-sunken) 50%,var(--border-subtle) 75%);
   background-size:200% 100%;animation:arcas-skl 1.1s linear infinite;border-radius:6px}
+/* Blok penuh tanpa struktur terbaca seperti render gagal, bukan "sedang
+   memuat". Garis-garis tipis memberi kesan baris tabel yang sedang diisi. */
+body.is-skl .panel-body .isi{position:relative}
+body.is-skl .panel-body .isi::after{content:"";position:absolute;inset:8px;
+  background:repeating-linear-gradient(to bottom,transparent 0 18px,var(--surface) 18px 20px);
+  opacity:.35;border-radius:4px;pointer-events:none}
 /* Kanvas grafik tidak bisa jadi batang. Kanvasnya disembunyikan dan elemen
    grafiknya sendiri diberi latar berdenyut. Dulu dipakai ::before setinggi
    340px, tapi itu menambah tinggi panel (terukur 1087px vs 735px) dan
@@ -149,6 +171,15 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab[aria-selected="true"]:hover{background:var(--accent-subtle)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
+/* Indikator pergantian: garis oranye tipis di bawah tab aktif. Tab yang baru
+   dipilih langsung terlihat "sedang bekerja" tanpa memudarkan apa pun. */
+.target-tab[aria-selected="true"]{position:relative}
+.target-tab[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;
+  height:2px;background:var(--accent);animation:arcas-tab .34s ease-out}
+@keyframes arcas-tab{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+@media (prefers-reduced-motion:reduce){
+  .target-tab[aria-selected="true"]::after{animation:none}
+}
 
 /* Di kepala panel gelap, kontrol ikut tema gelap supaya tidak jadi blok
    putih yang menarik perhatian lebih dari grafiknya. Ikon aset berwarna tinta
