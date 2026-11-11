@@ -40,20 +40,23 @@ body.is-fading-in{animation:arcas-in .16s ease forwards}
 .news-item:nth-child(3){animation-delay:.34s}
 .news-item:nth-child(4){animation-delay:.4s}
 .news-item:nth-child(5){animation-delay:.46s}
-/* Ganti aset: isi panel masuk bertahap seperti daftar berita di Home, bukan
-   ditukar seketika. `.rl-masuk` dipasang shell setelah render selesai; ia
-   dilepas lagi supaya bisa dipasang ulang pada pergantian berikutnya.
-   Bedanya dengan versi skeleton: tidak ada placeholder, tidak ada layar yang
-   dikosongkan — konten baru langsung ada dan memudar masuk. */
-.rl-masuk{animation:arcas-fade .4s ease both}
-.rl-masuk > *{animation:arcas-fade .45s ease both}
-.rl-masuk > *:nth-child(1){animation-delay:.04s}
-.rl-masuk > *:nth-child(2){animation-delay:.1s}
-.rl-masuk > *:nth-child(3){animation-delay:.16s}
-.rl-masuk > *:nth-child(4){animation-delay:.22s}
-.rl-masuk > *:nth-child(5){animation-delay:.28s}
+/* Ganti aset/data: isi masuk bertahap seperti daftar berita di Home, bukan
+   ditukar seketika. Kelas dipasang shell setelah render; dilepas lagi supaya
+   bisa dipasang ulang pada pergantian berikutnya.
+   Bedanya dengan skeleton yang sempat dicoba: tidak ada placeholder, tidak ada
+   layar yang dikosongkan — konten baru langsung ada dan memudar masuk.
+   `.masuk` dipakai halaman mana pun; anak-anaknya mendapat delay bertingkat
+   supaya terbaca sebagai gerak, bukan blok yang muncul sekaligus. */
+.masuk{animation:arcas-fade .4s ease both}
+.masuk > *{animation:arcas-fade .45s ease both}
+.masuk > *:nth-child(1){animation-delay:.04s}
+.masuk > *:nth-child(2){animation-delay:.1s}
+.masuk > *:nth-child(3){animation-delay:.16s}
+.masuk > *:nth-child(4){animation-delay:.22s}
+.masuk > *:nth-child(5){animation-delay:.28s}
+.masuk > *:nth-child(n+6){animation-delay:.34s}
 @media (prefers-reduced-motion:reduce){
-  .hero,.news-section,.panel,.news-item,.rl-masuk,.rl-masuk > *{animation:none}
+  .hero,.news-section,.panel,.news-item,.masuk,.masuk > *{animation:none}
   html{scroll-behavior:auto}
   body.is-fading-out,body.is-fading-in{animation:none}
 }
