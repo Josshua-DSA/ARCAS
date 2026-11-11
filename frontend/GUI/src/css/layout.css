@@ -29,42 +29,6 @@ body{opacity:1}
 body.is-fading-out{animation:arcas-out .16s ease forwards}
 body.is-fading-in{animation:arcas-in .16s ease forwards}
 
-/* Skeleton saat ganti aset/rentang. Bukan menunggu jaringan (API balas <25ms),
-   tapi memberi jeda yang terbaca supaya pergantian angka tidak terasa seperti
-   kedipan. Teks disembunyikan (bukan dihapus) dan diganti batang; judul panel,
-   tab, dan bingkai tetap diam. */
-@keyframes arcas-skl{to{background-position:-200% 0}}
-body.is-skl .panel-body *{color:transparent!important;border-color:transparent!important}
-/* Batang hanya untuk simpul daun supaya gradien tidak bertumpuk. */
-body.is-skl .panel-body *:not(:has(*)){background-image:linear-gradient(90deg,var(--border-subtle) 25%,var(--bg-sunken) 50%,var(--border-subtle) 75%);
-  background-size:200% 100%;animation:arcas-skl 1.1s linear infinite;
-  border-radius:3px}
-/* Sel tabel: gradien per sel menghasilkan garis vertikal terpisah (terukur:
-   tiap sel punya fase sendiri, terbaca seperti render rusak). Satu lapis
-   gradien dipasang di wadah tabel, selnya transparan. */
-body.is-skl .panel-body :is(td,th){background:none!important;border-color:transparent!important}
-body.is-skl .panel-body :is(td,th)>*{visibility:hidden}
-body.is-skl .panel-body :is(table,tbody,thead,tr){background:none!important}
-body.is-skl .panel-body .isi{background-image:linear-gradient(90deg,var(--border-subtle) 25%,var(--bg-sunken) 50%,var(--border-subtle) 75%);
-  background-size:200% 100%;animation:arcas-skl 1.1s linear infinite;border-radius:6px}
-/* Kanvas grafik tidak bisa jadi batang. Kanvasnya disembunyikan dan elemen
-   grafiknya sendiri diberi latar berdenyut. Dulu dipakai ::before setinggi
-   340px, tapi itu menambah tinggi panel (terukur 1087px vs 735px) dan
-   menggeser seluruh tata letak saat skeleton lepas. */
-body.is-skl :is(#priceChart,#chart){background:linear-gradient(90deg,var(--surface-raised) 25%,var(--border-dark-subtle) 50%,var(--surface-raised) 75%);
-  background-size:200% 100%;animation:arcas-skl 1.1s linear infinite;border-radius:8px}
-body.is-skl :is(#priceChart,#chart) canvas{visibility:hidden}
-/* Pemilih berita tidak memakai batang: kartunya sudah berbentuk. Diredupkan
-   saja supaya terbaca "sedang diganti", bukan hilang. */
-body.is-skl #newsPicker,body.is-skl #newsCount,body.is-skl .rl-lag{opacity:.35;
-  transition:opacity .18s ease}
-@media (prefers-reduced-motion:reduce){
-  body.is-skl .panel-body *{animation:none!important;background-image:none!important;
-    color:inherit!important}
-  body.is-skl .panel-body :has(.sig) .sig{visibility:visible}
-  body.is-skl :is(#priceChart,#chart) canvas{visibility:visible}
-  body.is-skl #newsPicker,body.is-skl #newsCount,body.is-skl .rl-lag{opacity:1}
-}
 .hero,.news-section,.panel{animation:arcas-rise .5s cubic-bezier(.22,.61,.36,1) both}
 .hero{animation-delay:.02s}
 .grid .panel:nth-child(1){animation-delay:.08s}
@@ -76,8 +40,23 @@ body.is-skl #newsPicker,body.is-skl #newsCount,body.is-skl .rl-lag{opacity:.35;
 .news-item:nth-child(3){animation-delay:.34s}
 .news-item:nth-child(4){animation-delay:.4s}
 .news-item:nth-child(5){animation-delay:.46s}
+/* Ganti aset/data: isi masuk bertahap seperti daftar berita di Home, bukan
+   ditukar seketika. Kelas dipasang shell setelah render; dilepas lagi supaya
+   bisa dipasang ulang pada pergantian berikutnya.
+   Bedanya dengan skeleton yang sempat dicoba: tidak ada placeholder, tidak ada
+   layar yang dikosongkan — konten baru langsung ada dan memudar masuk.
+   `.masuk` dipakai halaman mana pun; anak-anaknya mendapat delay bertingkat
+   supaya terbaca sebagai gerak, bukan blok yang muncul sekaligus. */
+.masuk{animation:arcas-fade .4s ease both}
+.masuk > *{animation:arcas-fade .45s ease both}
+.masuk > *:nth-child(1){animation-delay:.04s}
+.masuk > *:nth-child(2){animation-delay:.1s}
+.masuk > *:nth-child(3){animation-delay:.16s}
+.masuk > *:nth-child(4){animation-delay:.22s}
+.masuk > *:nth-child(5){animation-delay:.28s}
+.masuk > *:nth-child(n+6){animation-delay:.34s}
 @media (prefers-reduced-motion:reduce){
-  .hero,.news-section,.panel,.news-item{animation:none}
+  .hero,.news-section,.panel,.news-item,.masuk,.masuk > *{animation:none}
   html{scroll-behavior:auto}
   body.is-fading-out,body.is-fading-in{animation:none}
 }
@@ -149,6 +128,15 @@ nav.sections a:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab:hover{background:var(--bg-sunken);color:var(--text-primary)}
 .target-tab[aria-selected="true"]:hover{background:var(--accent-subtle)}
 .target-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
+/* Indikator pergantian: garis oranye tipis di bawah tab aktif. Tab yang baru
+   dipilih langsung terlihat "sedang bekerja" tanpa memudarkan apa pun. */
+.target-tab[aria-selected="true"]{position:relative}
+.target-tab[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;
+  height:2px;background:var(--accent);animation:arcas-tab .34s ease-out}
+@keyframes arcas-tab{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+@media (prefers-reduced-motion:reduce){
+  .target-tab[aria-selected="true"]::after{animation:none}
+}
 
 /* Di kepala panel gelap, kontrol ikut tema gelap supaya tidak jadi blok
    putih yang menarik perhatian lebih dari grafiknya. Ikon aset berwarna tinta
