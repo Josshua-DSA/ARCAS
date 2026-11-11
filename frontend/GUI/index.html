@@ -8,7 +8,7 @@
 <meta name="description" content="Skor sentimen berita keuangan diuji terhadap return harian Emas, Suku Bunga, dan S&amp;P 500. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/landing.css?v=20261111e">
+<link rel="stylesheet" href="src/css/landing.css?v=20261111f">
 </head>
 <body class="landing">
 
@@ -51,8 +51,15 @@
         <!-- Bukti visual: sparkline dari data nyata, digambar SVG di klien. -->
         <figure class="lp-proof" id="lpProof" hidden>
           <figcaption class="lp-proof-cap">
-            <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
-            <span class="lp-proof-s" id="lpProofSub"></span>
+            <div class="lp-proof-cap-main">
+              <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
+              <span class="lp-proof-s" id="lpProofSub"></span>
+            </div>
+            <div class="lp-proof-now" id="lpProofNow" hidden>
+              <span class="lp-proof-now-label">Terakhir</span>
+              <span class="lp-proof-now-value" id="lpProofNowValue"></span>
+              <span class="lp-proof-now-chg" id="lpProofNowChg"></span>
+            </div>
           </figcaption>
           <svg class="lp-proof-svg" id="lpProofSvg" viewBox="0 0 720 240"
                role="img"
@@ -72,6 +79,7 @@
   <!-- 2. Cara kerja -->
   <section class="wrap lp-section lp-how" id="cara-kerja" aria-labelledby="lpHowTitle">
     <h2 id="lpHowTitle">Cara kerja</h2>
+    <p class="lp-section-lead">Dari berita mentah ke uji statistik — tanpa LLM generatif di jalur inferensi.</p>
     <ol class="lp-steps">
       <li>
         <span class="lp-step-n">01</span>
@@ -97,23 +105,24 @@
   <!-- 3. Target -->
   <section class="wrap lp-section lp-targets" aria-labelledby="lpTgtTitle">
     <h2 id="lpTgtTitle">Universe</h2>
+    <p class="lp-section-lead">Tiga target inti, masing-masing dengan deret harga dan sentimen sendiri.</p>
     <div class="lp-tgt-grid">
       <a class="lp-tgt" href="overview.html?target=XAU">
-        <img class="lp-tgt-art" src="src/assets/hero-gold.svg" alt="Ilustrasi batangan emas 999,9" width="320" height="400">
+        <img class="lp-tgt-art" src="src/assets/hero-gold.svg?v=20261111f" alt="Ilustrasi batangan emas 999,9" width="320" height="400">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">Emas</span>
           <span class="lp-tgt-id">XAU</span>
         </span>
       </a>
       <a class="lp-tgt" href="overview.html?target=RATE_UST">
-        <img class="lp-tgt-art" src="src/assets/hero-rate.svg" alt="Ilustrasi kurva imbal hasil tenor 2 sampai 30 tahun" width="320" height="400">
+        <img class="lp-tgt-art" src="src/assets/hero-rate.svg?v=20261111f" alt="Ilustrasi kurva imbal hasil tenor 2 sampai 30 tahun" width="320" height="400">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">Suku Bunga</span>
           <span class="lp-tgt-id">RATE_UST</span>
         </span>
       </a>
       <a class="lp-tgt" href="overview.html?target=SPX">
-        <img class="lp-tgt-art" src="src/assets/hero-spx.svg" alt="Ilustrasi candlestick dan volume S&amp;P 500" width="320" height="400">
+        <img class="lp-tgt-art" src="src/assets/hero-spx.svg?v=20261111f" alt="Ilustrasi candlestick dan volume S&amp;P 500" width="320" height="400">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">S&amp;P 500</span>
           <span class="lp-tgt-id">SPX</span>
@@ -130,6 +139,6 @@
   </div>
 </footer>
 
-<script src="src/js/pages/landing.js?v=20261111c"></script>
+<script src="src/js/pages/landing.js?v=20261111f"></script>
 </body>
 </html>

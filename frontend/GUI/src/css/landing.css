@@ -110,22 +110,31 @@ body.landing{
 .lp-fact-value.is-date{font-size:17px;font-weight:400;letter-spacing:.01em}
 .lp-fact-note{margin:0;font-family:var(--font-mono);font-size:13px;
   color:var(--on-dark-secondary);padding:20px 22px}
-/* Di hero, cakupan jadi strip 2x2 tanpa panel sendiri: latarnya sudah gelap. */
+/* Di hero, cakupan jadi strip 2x2 tanpa garis: jarak yang memisahkan,
+   bukan border, supaya tidak terbaca seperti tabel. */
 .lp-hero-dark .lp-facts{margin-top:30px;background:transparent;border:0;
-  border-top:1px solid var(--border-dark-subtle);border-radius:0;overflow:visible;
-  grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
-.lp-hero-dark .lp-fact{background:transparent;padding:14px 16px 0 0;
-  border-right:1px solid var(--border-dark-subtle)}
-.lp-hero-dark .lp-fact:nth-child(2n){border-right:0;padding-right:0}
-.lp-hero-dark .lp-fact:nth-child(n+3){padding-top:14px;
-  border-top:1px solid var(--border-dark-subtle)}
-.lp-hero-dark .lp-fact-note{grid-column:1/-1;padding:14px 0 0}
+  border-radius:0;overflow:visible;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
+.lp-hero-dark .lp-fact{background:transparent;padding:0;border:0}
+.lp-hero-dark .lp-fact-note{grid-column:1/-1;padding:0}
 
 /* ---------- bukti visual: lapisan DATA ---------- */
 .lp-proof{margin:16px 0 0;border:1px solid var(--border-dark-subtle);
   background:var(--surface);border-radius:8px;padding:20px 22px 16px}
-.lp-proof-cap{display:flex;justify-content:space-between;align-items:baseline;
+.lp-proof-cap{display:flex;justify-content:space-between;align-items:flex-start;
   gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.lp-proof-cap-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lp-proof-now{display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+  text-align:right}
+.lp-proof-now[hidden]{display:none}
+.lp-proof-now-label{font-family:var(--font-mono);font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--on-dark-muted)}
+.lp-proof-now-value{font-family:var(--font-mono);font-size:22px;font-weight:500;
+  line-height:1.1;color:var(--on-dark-primary);font-variant-numeric:tabular-nums}
+.lp-proof-now-chg{font-family:var(--font-mono);font-size:11px;
+  color:var(--on-dark-secondary)}
+.lp-proof-now-chg.up{color:var(--up-dark)}
+.lp-proof-now-chg.down{color:var(--down-dark)}
 .lp-proof-t{font-family:var(--font-sans);font-size:14px;font-weight:600;
   color:var(--on-dark-primary)}
 .lp-proof-s{font-family:var(--font-mono);font-size:12px;
@@ -171,16 +180,21 @@ body.landing{
   font-size:clamp(23px,2.9vw,31px);line-height:1.15;margin:0 0 32px;
   letter-spacing:-.015em;color:var(--text-primary);max-width:24ch;
   text-wrap:balance}
+.lp-section-lead{font-family:var(--font-serif);font-size:16px;line-height:1.6;
+  color:var(--text-secondary);max-width:60ch;margin:-20px 0 32px}
 
 /* ---------- 2. cara kerja ----------
    Tiga kolom dipisah garis atas, bukan tiga kartu berbingkai: Linear memakai
    aturan tipis sebagai pemisah, bukan kotak bertumpuk. */
-.lp-steps{list-style:none;margin:0;padding:0;display:grid;gap:20px;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.lp-steps li{padding:0;border-top:1px solid var(--border-strong)}
+.lp-steps{list-style:none;margin:0;padding:0;display:grid;gap:28px;
+  position:relative;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+/* Satu garis kontinu di atas ketiga langkah, bukan tiga garis terpisah. */
+.lp-steps::before{content:"";position:absolute;top:0;left:0;right:0;
+  height:1px;background:var(--border-strong)}
+.lp-steps li{padding:14px 0 0;border-top:0}
 .lp-step-n{display:block;font-family:var(--font-mono);font-size:12px;
   font-weight:500;letter-spacing:.08em;color:var(--accent-text);
-  padding-top:14px;margin-bottom:12px}
+  padding-top:0;margin-bottom:12px}
 .lp-steps h3{font-family:var(--font-serif);font-size:21px;font-weight:400;
   margin:0 0 10px;letter-spacing:-.01em;color:var(--text-primary)}
 .lp-steps p{margin:0;font-family:var(--font-serif);font-size:15.5px;
@@ -253,6 +267,8 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   .lp-hero-dark{padding:48px 0 56px}
   .lp-hero-grid{grid-template-columns:1fr;gap:36px}
   .lp-hero-copy h1{max-width:18ch}
+  .lp-steps::before{display:none}
+  .lp-steps li{border-top:1px solid var(--border-strong);padding-top:14px}
   .lp-section{padding:36px 20px 48px}
   .wrap{padding-left:20px;padding-right:20px}
 }
@@ -266,9 +282,11 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   .lp-hero-dark{padding:40px 0 44px}
   .lp-hero-copy h1{font-size:38px;max-width:none}
   .lp-hero-dark .lp-lead{font-size:16.5px}
+  .lp-section-lead{font-size:15.5px;margin:-16px 0 28px}
   .lp-hero-actions{gap:8px}
   .lp-btn{flex:1 1 auto;padding:0 14px}
   .lp-hero-visual .lp-proof{padding:14px}
+  .lp-proof-now{align-items:flex-start;text-align:left}
   .lp-proof-fallback{min-height:220px}
   .lp-section{padding:32px 16px 40px}
   .wrap{padding-left:16px;padding-right:16px}

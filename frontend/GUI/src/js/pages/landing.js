@@ -101,6 +101,12 @@
       var n = Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2);
       return n.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
+    /* Harga terakhir selalu 2 desimal: 4.057,90 lebih informatif daripada 4.058. */
+    var fmtHarga = function (v) {
+      var s = Math.abs(v).toFixed(2).split(".");
+      s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return (v < 0 ? "-" : "") + s.join(",");
+    };
     for (i = 0; i < prices.length; i++) {
       var v = prices[i].close;
       if (v === null || v === undefined) continue;
@@ -185,6 +191,27 @@
     }
     bungkus.hidden = false;
     if (fallback) fallback.hidden = true;
+
+    var now = document.getElementById("lpProofNow");
+    var nowVal = document.getElementById("lpProofNowValue");
+    var nowChg = document.getElementById("lpProofNowChg");
+    if (now && nowVal) {
+      var akhir = tutup[n - 1];
+      nowVal.textContent = fmtHarga(akhir.v);
+      if (nowChg) {
+        if (n > 1 && tutup[n - 2].v) {
+          var chg = (akhir.v - tutup[n - 2].v) / tutup[n - 2].v * 100;
+          var naik = chg >= 0;
+          nowChg.textContent = (naik ? "▲ +" : "▼ −") +
+            Math.abs(chg).toFixed(2).replace(".", ",") + "%";
+          nowChg.className = "lp-proof-now-chg " + (naik ? "up" : "down");
+        } else {
+          nowChg.textContent = "";
+          nowChg.className = "lp-proof-now-chg";
+        }
+      }
+      now.hidden = false;
+    }
     return true;
   }
 
