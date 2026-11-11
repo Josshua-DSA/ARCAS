@@ -62,15 +62,32 @@ def test_kelas_dipasang_setelah_render() -> None:
 def test_stagger_memakai_pola_yang_sama_dengan_daftar_berita() -> None:
     """Transisi Home: `arcas-fade` + delay bertingkat per anak."""
     css = CSS.read_text(encoding="utf-8")
-    blok = css.split(".rl-masuk{")[1].split("@media")[0]
+    blok = css.split(".masuk{")[1].split("@media")[0]
     assert "arcas-fade" in blok
     for n in range(1, 6):
-        assert f".rl-masuk > *:nth-child({n})" in blok
+        assert f".masuk > *:nth-child({n})" in blok
 
 
 def test_reduced_motion_mematikan_stagger() -> None:
     css = CSS.read_text(encoding="utf-8")
-    assert ".rl-masuk > *{animation:none}" in css
+    assert ".masuk > *{animation:none}" in css
+
+
+def test_sasaran_dipilih_lewat_atribut_bukan_daftar_id() -> None:
+    """Halaman yang menambah blok baru cukup menandai `data-masuk`; shell tidak
+    perlu diubah. Daftar id di shell akan basi setiap kali markup berubah."""
+    assert 'querySelectorAll("[data-masuk]")' in _masuk()
+    for hal in ("research.html", "evidence.html"):
+        html = Path("frontend/GUI/" + hal).read_text(encoding="utf-8")
+        assert "data-masuk" in html, hal
+
+
+def test_evidence_menganimasikan_saringan_juga() -> None:
+    """Saringan dan pager mengganti isi tanpa lewat masukLalu. Tanpa panggilan
+    sendiri, satu halaman punya dua perilaku berbeda."""
+    src = Path("frontend/GUI/src/js/pages/evidence.js").read_text(encoding="utf-8")
+    blok = src.split("function renderHalaman")[1].split("function applyNewsFilter")[0]
+    assert "A.masukPanel()" in blok
 
 
 def test_tidak_mengosongkan_layar() -> None:
