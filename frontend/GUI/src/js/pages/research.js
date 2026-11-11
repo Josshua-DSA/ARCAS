@@ -313,7 +313,7 @@
       (d.catatan ? "<p class='rl-k-note'>" + esc(d.catatan) + "</p>" : "") +
       "<p class='rl-k-note rl-decide-src'>Keputusan ini dihitung dari hit-rate " +
         "historis sentimen-harga pada data bursa 90 hari, tanpa lima persona " +
-        "(alur persona ada di halaman Simulasi). Bukan nasihat investasi.</p>";
+        "(alur persona ada di halaman Simulation). Bukan nasihat investasi.</p>";
   }
 
   function judulBerita(n) {
