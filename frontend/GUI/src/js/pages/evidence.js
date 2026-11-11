@@ -186,7 +186,8 @@
   function renderAll() {
     var t = A.state.target;
     A.showState("newsState", "Memuat dampak berita " + t + "...");
-    A.api("/api/impacts/" + t + "?limit=50").then(renderImpacts)
+    /* Promise dikembalikan supaya skeleton tahu kapan kartu benar-benar tiba. */
+    return A.api("/api/impacts/" + t + "?limit=50").then(renderImpacts)
       .catch(function () {
         /* Tanpa berita karangan. Bedakan "API mati" dari "belum ada dampak". */
         renderImpacts([]);
