@@ -328,14 +328,26 @@ window.ARCAS = window.ARCAS || {};
      Di sini hanya isi panel yang berubah: kerangka, judul, dan tab tetap
      diam, angka yang berganti.
 
-     Dua ambang mencegah kedipan, bukan menciptakannya:
-       GRACE 120ms  : API balas <25ms, jadi skeleton tidak sempat muncul untuk
-                      pergantian biasa. Ia hanya tampil kalau memang lambat.
-       MIN   320ms  : sekali muncul, ia bertahan cukup lama untuk terbaca.
-                      Tanpa ini skeleton berkedip satu frame — lebih murah
-                      kelihatan daripada tidak ada animasi sama sekali. */
-  var GRACE = 120, MIN = 320;
+     GRACE 0: skeleton SELALU tampil. Dulu 120ms dengan asumsi API lambat,
+     tapi terukur API balas 17-74ms — jadi grace justru mematikan animasinya
+     sendiri dan konten cuma ditukar seketika (blip, bukan gerak).
+     MIN 240ms: cukup lama untuk terbaca sebagai transisi, bukan kedipan. */
+  var GRACE = 0, MIN = 240;
   var sklN = 0;
+
+  /* Isi panel yang baru dirender diberi animasi masuk. Tanpa ini, karena data
+     tiba 17-74ms (di bawah grace), konten lama hilang dan konten baru muncul
+     dalam frame yang sama — terbaca sebagai blip. Animasi dipasang SETELAH
+     render, jadi tidak menunda data. */
+  function masukPanel() {
+    if (reduce) return;
+    document.querySelectorAll(".panel-body").forEach(function (el) {
+      el.classList.remove("is-masuk");
+      void el.offsetWidth;
+      el.classList.add("is-masuk");
+    });
+  }
+  A.masukPanel = masukPanel;
   function skeletonLalu(kerja) {
     if (typeof kerja !== "function") return;
     if (reduce) { kerja(); return; }
@@ -364,7 +376,10 @@ window.ARCAS = window.ARCAS || {};
       selesai = true;
       clearTimeout(timer);
       var tayang = tampil ? MIN : 0;
-      setTimeout(tutup, tayang);
+      setTimeout(function () {
+        tutup();
+        masukPanel();
+      }, tayang);
     }
     if (hasil && typeof hasil.then === "function") hasil.then(akhir, akhir);
     else akhir();
