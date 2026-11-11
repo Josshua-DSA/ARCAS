@@ -8,7 +8,7 @@
 <meta name="description" content="Skor sentimen berita keuangan diuji terhadap return harian Emas, Suku Bunga, dan S&amp;P 500. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/landing.css?v=20261111g">
+<link rel="stylesheet" href="src/css/landing.css?v=20261111h">
 </head>
 <body class="landing">
 
@@ -79,7 +79,7 @@
   <!-- 2. Cara kerja -->
   <section class="wrap lp-section lp-how" id="cara-kerja" aria-labelledby="lpHowTitle">
     <h2 id="lpHowTitle">Cara kerja</h2>
-    <p class="lp-section-lead">Dari berita mentah ke uji statistik — tanpa LLM generatif di jalur inferensi.</p>
+    <p class="lp-section-lead">Dari berita mentah ke uji statistik. Tanpa LLM generatif di jalur inferensi.</p>
     <ol class="lp-steps">
       <li>
         <span class="lp-step-n">01</span>
@@ -128,6 +128,48 @@
           <span class="lp-tgt-id">SPX</span>
         </span>
       </a>
+    </div>
+  </section>
+
+  <section class="wrap lp-section lp-faq" id="faq" aria-labelledby="faqTitle">
+    <h2 id="faqTitle">Pertanyaan yang sering muncul</h2>
+    <p class="lp-section-lead">Soal data, model, dan akses.</p>
+    <div class="lp-faq-list">
+      <details class="lp-faq-item">
+        <summary>Apakah ARCAS memberi nasihat investasi?</summary>
+        <p>Tidak. ARCAS adalah prototipe riset yang menguji skor sentimen berita
+          terhadap return harian. Angka di halaman ini bukan rekomendasi beli
+          atau jual.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Dari mana angka harga dan berita di halaman ini?</summary>
+        <p>Harga dan berita diambil dari API dan RSS yang tersimpan di basis data
+          lokal. Ringkasan cakupan di bagian atas halaman dibaca langsung dari
+          <code>/api/meta</code>, jadi angkanya berubah saat data berubah.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah ada LLM generatif di jalur inferensi?</summary>
+        <p>Tidak. Model NLP membaca teks dan mengeluarkan probabilitas positif,
+          netral, dan negatif. Agregasi, skor, dan uji statistik dihitung
+          deterministik.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Kenapa hari tanpa berita tidak dihitung nol?</summary>
+        <p>Hari tanpa berita tidak diberi skor nol. Nol berarti sentimen netral,
+          yang berbeda dari tidak ada berita. Grafik menampilkan hari itu sebagai
+          jeda.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah sudah bisa dipakai, dan berapa biayanya?</summary>
+        <p>Tier Research &amp; Academic tersedia tanpa biaya dengan fair use.
+          Tier Pro dan Institution masih direncanakan, dan halaman Pricing
+          mencantumkan cakupannya. Belum ada pembayaran otomatis.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah API memerlukan kunci akses?</summary>
+        <p>Belum. Prototipe ini belum memakai autentikasi API. Kunci per pengguna
+          dan kuota berbayar masih rencana.</p>
+      </details>
     </div>
   </section>
 
