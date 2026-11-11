@@ -22,14 +22,14 @@ body.landing{
    tanpa bayangan. Pita gelap dibuang karena landing bukan terminal. */
 .lp-head{position:sticky;top:0;z-index:20;background:var(--base);
   border-bottom:1px solid var(--border-subtle)}
-.lp-head-row{display:flex;align-items:center;gap:28px;
+.lp-head-row{display:flex;align-items:center;gap:18px;
   padding:16px 28px;flex-wrap:wrap}
 .lp-brand{font-family:var(--font-serif);font-size:22px;font-weight:400;
   letter-spacing:-.01em;line-height:1;color:var(--text-primary);
   text-decoration:none;flex:0 0 auto;display:inline-flex;align-items:center;
   min-height:44px}
 .lp-brand:hover,.lp-brand:focus-visible{color:var(--accent-text)}
-.lp-nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:8px}
+.lp-nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto}
 .lp-nav a{font-family:var(--font-sans);font-size:14px;font-weight:400;
   color:var(--text-secondary);text-decoration:none;padding:0 2px;
   min-height:44px;display:inline-flex;align-items:center;
@@ -38,7 +38,7 @@ body.landing{
 .lp-nav a:hover,.lp-nav a:focus-visible{color:var(--text-primary);
   border-bottom-color:var(--text-primary)}
 /* Satu aksi utama per layar (aturan aksen tunggal THEME.md §5). */
-.lp-head-btn{margin-left:auto;font-family:var(--font-sans);font-size:13.5px;
+.lp-head-btn{margin-left:0;font-family:var(--font-sans);font-size:13.5px;
   font-weight:500;color:var(--text-primary);background:var(--bg-card);
   border:1px solid var(--border-strong);text-decoration:none;padding:0 15px;
   border-radius:6px;transition:border-color .14s ease;
