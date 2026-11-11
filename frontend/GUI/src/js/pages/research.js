@@ -189,10 +189,11 @@
   }
 
   /* ---------------- pemilih berita ----------------
-     Hanya 5 kartu terbaru yang dirender. Sebelumnya 50 kartu dirender ke satu
-     baris horizontal 13.394px: 45 di antaranya di luar layar tanpa petunjuk,
-     dan "50 berita" di layar terbaca sebagai 5 berita. Angka total tetap
-     disebut supaya pembaca tahu ini pilihan, bukan seluruh arsip. */
+     Semua berita tersimpan dirender ke satu baris horizontal yang bisa
+     digeser (seret, roda mouse, sentuhan). Dulu dibatasi 5 kartu karena 50
+     kartu dianggap terlalu panjang; sekarang justru sebaliknya — pembaca
+     perlu memilih berita mana pun yang tersimpan, bukan hanya yang terbaru.
+     Batas 200 mengikuti batas `limit` API. */
   var MAKS_KARTU = 200;
 
   function renderNews() {
@@ -496,10 +497,9 @@
      salah layout. Konsekuensinya penggeseran harus disediakan sendiri:
      roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
      Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
-  /* Penghitung dan gradien tepi. Dengan lima kartu yang semuanya muat, tidak
-     ada lagi isi tersembunyi: hitungannya menyebut bahwa ini lima terbaru dari
-     arsip, bukan lima kartu yang bisa digeser. Gradien hanya muncul kalau
-     layar sempit sampai kartu benar-benar terpotong. */
+  /* Penghitung dan gradien tepi. Gradien menandai masih ada kartu di kanan;
+     ia hilang setelah ujung tercapai. Tanpa petunjuk ini, 22.669px isi di
+     luar layar tidak terlihat sama sekali — scrollbar memang disembunyikan. */
   function perbaruiPetunjuk() {
     var wrap = $("pickerWrap"), hitung = $("newsCount");
     if (!wrap || !hitung) return;
