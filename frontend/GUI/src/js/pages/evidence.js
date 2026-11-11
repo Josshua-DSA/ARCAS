@@ -135,6 +135,11 @@
     list.innerHTML = potong.baris.map(impactCard).join("");
     bindPersonaButtons();
 
+    /* Saringan dan pager mengganti isi tanpa lewat masukLalu, jadi animasi
+       dipasang di sini. Tanpa ini, kartu baru muncul seketika sementara ganti
+       aset memudar masuk — dua perilaku berbeda di satu halaman. */
+    A.masukPanel();
+
     var kick = A.$("evCount");
     if (kick) {
       kick.textContent = potong.total === 0
