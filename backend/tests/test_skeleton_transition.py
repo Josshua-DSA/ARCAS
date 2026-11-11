@@ -24,16 +24,18 @@ def _skeleton() -> str:
     return src[src.index("var GRACE"):src.index("A.skeletonLalu")]
 
 
-def test_ada_grace_sebelum_tampil() -> None:
+def test_skeleton_selalu_tampil() -> None:
+    """Grace 120ms mematikan animasinya sendiri: API balas 17-74ms, lebih cepat
+    dari grace, jadi konten cuma ditukar seketika (blip, bukan gerak)."""
     blok = _skeleton()
-    assert re.search(r"GRACE\s*=\s*120", blok)
+    assert re.search(r"GRACE\s*=\s*0", blok)
     assert "setTimeout(buka, GRACE)" in blok
 
 
 def test_ada_durasi_minimum() -> None:
     blok = _skeleton()
-    assert re.search(r"MIN\s*=\s*320", blok)
-    assert "setTimeout(tutup, tayang)" in blok
+    assert re.search(r"MIN\s*=\s*240", blok)
+    assert "tayang = tampil ? MIN : 0" in blok
 
 
 def test_ganti_aset_memakai_skeleton_bukan_fade() -> None:
@@ -52,6 +54,22 @@ def test_pindah_halaman_tetap_memakai_fade() -> None:
 
 def test_reduced_motion_melewati_skeleton() -> None:
     assert "if (reduce) { kerja(); return; }" in _skeleton()
+
+
+def test_isi_panel_diberi_animasi_masuk() -> None:
+    """Skeleton saja tidak cukup: setelah data tiba, isi panel harus masuk
+    dengan gerak. Tanpa ini konten ditukar seketika dan terbaca sebagai blip."""
+    blok = _skeleton()
+    assert "masukPanel()" in blok
+    css = CSS.read_text(encoding="utf-8")
+    assert "@keyframes arcas-masuk" in css
+    assert ".panel-body.is-masuk" in css
+
+
+def test_teks_memudar_bukan_dipotong() -> None:
+    """Tanpa transisi color, kalimat hilang dalam satu frame = kedipan."""
+    css = CSS.read_text(encoding="utf-8")
+    assert "transition:color .16s ease" in css
 
 
 def test_kelas_dilepas_walau_promise_gagal() -> None:
