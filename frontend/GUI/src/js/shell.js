@@ -323,78 +323,47 @@ window.ARCAS = window.ARCAS || {};
   }
   A.fadeLalu = fadeLalu;
 
-  /* Skeleton pergantian data. fadeLalu memudarkan SELURUH body termasuk
-     header dan tab, jadi setiap klik aset terasa seperti halaman memuat ulang.
-     Di sini hanya isi panel yang berubah: kerangka, judul, dan tab tetap
-     diam, angka yang berganti.
+  /* Transisi pergantian data. fadeLalu memudarkan SELURUH body termasuk
+     header dan tab, jadi setiap klik aset terasa seperti halaman memuat ulang;
+     skeleton sempat dicoba tapi selalu terbaca sebagai kedipan karena API
+     balas 17-74ms.
 
-     GRACE 0: skeleton SELALU tampil. Dulu 120ms dengan asumsi API lambat,
-     tapi terukur API balas 17-74ms — jadi grace justru mematikan animasinya
-     sendiri dan konten cuma ditukar seketika (blip, bukan gerak).
-     MIN 240ms: cukup lama untuk terbaca sebagai transisi, bukan kedipan. */
-  var GRACE = 0, MIN = 240;
-  var sklN = 0;
-
-  /* Isi panel yang baru dirender diberi animasi masuk. Tanpa ini, karena data
-     tiba 17-74ms (di bawah grace), konten lama hilang dan konten baru muncul
-     dalam frame yang sama — terbaca sebagai blip. Animasi dipasang SETELAH
-     render, jadi tidak menunda data. */
-  function masukPanel() {
-    if (reduce) return;
-    document.querySelectorAll(".panel-body").forEach(function (el) {
-      el.classList.remove("is-masuk");
-      void el.offsetWidth;
-      el.classList.add("is-masuk");
-    });
-  }
-  A.masukPanel = masukPanel;
-  function skeletonLalu(kerja) {
+     Yang dipakai sekarang sama dengan daftar berita di Home: isi panel masuk
+     bertahap (fade + delay bertingkat per anak). Tidak ada placeholder, tidak
+     ada layar yang dikosongkan — konten baru langsung ada dan memudar masuk.
+     Kelas dipasang SETELAH render, jadi tidak menunda data. */
+  function masukLalu(kerja) {
     if (typeof kerja !== "function") return;
     if (reduce) { kerja(); return; }
-    var b = document.body, tampil = false, timer = 0, selesai = false;
 
-    function buka() {
-      tampil = true;
-      sklN++;
-      b.classList.add("is-skl");
-    }
-    function tutup() {
-      if (!tampil) { b.classList.remove("is-skl"); return; }
-      if (--sklN <= 0) { sklN = 0; b.classList.remove("is-skl"); }
-    }
-    /* Kerja mengembalikan promise bila halaman mendukungnya; kalau tidak,
-       skeleton ditutup di frame berikutnya supaya tidak menggantung. */
     var hasil;
-    timer = setTimeout(buka, GRACE);
     try {
       hasil = kerja();
-    } catch (e) {
-      clearTimeout(timer); tutup(); throw e;
+    } catch (e) { throw e; }
+
+    /* Dipasang setelah render: saat promise selesai, DOM sudah berisi konten
+       baru. Untuk halaman yang tidak mengembalikan promise, satu rAF cukup. */
+    function tandai() {
+      document.querySelectorAll("#selDetail,#keputusanBox,#statTables,.rl-lag,.rl-picker").forEach(function (el) {
+        el.classList.remove("rl-masuk");
+        void el.offsetWidth;
+        el.classList.add("rl-masuk");
+      });
     }
-    function akhir() {
-      if (selesai) return;
-      selesai = true;
-      clearTimeout(timer);
-      var tayang = tampil ? MIN : 0;
-      setTimeout(function () {
-        tutup();
-        masukPanel();
-      }, tayang);
-    }
-    if (hasil && typeof hasil.then === "function") hasil.then(akhir, akhir);
-    else akhir();
+    if (hasil && typeof hasil.then === "function") hasil.then(tandai, function () {});
+    else requestAnimationFrame(tandai);
   }
-  A.skeletonLalu = skeletonLalu;
+  A.masukLalu = masukLalu;
 
   function selectTarget(btn) {
     document.querySelectorAll(".target-tab").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
     btn.setAttribute("aria-selected", "true");
     A.state.target = btn.getAttribute("data-target");
     A.syncUrl();
-    /* Skeleton, bukan fade seluruh body: tab dan judul tetap di tempat,
-       hanya isi panel yang berganti. renderPage mengembalikan promise
-       kalau halaman mendukung; kalau tidak, pergantian selesai seketika. */
-    skeletonLalu(function () {
+    /* Isi panel masuk bertahap; tab dan judul tetap di tempat. renderPage
+       mengembalikan promise kalau halaman mendukung, jadi kelas animasi
+       dipasang tepat setelah konten baru ada. */
+    masukLalu(function () {
       if (typeof A.renderPage === "function") return A.renderPage();
     });
   }
