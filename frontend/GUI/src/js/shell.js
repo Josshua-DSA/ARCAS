@@ -323,12 +323,65 @@ window.ARCAS = window.ARCAS || {};
   }
   A.fadeLalu = fadeLalu;
 
+  /* Skeleton pergantian data. fadeLalu memudarkan SELURUH body termasuk
+     header dan tab, jadi setiap klik aset terasa seperti halaman memuat ulang.
+     Di sini hanya isi panel yang berubah: kerangka, judul, dan tab tetap
+     diam, angka yang berganti.
+
+     Dua ambang mencegah kedipan, bukan menciptakannya:
+       GRACE 120ms  : API balas <25ms, jadi skeleton tidak sempat muncul untuk
+                      pergantian biasa. Ia hanya tampil kalau memang lambat.
+       MIN   320ms  : sekali muncul, ia bertahan cukup lama untuk terbaca.
+                      Tanpa ini skeleton berkedip satu frame — lebih murah
+                      kelihatan daripada tidak ada animasi sama sekali. */
+  var GRACE = 120, MIN = 320;
+  var sklN = 0;
+  function skeletonLalu(kerja) {
+    if (typeof kerja !== "function") return;
+    if (reduce) { kerja(); return; }
+    var b = document.body, tampil = false, timer = 0, selesai = false;
+
+    function buka() {
+      tampil = true;
+      sklN++;
+      b.classList.add("is-skl");
+    }
+    function tutup() {
+      if (!tampil) { b.classList.remove("is-skl"); return; }
+      if (--sklN <= 0) { sklN = 0; b.classList.remove("is-skl"); }
+    }
+    /* Kerja mengembalikan promise bila halaman mendukungnya; kalau tidak,
+       skeleton ditutup di frame berikutnya supaya tidak menggantung. */
+    var hasil;
+    timer = setTimeout(buka, GRACE);
+    try {
+      hasil = kerja();
+    } catch (e) {
+      clearTimeout(timer); tutup(); throw e;
+    }
+    function akhir() {
+      if (selesai) return;
+      selesai = true;
+      clearTimeout(timer);
+      var tayang = tampil ? MIN : 0;
+      setTimeout(tutup, tayang);
+    }
+    if (hasil && typeof hasil.then === "function") hasil.then(akhir, akhir);
+    else akhir();
+  }
+  A.skeletonLalu = skeletonLalu;
+
   function selectTarget(btn) {
     document.querySelectorAll(".target-tab").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
     btn.setAttribute("aria-selected", "true");
     A.state.target = btn.getAttribute("data-target");
     A.syncUrl();
-    fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
+    /* Skeleton, bukan fade seluruh body: tab dan judul tetap di tempat,
+       hanya isi panel yang berganti. renderPage mengembalikan promise
+       kalau halaman mendukung; kalau tidak, pergantian selesai seketika. */
+    skeletonLalu(function () {
+      if (typeof A.renderPage === "function") return A.renderPage();
+    });
   }
   function bindTabs() {
     var box = $("targetTabs");

@@ -189,11 +189,12 @@
   }
 
   /* ---------------- pemilih berita ----------------
-     Hanya 5 kartu terbaru yang dirender. Sebelumnya 50 kartu dirender ke satu
-     baris horizontal 13.394px: 45 di antaranya di luar layar tanpa petunjuk,
-     dan "50 berita" di layar terbaca sebagai 5 berita. Angka total tetap
-     disebut supaya pembaca tahu ini pilihan, bukan seluruh arsip. */
-  var MAKS_KARTU = 5;
+     Semua berita tersimpan dirender ke satu baris horizontal yang bisa
+     digeser (seret, roda mouse, sentuhan). Dulu dibatasi 5 kartu karena 50
+     kartu dianggap terlalu panjang; sekarang justru sebaliknya — pembaca
+     perlu memilih berita mana pun yang tersimpan, bukan hanya yang terbaru.
+     Batas 200 mengikuti batas `limit` API. */
+  var MAKS_KARTU = 200;
 
   function renderNews() {
     var box = $("newsPicker");
@@ -223,6 +224,99 @@
         "</span><span class='rl-src'>" + esc(n.source || "sumber tidak terekam") + "</span></span>" +
         "</button>";
     }).join("");
+  }
+
+
+  /* ---------------- uji hipotesis ringkas ----------------
+     Tabel di kolom kanan grafik. Diurutkan: signifikan dulu, lalu uji, lalu
+     lag. Baris non-signifikan tetap tampil supaya pembaca lihat yang tidak
+     lolos, bukan cuma yang lolos. */
+  var NAMA_TARGET = { XAU: "Emas", SPX: "S&P 500", RATE_UST: "Suku Bunga" };
+
+  function renderStat(rows) {
+    var tbody = $("statTables"), label = $("statTarget"), note = $("statNote");
+    if (!tbody) return;
+    if (!rows || !rows.length) {
+      tbody.innerHTML = "<tr><td colspan='4'>Belum ada hasil uji untuk target ini.</td></tr>";
+      if (note) note.textContent = "";
+      return;
+    }
+    var urut = rows.slice().sort(function (a, b) {
+      var sa = a.p_adjusted != null && a.p_adjusted < 0.05 ? 0 : 1;
+      var sb = b.p_adjusted != null && b.p_adjusted < 0.05 ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      if (a.test !== b.test) return a.test < b.test ? -1 : 1;
+      return (a.lag == null ? -1 : a.lag) - (b.lag == null ? -1 : b.lag);
+    });
+    if (label) label.textContent = NAMA_TARGET[A.state.target] || A.state.target;
+    var sigN = 0;
+    tbody.innerHTML = urut.map(function (r) {
+      var sig = r.p_adjusted != null && r.p_adjusted < 0.05;
+      if (sig) sigN++;
+      var cls = r.estimate > 0.02 ? "pos" : r.estimate < -0.02 ? "neg" : "flat";
+      var sign = r.estimate > 0 ? "+" : r.estimate < 0 ? "\u2212" : "";
+      return "<tr><td>" + esc(A.testLabel ? A.testLabel(r.test) : r.test) + "</td>" +
+        "<td class='n'>" + (r.lag == null ? "\u2014" : "L" + r.lag) + "</td>" +
+        "<td class='n " + cls + "'>" + sign + Math.abs(r.estimate).toFixed(4) +
+          (sig ? "<span class='sig'>sig</span>" : "") + "</td>" +
+        "<td class='n" + (sig ? "" : " dim") + "'>" + Number(r.p_adjusted).toFixed(4) + "</td></tr>";
+    }).join("");
+    if (note) {
+      var ns = urut.map(function (r) { return r.n_obs; });
+      note.innerHTML = sigN + " dari " + urut.length + " uji &middot; n " +
+        Math.min.apply(null, ns) + "&ndash;" + Math.max.apply(null, ns) + "<br>" +
+        "<span class='sig' style='margin-left:0;display:inline-block'>sig</span>" +
+        " = p_adj &lt; 0.05 (BH-FDR)";
+    }
+  }
+
+  /* ---------------- profil lag ----------------
+     Satu skala untuk ketiga kartu (maks |est| lintas target), supaya tinggi
+     bar bisa dibandingkan. Skala per kartu akan membuat lag kecil terlihat
+     sebesar lag besar. */
+  var SKALA_LAG = 0.0094;
+
+  function renderLag(perTarget) {
+    var box = $("lagCards");
+    if (!box) return;
+    var urut = ["SPX", "XAU", "RATE_UST"];
+    box.innerHTML = urut.map(function (t) {
+      var rows = (perTarget[t] || []).filter(function (r) { return r.test === "ols"; });
+      if (!rows.length) return "";
+      rows = rows.slice().sort(function (a, b) { return a.lag - b.lag; });
+      var sigN = rows.filter(function (r) { return r.p_adjusted != null && r.p_adjusted < 0.05; }).length;
+      var bars = rows.map(function (r) {
+        var sig = r.p_adjusted != null && r.p_adjusted < 0.05;
+        var up = r.estimate >= 0;
+        var h = Math.min(50, Math.abs(r.estimate) / SKALA_LAG * 50);
+        return "<div class='rl-lag-bar " + (up ? "up" : "down") + (sig ? " sig" : "") + "'>" +
+          "<i style='height:" + h.toFixed(1) + "%'></i></div>";
+      }).join("");
+      var xs = rows.map(function (r) { return "<span>L" + r.lag + "</span>"; }).join("");
+      return "<div class='rl-lag-card'><h3>" + esc(NAMA_TARGET[t] || t) + "</h3>" +
+        "<p class='sub'>" + sigN + " dari " + rows.length + " lag OLS signifikan</p>" +
+        "<div class='rl-lag-plot'>" + bars + "</div>" +
+        "<div class='rl-lag-x'>" + xs + "</div></div>";
+    }).join("");
+  }
+
+  /* Tiga target sekaligus: profil lag membandingkan lintas aset, jadi satu
+     request per target. Kegagalan satu target tidak menjatuhkan yang lain. */
+  function muatStat(signal) {
+    var target = ["XAU", "SPX", "RATE_UST"];
+    return Promise.all(target.map(function (t) {
+      return A.api("/api/stats/" + t, signal)
+        .then(function (rows) { return [t, rows || []]; })
+        .catch(function (err) {
+          if (err && err.name === "AbortError") throw err;
+          return [t, []];
+        });
+    })).then(function (hasil) {
+      var per = {};
+      hasil.forEach(function (h) { per[h[0]] = h[1]; });
+      renderStat(per[A.state.target]);
+      renderLag(per);
+    });
   }
 
   /* ---------------- detail berita terpilih ---------------- */
@@ -313,7 +407,7 @@
       (d.catatan ? "<p class='rl-k-note'>" + esc(d.catatan) + "</p>" : "") +
       "<p class='rl-k-note rl-decide-src'>Keputusan ini dihitung dari hit-rate " +
         "historis sentimen-harga pada data bursa 90 hari, tanpa lima persona " +
-        "(alur persona ada di halaman Simulasi). Bukan nasihat investasi.</p>";
+        "(alur persona ada di halaman Simulation). Bukan nasihat investasi.</p>";
   }
 
   function judulBerita(n) {
@@ -372,14 +466,15 @@
           S.sents = (p && p.sentiments) || [];
         })
         .catch(function (err) { fail(err); S.prices = []; S.sents = []; }),
-      A.api("/api/impacts/" + t + "?limit=50", signal)
+      A.api("/api/impacts/" + t + "?limit=200", signal)
         .then(function (rows) {
           /* Urut terbaru dulu supaya berita yang baru masuk langsung terlihat. */
           S.news = (rows || []).slice().sort(function (a, b) {
             return String(b.published_at || "").localeCompare(String(a.published_at || ""));
           });
         })
-        .catch(function (err) { fail(err); S.news = []; })
+        .catch(function (err) { fail(err); S.news = []; }),
+      muatStat(signal)
     ]).then(function () {
       if (!live()) return;
       /* Indeks terpilih hanya bermakna di dalam satu target. Tanpa reset,
@@ -390,7 +485,11 @@
       renderKeputusan();
       drawPriceChart();
       perbaruiPetunjuk();
-    }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ });
+    }).catch(function () { /* dibatalkan: target lain sudah mengambil alih */ }).finally(function () {
+      /* Skeleton ditutup oleh shell, tapi loadData yang membatalkan sendiri
+         (abort) tidak memberi tahu lewat promise — pastikan dilepas di sini. */
+      if (!live()) document.body.classList.remove("is-skl");
+    });
   }
 
   /* ---------------- kontrol ----------------
@@ -398,10 +497,9 @@
      salah layout. Konsekuensinya penggeseran harus disediakan sendiri:
      roda mouse (vertikal dipetakan ke horizontal) dan seret dengan pointer.
      Tanpa ini, kartu di luar layar tidak bisa dijangkau di desktop. */
-  /* Penghitung dan gradien tepi. Dengan lima kartu yang semuanya muat, tidak
-     ada lagi isi tersembunyi: hitungannya menyebut bahwa ini lima terbaru dari
-     arsip, bukan lima kartu yang bisa digeser. Gradien hanya muncul kalau
-     layar sempit sampai kartu benar-benar terpotong. */
+  /* Penghitung dan gradien tepi. Gradien menandai masih ada kartu di kanan;
+     ia hilang setelah ujung tercapai. Tanpa petunjuk ini, 22.669px isi di
+     luar layar tidak terlihat sama sekali — scrollbar memang disembunyikan. */
   function perbaruiPetunjuk() {
     var wrap = $("pickerWrap"), hitung = $("newsCount");
     if (!wrap || !hitung) return;

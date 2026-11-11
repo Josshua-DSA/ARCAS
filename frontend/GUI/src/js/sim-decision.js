@@ -134,7 +134,7 @@ window.ARCAS = window.ARCAS || {};
 
      Cabang bersama dua pemakai:
      - keputusanBerita(): persona sebagai dasar, bukti boleh membaliknya.
-     - halaman Lab Riset: keputusan murni dari backtesting, tanpa lima persona.
+     - halaman Research Lab: keputusan murni dari backtesting, tanpa lima persona.
      Rule-nya sama persis; bedanya hanya "siapa yang berbicara kalau bukti
      tipis". Di halaman riset tidak ada persona, jadi "bukti tipis" jujur
      berarti TIDAK ADA SINYAL, bukan sedemikian "mengikuti persona". */

@@ -10,7 +10,7 @@
 Repository ini punya **code graph** yang sudah dibangun (`.graphify/`).
 Query jauh lebih murah daripada membaca puluhan file.
 
-> **Graf dibangun: `014cc33` · 2026-10-21 19:47 · 1423 node, 2954 edge, 94 komunitas.**
+> **Graf dibangun: `d5c601e` · 2026-11-11 09:30 · 2849 node, 5335 edge, 179 komunitas.**
 > Kalau commit terakhir berbeda dari ini, grafnya **basi** — jalankan
 > `./scripts/graph.sh update .` lalu `./scripts/graph.sh cluster-only .`.
 
