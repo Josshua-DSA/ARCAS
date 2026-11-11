@@ -221,7 +221,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   padding:1px 5px;border-radius:3px;color:var(--text-primary)}
 
 /* ---------- 3. target ---------- */
-/* Kartu potret: ilustrasi mengisi penuh lebar kartu, meta di bawahnya.
+/* Kartu aset: foto asli mengisi penuh lebar kartu, meta di bawahnya.
    Bingkai berlapis (cincin dalam + bayangan ambient/contact) memberi kesan
    objek fisik, bukan div datar. Semua shadow dari token tema. */
 .lp-tgt-grid{display:grid;gap:22px;
@@ -245,16 +245,10 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
 /* Cincin cahaya tipis di dalam tepi: memisahkan gambar dari bingkai. */
 .lp-tgt::after{content:"";position:absolute;inset:0;border-radius:inherit;
   pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
-.lp-tgt-art{display:block;width:100%;height:auto;aspect-ratio:4/5;
+.lp-tgt-art{display:block;width:100%;height:auto;aspect-ratio:4/3;
   object-fit:cover;object-position:center;
   background:var(--bg-sunken);
   border-bottom:1px solid var(--border-subtle)}
-/* Dokumen/infografik: teks di dalam gambar tidak boleh terpotong, jadi
-   seluruh bidang ditampilkan (contain) dan latar kartu mengisi sisanya.
-   Infografik 1:1 meninggalkan pita 10% di atas-bawah; itu lebih baik
-   daripada memotong judul di tengah kata. */
-.lp-tgt-art.is-doc{object-fit:contain;object-position:left top;
-  background:var(--base)}
 .lp-tgt-meta{display:flex;flex-direction:column;gap:6px;padding:18px 20px 20px;
   background:linear-gradient(180deg,var(--bg-card) 0%,var(--base) 180%)}
 .lp-tgt-name{font-family:var(--font-serif);font-size:22px;font-weight:400;
