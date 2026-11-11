@@ -52,8 +52,6 @@
     <path d="M84 196 L160 168 L236 196 L236 228 L160 256 L84 228 Z" fill="url(#gldFace)"/>
     <path d="M84 196 L160 168 L236 196 L160 224 Z" fill="url(#gldTop)"/>
     <path d="M236 196 L236 228 L160 256 L160 224 Z" fill="url(#gldSide)"/>
-    <text x="152" y="213" text-anchor="middle" font-family="ui-monospace,monospace"
-          font-size="16" font-weight="500" fill="#4A3406" opacity="0.85">999,9</text>
   </g>
 
   <!-- Kilau tepi atas -->
