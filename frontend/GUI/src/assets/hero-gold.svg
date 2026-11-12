@@ -14,11 +14,11 @@
       <stop offset="1" stop-color="#6E4D08"/>
     </linearGradient>
     <linearGradient id="gldBg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3E3939"/>
-      <stop offset="1" stop-color="#4A4545"/>
+      <stop offset="0" stop-color="#EAE7E4"/>
+      <stop offset="1" stop-color="#E8E6E3"/>
     </linearGradient>
   </defs>
-  <!-- Panel gelap: emas kontras tinggi terhadap latar, sejalan lapisan DATA. -->
+  <!-- Latar terang: menyatu dengan dua ilustrasi aset lain. -->
   <rect width="320" height="400" fill="url(#gldBg)"/>
 
   <defs>
@@ -29,7 +29,7 @@
 
   <!-- Satu sumber cahaya atas-kiri: tiap batang punya kontak bayangan sendiri,
        dilembutkan agar bahasanya sama dengan bayangan kartu. -->
-  <g filter="url(#gldSoft)" fill="#141413" opacity="0.30">
+  <g filter="url(#gldSoft)" fill="#141413" opacity="0.18">
     <ellipse cx="104" cy="312" rx="80" ry="11"/>
     <ellipse cx="216" cy="312" rx="80" ry="11"/>
     <ellipse cx="160" cy="244" rx="72" ry="9"/>
@@ -52,8 +52,6 @@
     <path d="M84 196 L160 168 L236 196 L236 228 L160 256 L84 228 Z" fill="url(#gldFace)"/>
     <path d="M84 196 L160 168 L236 196 L160 224 Z" fill="url(#gldTop)"/>
     <path d="M236 196 L236 228 L160 256 L160 224 Z" fill="url(#gldSide)"/>
-    <text x="152" y="213" text-anchor="middle" font-family="ui-monospace,monospace"
-          font-size="16" font-weight="500" fill="#4A3406" opacity="0.85">999,9</text>
   </g>
 
   <!-- Kilau tepi atas -->

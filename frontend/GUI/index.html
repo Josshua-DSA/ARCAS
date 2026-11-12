@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#F6F4F4">
+<meta name="theme-color" content="#2C2727">
 <title>ARCAS : Sentimen Berita vs Harga</title>
 <meta name="description" content="Skor sentimen berita keuangan diuji terhadap return harian Emas, Suku Bunga, dan S&amp;P 500. Bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/landing.css">
+<link rel="stylesheet" href="src/css/landing.css?v=20261111l">
 </head>
 <body class="landing">
 
 <a class="skip-link" href="#main">Lompat ke konten</a>
 
-<header class="lp-head">
+<header class="lp-head is-dark">
   <div class="wrap lp-head-row">
     <a class="lp-brand" href="./">ARCAS</a>
     <nav class="lp-nav" aria-label="Pages">
@@ -22,45 +22,71 @@
       <a href="documentation.html">Documentation</a>
       <a href="https://github.com/Josshua-DSA/ARCAS">Contribute</a>
     </nav>
-    <a class="lp-head-btn" href="overview.html">Explore</a>
+    <a class="lp-head-btn" href="overview.html">Buka dasbor</a>
   </div>
 </header>
 
 <main id="main" tabindex="-1">
 
-  <!-- 1. Hero: judul, penjelasan, aksi, cakupan, bukti -->
-  <section class="wrap lp-hero">
-    <h1>Skor sentimen berita diuji terhadap return harian.</h1>
-    <p class="lp-lead">
-      Setiap berita keuangan berbahasa Inggris mendapat skor sentimen tiga
-      kelas. Skornya diuji dengan korelasi Spearman per lag terhadap return
-      Emas, Suku Bunga, dan S&amp;P 500.
-    </p>
-    <div class="lp-facts" id="lpFacts" aria-live="polite">
-      <p class="lp-fact-note">Memuat cakupan data&hellip;</p>
-    </div>
-
-    <!-- Bukti visual: sparkline dari data nyata, digambar SVG di klien. -->
-    <figure class="lp-proof" id="lpProof" hidden>
-      <figcaption class="lp-proof-cap">
-        <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
-        <span class="lp-proof-s" id="lpProofSub"></span>
-      </figcaption>
-      <svg class="lp-proof-svg" id="lpProofSvg" viewBox="0 0 720 176"
-           role="img"
-           aria-label="Garis harga penutupan dan batang skor sentimen harian"></svg>
-      <div class="lp-proof-legend">
-        <span><i class="lp-lg-line"></i>Harga penutupan</span>
-        <span><i class="lp-lg-up"></i>Sentimen positif</span>
-        <span><i class="lp-lg-down"></i>Sentimen negatif</span>
-        <span class="lp-proof-warn" id="lpProofWarn"></span>
+  <!-- 1. Hero gelap: teks kiri, bukti grafik nyata di kanan. -->
+  <section class="lp-hero-dark">
+    <div class="wrap lp-hero-grid">
+      <div class="lp-hero-copy">
+        <h1>Sentimen berita, diuji ke harga.</h1>
+        <p class="lp-lead">
+          Berita keuangan berbahasa Inggris diberi skor sentimen tiga kelas,
+          lalu diuji dengan korelasi Spearman per lag terhadap return Emas,
+          Suku Bunga, dan S&amp;P 500.
+        </p>
+        <div class="lp-hero-actions">
+          <a class="lp-btn lp-btn-primary" href="overview.html">Buka dasbor</a>
+          <a class="lp-btn lp-btn-ghost" href="documentation.html">Baca dokumentasi</a>
+        </div>
+        <div class="lp-facts" id="lpFacts" aria-live="polite">
+          <p class="lp-fact-note">Memuat cakupan data&hellip;</p>
+        </div>
       </div>
-    </figure>
+
+      <div class="lp-hero-visual">
+        <div class="lp-device">
+          <div class="lp-device-screen">
+            <!-- Bukti visual: sparkline dari data nyata, digambar SVG di klien. -->
+            <figure class="lp-proof" id="lpProof" hidden>
+              <figcaption class="lp-proof-cap">
+                <div class="lp-proof-cap-main">
+                  <span class="lp-proof-t" id="lpProofTitle">Harga penutupan vs skor sentimen harian</span>
+                  <span class="lp-proof-s" id="lpProofSub"></span>
+                </div>
+                <div class="lp-proof-now" id="lpProofNow" hidden>
+                  <span class="lp-proof-now-label">Terakhir</span>
+                  <span class="lp-proof-now-value" id="lpProofNowValue"></span>
+                  <span class="lp-proof-now-chg" id="lpProofNowChg"></span>
+                </div>
+              </figcaption>
+              <svg class="lp-proof-svg" id="lpProofSvg" viewBox="0 0 720 240"
+                   role="img"
+                   aria-label="Garis harga penutupan dan batang skor sentimen harian"></svg>
+              <div class="lp-proof-legend">
+                <span><i class="lp-lg-line"></i>Harga penutupan</span>
+                <span><i class="lp-lg-up"></i>Sentimen positif</span>
+                <span><i class="lp-lg-down"></i>Sentimen negatif</span>
+                <span class="lp-proof-warn" id="lpProofWarn"></span>
+              </div>
+            </figure>
+            <div class="lp-proof-fallback" id="lpProofFallback">Memuat grafik bukti&hellip;</div>
+          </div>
+          <div class="lp-device-base" aria-hidden="true">
+            <span class="lp-device-brand">ARCAS</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- 2. Cara kerja -->
   <section class="wrap lp-section lp-how" id="cara-kerja" aria-labelledby="lpHowTitle">
     <h2 id="lpHowTitle">Cara kerja</h2>
+    <p class="lp-section-lead">Dari berita mentah ke uji statistik. Tanpa LLM generatif di jalur inferensi.</p>
     <ol class="lp-steps">
       <li>
         <span class="lp-step-n">01</span>
@@ -86,23 +112,24 @@
   <!-- 3. Target -->
   <section class="wrap lp-section lp-targets" aria-labelledby="lpTgtTitle">
     <h2 id="lpTgtTitle">Universe</h2>
+    <p class="lp-section-lead">Tiga target inti, masing-masing dengan deret harga dan sentimen sendiri.</p>
     <div class="lp-tgt-grid">
       <a class="lp-tgt" href="overview.html?target=XAU">
-        <img class="lp-tgt-art" src="public/emas.jpeg" alt="Batangan emas 999,9" width="320" height="400">
+        <img class="lp-tgt-art" src="public/emas.jpg" alt="Batangan emas dipegang tangan" width="320" height="240">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">Emas</span>
           <span class="lp-tgt-id">XAU</span>
         </span>
       </a>
       <a class="lp-tgt" href="overview.html?target=RATE_UST">
-        <img class="lp-tgt-art is-doc" src="public/suku_bunga.jpeg" alt="Grafik suku bunga acuan AS, UK, dan zona euro 2020-2025" width="320" height="400">
+        <img class="lp-tgt-art" src="public/suku-bunga.jpg" alt="Gedung Federal Reserve Eccles" width="320" height="240">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">Suku Bunga</span>
           <span class="lp-tgt-id">RATE_UST</span>
         </span>
       </a>
       <a class="lp-tgt" href="overview.html?target=SPX">
-        <img class="lp-tgt-art" src="public/Snp500.jpeg" alt="Perbandingan S&P 500 dan S&P 500 Equal Weight 2020-2024" width="320" height="400">
+        <img class="lp-tgt-art" src="public/sp500.jpg" alt="Fasad New York Stock Exchange" width="320" height="240">
         <span class="lp-tgt-meta">
           <span class="lp-tgt-name">S&amp;P 500</span>
           <span class="lp-tgt-id">SPX</span>
@@ -111,14 +138,61 @@
     </div>
   </section>
 
+  <section class="wrap lp-section lp-faq" id="faq" aria-labelledby="faqTitle">
+    <h2 id="faqTitle">Pertanyaan yang sering muncul</h2>
+    <p class="lp-section-lead">Soal data, model, dan akses.</p>
+    <div class="lp-faq-list">
+      <details class="lp-faq-item">
+        <summary>Apakah ARCAS memberi nasihat investasi?</summary>
+        <p>Tidak. ARCAS adalah prototipe riset yang menguji skor sentimen berita
+          terhadap return harian. Angka di halaman ini bukan rekomendasi beli
+          atau jual.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Dari mana angka harga dan berita di halaman ini?</summary>
+        <p>Harga dan berita diambil dari API dan RSS yang tersimpan di basis data
+          lokal. Ringkasan cakupan di bagian atas halaman dibaca langsung dari
+          <code>/api/meta</code>, jadi angkanya berubah saat data berubah.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah ada LLM generatif di jalur inferensi?</summary>
+        <p>Tidak. Model NLP membaca teks dan mengeluarkan probabilitas positif,
+          netral, dan negatif. Agregasi, skor, dan uji statistik dihitung
+          deterministik.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Kenapa hari tanpa berita tidak dihitung nol?</summary>
+        <p>Hari tanpa berita tidak diberi skor nol. Nol berarti sentimen netral,
+          yang berbeda dari tidak ada berita. Grafik menampilkan hari itu sebagai
+          jeda.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah sudah bisa dipakai, dan berapa biayanya?</summary>
+        <p>Tier Research &amp; Academic tersedia tanpa biaya dengan fair use.
+          Tier Pro dan Institution masih direncanakan, dan halaman Pricing
+          mencantumkan cakupannya. Belum ada pembayaran otomatis.</p>
+      </details>
+      <details class="lp-faq-item">
+        <summary>Apakah API memerlukan kunci akses?</summary>
+        <p>Belum. Prototipe ini belum memakai autentikasi API. Kunci per pengguna
+          dan kuota berbayar masih rencana.</p>
+      </details>
+    </div>
+  </section>
+
 </main>
 
 <footer class="lp-foot">
   <div class="wrap">
     <span>Angka dihitung dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
+    <span>Foto aset:
+      <a href="https://commons.wikimedia.org/wiki/File:Gold_bullion_2.jpg" target="_blank" rel="noopener noreferrer">Gold bullion</a> ·
+      <a href="https://commons.wikimedia.org/wiki/File:Eccles_Building_(26088200676).jpg" target="_blank" rel="noopener noreferrer">Eccles Building</a> ·
+      <a href="https://commons.wikimedia.org/wiki/File:New_York_Stock_Exchange_Facade_2015.jpg" target="_blank" rel="noopener noreferrer">NYSE</a>
+      (Wikimedia Commons)</span>
   </div>
 </footer>
 
-<script src="src/js/pages/landing.js"></script>
+<script src="src/js/pages/landing.js?v=20261111f"></script>
 </body>
 </html>

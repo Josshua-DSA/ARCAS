@@ -34,17 +34,32 @@
     });
   }
 
+  /* Basis API: halaman statis (8181) tidak satu origin dengan API (8000).
+     Coba path relatif dulu untuk deploy, lalu localhost saat dev. */
+  var BASES = ["", "http://localhost:8000", "http://127.0.0.1:8000"];
+
+  function ambil(path) {
+    var i = 0;
+    function coba() {
+      if (i >= BASES.length) return Promise.reject(new Error("API tidak terjangkau"));
+      var base = BASES[i++];
+      return fetch(base + "/" + path, { headers: { Accept: "application/json" } })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .catch(coba);
+    }
+    return coba();
+  }
+
   /* Angka diambil dari /api/meta. Kalau API mati, halaman TIDAK mengarang
      angka: ia menyembunyikan deret fakta dan hanya menyisakan kalimat. */
-  fetch("api/meta", { headers: { Accept: "application/json" } })
-    .then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    })
+  ambil("api/meta")
     .then(function (m) {
       var c = (m && m.coverage) || {};
       var html = "";
-      if (c.articles) html += kartu("Artikel tersimpan", c.articles.toLocaleString("id-ID"));
+      if (c.articles) html += kartu("Artikel", c.articles.toLocaleString("id-ID"));
       if (c.days_with_news) html += kartu("Hari berita", c.days_with_news.toLocaleString("id-ID"));
       if (c.sources) html += kartu("Sumber", c.sources.toLocaleString("id-ID"));
       if (c.last_price_date) html += kartu("Harga terakhir", tanggal(c.last_price_date), "", true);
@@ -64,13 +79,19 @@
 
   /* ---------------- bukti visual ---------------- */
 
-  var W = 720, H = 150, PAD = 8;
+  var W = 720, H = 210, PAD = 8;
   var PL = 46, PR = 6; /* kiri lega untuk label harga, kanan tipis */
   var svg = document.getElementById("lpProofSvg");
   var bungkus = document.getElementById("lpProof");
+  var fallback = document.getElementById("lpProofFallback");
   var warn = document.getElementById("lpProofWarn");
   var sub = document.getElementById("lpProofSub");
   if (!svg || !bungkus) return;
+
+  function buktiGagal(pesan) {
+    if (bungkus) bungkus.hidden = true;
+    if (fallback) { fallback.hidden = false; fallback.textContent = pesan; }
+  }
 
   function gambar(prices, sentiments) {
     var tutup = [], i;
@@ -79,6 +100,12 @@
     var fmt = function (v) {
       var n = Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2);
       return n.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+    /* Harga terakhir selalu 2 desimal: 4.057,90 lebih informatif daripada 4.058. */
+    var fmtHarga = function (v) {
+      var s = Math.abs(v).toFixed(2).split(".");
+      s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      return (v < 0 ? "-" : "") + s.join(",");
     };
     for (i = 0; i < prices.length; i++) {
       var v = prices[i].close;
@@ -163,19 +190,39 @@
         : "";
     }
     bungkus.hidden = false;
+    if (fallback) fallback.hidden = true;
+
+    var now = document.getElementById("lpProofNow");
+    var nowVal = document.getElementById("lpProofNowValue");
+    var nowChg = document.getElementById("lpProofNowChg");
+    if (now && nowVal) {
+      var akhir = tutup[n - 1];
+      nowVal.textContent = fmtHarga(akhir.v);
+      if (nowChg) {
+        if (n > 1 && tutup[n - 2].v) {
+          var chg = (akhir.v - tutup[n - 2].v) / tutup[n - 2].v * 100;
+          var naik = chg >= 0;
+          nowChg.textContent = (naik ? "▲ +" : "▼ −") +
+            Math.abs(chg).toFixed(2).replace(".", ",") + "%";
+          nowChg.className = "lp-proof-now-chg " + (naik ? "up" : "down");
+        } else {
+          nowChg.textContent = "";
+          nowChg.className = "lp-proof-now-chg";
+        }
+      }
+      now.hidden = false;
+    }
     return true;
   }
 
-  fetch("api/series/XAU", { headers: { Accept: "application/json" } })
-    .then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    })
+  ambil("api/series/XAU")
     .then(function (s) {
-      gambar(s.prices || [], s.sentiments || []);
+      if (!gambar(s.prices || [], s.sentiments || [])) {
+        buktiGagal("Grafik bukti belum tersedia.");
+      }
     })
     .catch(function () {
       /* Tanpa grafik lebih baik daripada grafik karangan. */
-      if (bungkus) bungkus.hidden = true;
+      buktiGagal("Grafik bukti belum tersedia.");
     });
 })();

@@ -29,7 +29,7 @@ def test_akar_menyajikan_landing_bukan_dasbor(tmp_path, monkeypatch) -> None:
         assert akar.status_code == 200
         html = akar.text
         # Penanda landing: judul pengantar dan etalase empat halaman.
-        assert "Skor sentimen berita diuji" in html
+        assert "Sentimen berita, diuji ke harga." in html
         assert "lp-targets" in html
         # Penanda dasbor yang TIDAK boleh ada di akar.
         assert "heroLead" not in html
@@ -50,7 +50,7 @@ def test_landing_menautkan_ke_tiga_tujuan_nav() -> None:
     for tujuan in ("pricing.html", "documentation.html", "github.com/Josshua-DSA/ARCAS"):
         assert tujuan in html, f"landing tidak menautkan {tujuan}"
     # Tombol kepala menuju dasbor.
-    assert 'href="overview.html">Explore' in html
+    assert 'href="overview.html">Buka dasbor' in html
 
 
 def test_pricing_tersaji_dan_bernavigasi_sama() -> None:
