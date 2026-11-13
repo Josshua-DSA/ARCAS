@@ -81,8 +81,10 @@ header.brand{background:var(--surface);position:sticky;top:0;z-index:60}
 /* Nama merek jadi tautan ke halaman muka. Mewarisi warna dan ukuran supaya
    tidak terbaca sebagai tautan biasa di dalam judul. min-height 44px: area
    klik harus bisa dijangkau jari, bukan hanya kursor. */
-.brand-home{color:inherit;text-decoration:none;display:inline-flex;align-items:center;min-height:44px}
-.brand-home:hover,.brand-home:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.brand-home{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:10px;min-height:44px}
+.brand-mark{display:block;width:30px;height:30px;flex:0 0 auto}
+.brand-home:hover,.brand-home:focus-visible{color:var(--accent-text-on-dark);text-decoration:none}
+header.brand :focus-visible{outline-color:var(--on-dark-primary)}
 
 /* Navigasi antarhalaman (Upgrade.md 3): tautan biasa, tanpa hash-router.
    Satu garis tipis saja di bawah nav; garis atas dihapus supaya tidak ada
@@ -347,9 +349,31 @@ dialog#personaModal::backdrop{background:rgba(44,39,39,.55)}
 .modal-body{padding:14px 18px}
 .modal-foot{padding:12px 18px;border-top:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)}
 
-footer{background:var(--surface);color:var(--on-dark-primary);margin-top:26px}
-footer .wrap{padding:20px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px}
-footer a{color:var(--accent-text-on-dark);display:inline-flex;align-items:center;min-height:44px}
+footer{background:var(--surface);color:var(--on-dark-primary);margin-top:26px;
+  border-top:1px solid var(--border-dark-subtle)}
+footer .wrap{padding:36px 20px 32px;display:flex;flex-wrap:wrap;
+  align-items:flex-start;gap:24px 40px}
+.app-foot-brand{display:inline-flex;align-items:center;gap:10px;
+  flex:0 0 auto;min-height:44px;text-decoration:none;
+  color:var(--on-dark-primary)}
+.app-foot-brand img{display:block;width:30px;height:30px}
+.app-foot-brand span{font-family:var(--font-serif);font-size:20px;
+  letter-spacing:-.01em;line-height:1}
+.app-foot-brand:hover span,.app-foot-brand:focus-visible span{
+  color:var(--accent-text-on-dark)}
+.app-foot-block{flex:1 1 280px;min-width:0}
+.app-foot-label{display:block;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent-text-on-dark);margin-bottom:8px}
+.app-foot-strong{font-family:var(--font-sans);font-size:14.5px;
+  line-height:1.55;color:var(--on-dark-primary);margin:0;max-width:52ch}
+.app-foot-credit{font-family:var(--font-mono);font-size:12px;line-height:1.6;
+  color:var(--on-dark-muted);margin:0}
+.app-foot-credit a{color:var(--on-dark-secondary);text-decoration:underline;
+  text-underline-offset:2px;text-decoration-color:var(--border-dark-strong);
+  display:inline;min-height:0}
+.app-foot-credit a:hover,.app-foot-credit a:focus-visible{
+  color:var(--on-dark-primary);text-decoration-color:var(--on-dark-primary)}
 
 /* Tabel data boleh gulir mendatar di wadahnya (kolom angka tidak remuk di HP) */
 #statTables,#topList,#personaList,#wbTables{overflow-x:auto}
@@ -371,6 +395,7 @@ footer a{color:var(--accent-text-on-dark);display:inline-flex;align-items:center
 /* HP kecil: ruang napas dirampingkan, grafik dipendekkan */
 @media (max-width:600px){
   .wrap{padding:0 14px}
+  footer .wrap{padding:28px 14px 24px;gap:20px}
   .hero{padding:20px 0 4px}
   .hero p.lead{text-align:left;font-size:17px;line-height:1.6}
   .hero-facts{gap:8px}

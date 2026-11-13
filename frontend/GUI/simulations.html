@@ -8,7 +8,7 @@
 <meta name="description" content="Uji satu berita atau rumor, lihat arahnya, backtest historisnya, dan keputusan yang diturunkan dari lima persona. Simulasi, bukan nasihat investasi.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="src/css/theme.css">
-<link rel="stylesheet" href="src/css/layout.css?v=20261111l">
+<link rel="stylesheet" href="src/css/layout.css?v=20261113b">
 <link rel="stylesheet" href="src/css/splash.css">
 <link rel="stylesheet" href="src/css/simulations.css">
 <script>
@@ -32,7 +32,7 @@
 <header class="brand">
   <div class="wrap brand-row">
     <div>
-      <p class="brand-name"><a class="brand-home" href="./" title="Kembali ke halaman muka">ARCAS</a><span class="brand-sub">Simulation</span></p>
+      <p class="brand-name"><a class="brand-home" href="./" title="Kembali ke halaman muka"><img class="brand-mark" src="public/arcas-logo-gelap.svg" alt="" width="30" height="30">ARCAS</a><span class="brand-sub">Simulation</span></p>
     </div>
   </div>
   <nav class="sections" aria-label="Halaman">
@@ -121,9 +121,19 @@
 </main>
 
 <footer>
-  <div class="wrap">
-    <span>ARCAS · angka dari data berita dan harga terbatas. Bukan nasihat investasi.</span>
-    <span>universe inti 3 (Emas, Suku Bunga, S&amp;P 500) : <a href="documentation.html">dok API</a></span>
+  <div class="wrap app-foot-grid">
+    <a class="app-foot-brand" href="./">
+      <img src="public/arcas-logo-gelap.svg" alt="" width="30" height="30">
+      <span>ARCAS</span>
+    </a>
+    <div class="app-foot-block">
+      <span class="app-foot-label">Batas data</span>
+      <p class="app-foot-strong">Angka di halaman ini dihitung dari berita dan harga yang tersedia. Bukan nasihat investasi.</p>
+    </div>
+    <div class="app-foot-block">
+      <span class="app-foot-label">Universe</span>
+      <p class="app-foot-credit">Emas, Suku Bunga, S&amp;P 500. <a href="documentation.html">Dokumentasi API</a></p>
+    </div>
   </div>
 </footer>
 

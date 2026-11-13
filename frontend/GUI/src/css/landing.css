@@ -27,7 +27,8 @@ body.landing{
 .lp-brand{font-family:var(--font-serif);font-size:22px;font-weight:400;
   letter-spacing:-.01em;line-height:1;color:var(--text-primary);
   text-decoration:none;flex:0 0 auto;display:inline-flex;align-items:center;
-  min-height:44px}
+  gap:8px;min-height:44px}
+.lp-brand-mark{display:block;width:24px;height:24px;flex:0 0 auto}
 .lp-brand:hover,.lp-brand:focus-visible{color:var(--accent-text)}
 .lp-nav{display:flex;gap:22px;flex-wrap:wrap;margin-left:auto}
 .lp-nav a{font-family:var(--font-sans);font-size:14px;font-weight:400;
@@ -260,10 +261,30 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
 }
 
 /* ---------- kaki: lapisan DATA ---------- */
-.lp-foot{background:var(--surface);padding:24px 0 30px;margin-top:20px}
-.lp-foot .wrap{display:flex;justify-content:space-between;gap:16px;
-  flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;
-  letter-spacing:.02em;color:var(--on-dark-secondary)}
+.lp-foot{background:var(--surface);padding:40px 0 36px;margin-top:20px;
+  border-top:1px solid var(--border-dark-subtle)}
+.lp-foot-grid{display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:28px 48px}
+.lp-foot-brand{display:inline-flex;align-items:center;gap:10px;
+  flex:0 0 auto;min-height:44px;text-decoration:none;
+  color:var(--on-dark-primary)}
+.lp-foot-brand img{display:block;width:30px;height:30px}
+.lp-foot-brand span{font-family:var(--font-serif);font-size:20px;
+  letter-spacing:-.01em;line-height:1}
+.lp-foot-brand:hover span,.lp-foot-brand:focus-visible span{
+  color:var(--accent-text-on-dark)}
+.lp-foot-block{flex:1 1 280px;min-width:0}
+.lp-foot-label{display:block;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent-text-on-dark);margin-bottom:8px}
+.lp-foot-strong{font-family:var(--font-sans);font-size:14.5px;
+  line-height:1.55;color:var(--on-dark-primary);margin:0;max-width:52ch}
+.lp-foot-credit{font-family:var(--font-mono);font-size:12px;line-height:1.6;
+  color:var(--on-dark-muted);margin:0}
+.lp-foot-credit a{color:var(--on-dark-secondary);text-decoration:underline;
+  text-underline-offset:2px;text-decoration-color:var(--border-dark-strong)}
+.lp-foot-credit a:hover,.lp-foot-credit a:focus-visible{
+  color:var(--on-dark-primary);text-decoration-color:var(--on-dark-primary)}
 
 :focus-visible{outline:2px solid var(--text);outline-offset:2px;
   box-shadow:0 0 0 4px var(--accent)}
@@ -275,6 +296,8 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--bg-sunken);
   .lp-head-row{gap:16px;padding:14px 20px}
   .lp-nav{gap:16px;margin-left:0;order:3;flex-basis:100%}
   .lp-head-btn{margin-left:auto}
+  .lp-foot{padding:32px 0 28px}
+  .lp-foot-grid{gap:24px}
   .lp-hero{padding:56px 20px 48px}
   .lp-hero-dark{padding:48px 0 56px}
   .lp-hero-grid{grid-template-columns:1fr;gap:36px}
