@@ -96,3 +96,21 @@ def test_tidak_mengosongkan_layar() -> None:
     css = CSS.read_text(encoding="utf-8")
     assert "color:transparent!important" not in css
     assert "visibility:hidden" not in css
+
+
+def test_ganti_rentang_dan_profil_tidak_memudarkan_seluruh_body() -> None:
+    """Tombol rentang hari (30/90/180) dan profil dulu tertinggal di fadeLalu,
+    sehingga seluruh halaman sempat hilang (opacity 0) lalu muncul mendadak."""
+    src = SHELL.read_text(encoding="utf-8")
+    blok = src.split("A.bindSharedControls = function")[1].split('querySelectorAll("a[data-page]")')[0]
+    assert "masukLalu(" in blok
+    assert "fadeLalu(" not in blok
+
+
+def test_grafik_home_morph_bukan_hapus_ulang() -> None:
+    """`setOption(..., true)` (notMerge) memaksa ECharts membangun grafik dari
+    nol saat ganti hari. Tanpa `true`, sumbu dan seri bertransisi halus."""
+    src = Path("frontend/GUI/src/js/pages/overview.js").read_text(encoding="utf-8")
+    blok = src.split("chart.setOption({")[1].split("function isoDaysAgo")[0]
+    assert "}, true);" not in blok
+    assert "animationDurationUpdate" in blok
