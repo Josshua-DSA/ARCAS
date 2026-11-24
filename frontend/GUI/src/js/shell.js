@@ -223,6 +223,82 @@ window.ARCAS = window.ARCAS || {};
     return rows.slice();
   };
 
+  /* Judul singkat modal persona: pakai judul berita agar terbaca manusia,
+     dipotong di batas kata supaya tidak memenuhi header dialog. */
+  function judulSingkat(teks, maks) {
+    var bersih = String(teks || "").replace(/\s+/g, " ").trim();
+    if (!bersih) return "";
+    if (bersih.length <= maks) return bersih;
+    var potong = bersih.slice(0, maks);
+    var spasi = potong.lastIndexOf(" ");
+    if (spasi > Math.floor(maks * 0.5)) potong = potong.slice(0, spasi);
+    return potong.replace(/[.,;:!?-]+$/, "") + "...";
+  }
+
+  /* Narasi deterministik per persona untuk modal News & Evidence.
+     Aturan RULES.md 11.2: tidak mengubah stance atau angka backend; jejak
+     statistik asli dari engine tetap ditampilkan di baris kedua.
+     ponytail: template tinggal di shell.js (hanya modal evidence yang memakai);
+     pindahkan ke backend bila halaman lain butuh teks persona yang sama. */
+  function alasanPersona(v) {
+    var src = String((v && v.rationale) || "");
+    if (!v || v.params_version === "demo") return { narasi: src, stat: "" };
+    var aset = A.metaFor(v.target).name;
+    var st = String(v.stance || "hold").toLowerCase();
+    var raw = Number(v.raw_value || 0);
+    var kurangYakin = st === "hold" && /keyakinan/i.test(src);
+    var arah = raw > 0.005 ? "pos" : raw < -0.005 ? "neg" : "flat";
+    var teks = {
+      retail: {
+        buy: "Akan buy karena sentimen positif pada " + aset + " cukup kuat untuk mendorong aksi beli.",
+        sell: "Akan sell karena berita negatif pada " + aset + " cukup kuat memicu kekhawatiran dan aksi jual.",
+        conf: "Akan hold karena kepastian berita tentang " + aset + " belum cukup meyakinkan untuk mengambil langkah.",
+        neg: "Akan hold karena tekanan negatif pada " + aset + " masih ringan, belum cukup kuat untuk ikut menjual.",
+        pos: "Akan hold karena dorongan positif pada " + aset + " masih tipis, belum cukup kuat untuk ikut membeli.",
+        flat: "Akan hold karena arah sentimen pada " + aset + " masih datar dan belum memberi dorongan jelas."
+      },
+      day_trader: {
+        buy: "Akan buy karena sentimen jangka pendek pada " + aset + " cukup kuat untuk mengambil momentum naik.",
+        sell: "Akan sell karena tekanan jual jangka pendek pada " + aset + " cukup tajam untuk mengambil posisi turun.",
+        conf: "Akan hold karena sinyal berita " + aset + " belum cukup pasti untuk membuka transaksi jangka pendek.",
+        neg: "Akan hold karena momentum turun jangka pendek pada " + aset + " belum cukup tajam untuk membuka posisi.",
+        pos: "Akan hold karena momentum naik jangka pendek pada " + aset + " belum cukup tajam untuk membuka posisi.",
+        flat: "Akan hold karena pergerakan sentimen " + aset + " terlalu datar untuk peluang jangka pendek."
+      },
+      fund_manager: {
+        buy: "Akan buy karena sinyal positif pada " + aset + " sudah terkonfirmasi cukup kuat untuk menambah alokasi.",
+        sell: "Akan sell karena sinyal negatif pada " + aset + " cukup kuat untuk memangkas bobot terhadap benchmark.",
+        conf: "Akan hold karena tingkat keyakinan berita belum memenuhi standar bukti untuk mengubah alokasi " + aset + ".",
+        neg: "Akan hold karena pelemahan sentimen belum memberi bukti kuat untuk mengubah alokasi " + aset + ".",
+        pos: "Akan hold karena penguatan sentimen belum memberi bukti kuat untuk mengubah alokasi " + aset + ".",
+        flat: "Akan hold karena berita belum memberi bukti arah yang cukup untuk menyesuaikan alokasi " + aset + "."
+      },
+      pension: {
+        buy: "Akan buy karena sinyal positif berkeyakinan tinggi dinilai relevan bagi prospek jangka panjang " + aset + ".",
+        sell: "Akan sell karena sinyal negatif berkeyakinan tinggi mengindikasikan perubahan prospek jangka panjang " + aset + ".",
+        conf: "Akan hold karena kepastian berita belum cukup tinggi untuk mengubah posisi jangka panjang.",
+        neg: "Akan hold karena tekanan jangka pendek ini dinilai sementara dan belum mengubah prospek jangka panjang " + aset + ".",
+        pos: "Akan hold karena dorongan jangka pendek ini dinilai sementara dan belum mengubah prospek jangka panjang " + aset + ".",
+        flat: "Akan hold karena berita bersifat jangka pendek dan tidak mengubah pandangan struktural " + aset + "."
+      },
+      risk_manager: {
+        buy: "Akan buy karena sinyal positif pada " + aset + " cukup jelas melampaui batas kehati-hatian risiko.",
+        sell: "Akan sell/lindung nilai karena tekanan negatif pada " + aset + " sudah cukup dalam dan memicu aturan mitigasi risiko.",
+        conf: "Akan hold karena kepastian risiko pada berita " + aset + " belum cukup tinggi untuk memicu lindung nilai.",
+        neg: "Akan hold karena risiko turun masih terbatas dan belum cukup dalam untuk memicu lindung nilai.",
+        pos: "Akan hold karena sentimen positif masih terbatas dan tidak ada tekanan risiko yang perlu dimitigasi.",
+        flat: "Akan hold karena tidak terlihat tekanan risiko turun yang membutuhkan langkah defensif."
+      }
+    };
+    var peta = teks[v.persona_id];
+    var kunci = st === "buy" ? "buy" : st === "sell" ? "sell" : (kurangYakin ? "conf" : arah);
+    var narasi = (peta && peta[kunci]) ? peta[kunci] : src;
+    var stat = (st === "hold" && !kurangYakin) ? ("Dampak " + fmt(raw, 2) + " · " + src) : src;
+    return { narasi: narasi, stat: stat };
+  }
+  A.judulSingkat = judulSingkat;
+  A.alasanPersona = alasanPersona;
+
   /* Modal persona (evidence.html dan simulations.html hidup di latar terang,
      tabelnya pakai varian terang lewat CSS. barang modal dipakai bersama). */
   A.openPersona = function (articleId, fallback, onDone) {
@@ -235,24 +311,31 @@ window.ARCAS = window.ARCAS || {};
       "&score=" + encodeURIComponent(fallback && fallback.score != null ? fallback.score : 0.35) +
       "&confidence=" + encodeURIComponent(fallback && fallback.confidence != null ? fallback.confidence : 0.75);
     A.api("/api/persona/" + encodeURIComponent(articleId) + params).then(function (views) {
-      renderPersona(articleId, views);
+      renderPersona(articleId, views, fallback);
       if (onDone) onDone();
     }).catch(function () {
       var demo = ["retail", "day_trader", "fund_manager", "pension", "risk_manager"].map(function (p, i) {
         return { article_id: articleId, persona_id: p, target: A.state.target, stance: i === 0 ? "buy" : i === 4 ? "sell" : "hold", strength: 0.4 + i * 0.1, news_horizon: "medium", raw_value: 0.2, confidence: 0.6, rationale: "Ilustrasi lokal: API persona tidak terjangkau.", params_version: "demo", disclaimer: "Simulasi sudut pandang. Bukan nasihat investasi." };
       });
-      renderPersona(articleId, demo);
+      renderPersona(articleId, demo, fallback);
       showState("personaState", "API persona tidak terjangkau, menampilkan ilustrasi berlabel.");
       if (onDone) onDone();
     });
   };
-  function renderPersona(articleId, views) {
+  function renderPersona(articleId, views, fallback) {
     if (!views || !views.length) { showState("personaState", "Tidak ada stance untuk artikel ini."); return; }
     showState("personaState", "");
-    $("personaTitle").textContent = "Stance untuk " + articleId.slice(0, 24);
+    var judulPenuh = fallback && fallback.title ? String(fallback.title).trim() : "";
+    var judulEl = $("personaTitle");
+    judulEl.textContent = judulPenuh ? judulSingkat(judulPenuh, 52) : ("Stance untuk " + String(articleId || "").slice(0, 16));
+    if (judulPenuh) judulEl.setAttribute("title", judulPenuh);
+    else judulEl.removeAttribute("title");
     $("personaList").innerHTML = "<table class='data'><thead><tr><th>Persona</th><th>Stance</th><th>Alasan</th></tr></thead><tbody>" +
       views.map(function (v) {
-        return "<tr><td>" + esc(PERSONA_LABEL[v.persona_id] || v.persona_id) + "</td><td>" + A.stanceChip(v.stance, v.strength) + "</td><td style='font-family:var(--font-sans);font-size:13px'>" + esc(v.rationale || "") + "</td></tr>";
+        var al = alasanPersona(v);
+        var isi = "<p class='p-alasan'>" + esc(al.narasi) + "</p>" +
+          (al.stat ? "<p class='p-stat'>" + esc(al.stat) + "</p>" : "");
+        return "<tr><td>" + esc(PERSONA_LABEL[v.persona_id] || v.persona_id) + "</td><td>" + A.stanceChip(v.stance, v.strength) + "</td><td>" + isi + "</td></tr>";
       }).join("") + "</tbody></table>";
   }
   function bindPersonaModal() {
@@ -428,7 +511,7 @@ window.ARCAS = window.ARCAS || {};
         b.setAttribute("aria-pressed", "true");
         A.state.days = Number(b.getAttribute("data-days"));
         A.syncUrl();
-        fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
+        masukLalu(function () { if (typeof A.renderPage === "function") return A.renderPage(); });
       });
     });
     document.querySelectorAll(".profile-btn").forEach(function (b) {
@@ -437,7 +520,7 @@ window.ARCAS = window.ARCAS || {};
         b.setAttribute("aria-pressed", "true");
         A.state.profile = b.getAttribute("data-profile");
         A.syncUrl();
-        fadeLalu(function () { if (typeof A.renderPage === "function") A.renderPage(); });
+        masukLalu(function () { if (typeof A.renderPage === "function") return A.renderPage(); });
       });
     });
     /* href statis diset agar menu benar saat middle-click; saat klik biasa,
