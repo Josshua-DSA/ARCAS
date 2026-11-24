@@ -338,14 +338,18 @@ table.data td{padding:9px 6px;border-bottom:1px solid var(--border-dark-subtle);
 /* Modal persona: dialog asli agar Esc dan fokus bekerja
    Tabel di modal hidup di latar terang, jadi pakai varian terang */
 #personaModal table.data th{color:var(--text-muted);border-bottom-color:var(--border-subtle)}
-#personaModal table.data td{color:var(--text-primary);border-bottom-color:var(--border-subtle)}
+#personaModal table.data td{color:var(--text-primary);border-bottom-color:var(--border-subtle);vertical-align:top}
 #personaModal table.data .pos{color:var(--up)}
 #personaModal table.data .neg{color:var(--down)}
 #personaModal table.data .flat{color:var(--hold)}
-dialog#personaModal{border:1px solid var(--border-dark-strong);border-radius:12px;padding:0;max-width:640px;width:calc(100% - 32px);color:var(--text-primary)}
+#personaModal .chip{white-space:nowrap}
+#personaModal .p-alasan{font-family:var(--font-sans);font-size:13.5px;line-height:1.45;color:var(--text-primary);margin:0}
+#personaModal .p-stat{font-family:var(--font-mono);font-size:11.5px;line-height:1.4;color:var(--text-muted);margin:4px 0 0}
+dialog#personaModal{border:1px solid var(--border-dark-strong);border-radius:12px;padding:0;max-width:680px;width:calc(100% - 32px);color:var(--text-primary)}
 dialog#personaModal::backdrop{background:rgba(44,39,39,.55)}
 .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-subtle)}
-.modal-head h2,.modal-head h3{font-family:var(--font-serif);font-weight:400;font-size:22px;margin:0}
+.modal-head > div{min-width:0}
+.modal-head h2,.modal-head h3{font-family:var(--font-serif);font-weight:400;font-size:21px;line-height:1.3;margin:0}
 .modal-body{padding:14px 18px}
 .modal-foot{padding:12px 18px;border-top:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)}
 
