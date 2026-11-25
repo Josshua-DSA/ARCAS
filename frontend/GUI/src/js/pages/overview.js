@@ -39,6 +39,8 @@
     A.showState("chartState", gapCount ? gapCount + " hari tanpa berita tampil sebagai jeda (bukan nol)." : "");
 
     chart.setOption({
+      animationDurationUpdate: 350,
+      animationEasingUpdate: "cubicOut",
       backgroundColor: "transparent",
       grid: { left: 64, right: 64, top: 36, bottom: 34 },
       tooltip: { trigger: "axis", backgroundColor: "#2C2727", borderWidth: 0,
@@ -76,7 +78,7 @@
           markLine: { silent: true, symbol: "none", label: { show: false },
             lineStyle: { color: "#8C8585", width: 1, opacity: 0.7 }, data: [{ yAxis: 0 }] } }
       ]
-    }, true);
+    });
   }
 
   /* Tanggal lokal, bukan UTC: lihat catatan A.localISO di api.js. */
@@ -376,10 +378,10 @@
     /* Masih render terbaru? Dipakai sebelum menyentuh DOM mana pun. */
     var live = function () { return mySeq === seq; };
 
-    A.showState("chartState", "Memuat deret " + t + "...");
-    A.showState("newsState", "Memuat berita...");
+    if (!chart) A.showState("chartState", "Memuat deret " + t + "...");
+    if (!newsRows.length) A.showState("newsState", "Memuat berita...");
 
-    A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal).then(function (payload) {
+    var seriesP = A.api("/api/series/" + t + "?start_date=" + start + "&end_date=" + end, signal).then(function (payload) {
       if (!live()) return;
       A.state.apiOk = true; A.state.apiReachable = true; A.setStatus("ok", "terhubung ke API");
       renderChart(payload);
@@ -394,15 +396,14 @@
     /* 20, bukan 60: pager menampilkan 5 per halaman, jadi 60 berarti 55 baris
        terbuang tiap muat. 20 memberi 4 halaman riwayat tanpa membawa sisa yang
        tidak pernah bisa dijangkau pembaca. */
-    /* Promise dikembalikan supaya skeleton tahu kapan data benar-benar tiba;
-       tanpa ini skeleton ditutup sebelum grafik digambar. */
-    return A.api("/api/impacts/" + t + "?limit=20", signal).then(function (rows) {
+    var impactsP = A.api("/api/impacts/" + t + "?limit=20", signal).then(function (rows) {
       if (!live()) return;
       renderNews(rows, false);
     }).catch(function (err) {
       if (!live() || (err && err.name === "AbortError")) return;
       renderNews([], true);
     });
+    return Promise.all([seriesP, impactsP]);
   }
 
   bindPager();
